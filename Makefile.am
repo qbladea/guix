@@ -1,5 +1,5 @@
 # GNU Guix --- Functional package management for GNU
-# Copyright © 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+# Copyright © 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 # Copyright © 2013 Andreas Enge <andreas@enge.fr>
 # Copyright © 2015, 2017 Alex Kost <alezost@gmail.com>
 # Copyright © 2016, 2018 Mathieu Lirzin <mthl@gnu.org>
@@ -39,6 +39,7 @@ do_subst = $(SED)					\
   -e 's,[@]GUILE[@],$(GUILE),g'				\
   -e 's,[@]guilemoduledir[@],$(guilemoduledir),g'	\
   -e 's,[@]guileobjectdir[@],$(guileobjectdir),g'	\
+  -e 's,[@]abs_top_builddir[@],$(abs_top_builddir),g'	\
   -e 's,[@]localedir[@],$(localedir),g'
 
 scripts/guix: scripts/guix.in Makefile
@@ -102,6 +103,7 @@ MODULES =					\
   guix/profiles.scm				\
   guix/serialization.scm			\
   guix/nar.scm					\
+  guix/narinfo.scm				\
   guix/derivations.scm				\
   guix/grafts.scm				\
   guix/repl.scm					\
@@ -126,6 +128,7 @@ MODULES =					\
   guix/build-system/android-ndk.scm		\
   guix/build-system/ant.scm			\
   guix/build-system/cargo.scm			\
+  guix/build-system/chicken.scm			\
   guix/build-system/clojure.scm			\
   guix/build-system/cmake.scm			\
   guix/build-system/dub.scm			\
@@ -175,6 +178,7 @@ MODULES =					\
   guix/build/download-nar.scm			\
   guix/build/cargo-build-system.scm		\
   guix/build/cargo-utils.scm			\
+  guix/build/chicken-build-system.scm		\
   guix/build/cmake-build-system.scm		\
   guix/build/dub-build-system.scm		\
   guix/build/dune-build-system.scm		\
@@ -319,6 +323,14 @@ MODULES +=					\
 
 endif HAVE_GUILE_SSH
 
+if HAVE_GUILE_AVAHI
+
+MODULES += 					\
+  guix/avahi.scm				\
+  guix/scripts/discover.scm
+
+endif HAVE_GUILE_AVAHI
+
 if BUILD_DAEMON_OFFLOAD
 
 MODULES +=					\
@@ -345,10 +357,15 @@ dist_noinst_DATA =				\
 AUX_FILES =						\
   gnu/packages/aux-files/chromium/master-preferences.json		\
   gnu/packages/aux-files/emacs/guix-emacs.el		\
-  gnu/packages/aux-files/linux-libre/5.9-arm.conf       \
-  gnu/packages/aux-files/linux-libre/5.9-arm64.conf     \
-  gnu/packages/aux-files/linux-libre/5.9-i686.conf      \
-  gnu/packages/aux-files/linux-libre/5.9-x86_64.conf    \
+  gnu/packages/aux-files/guix.vim			\
+  gnu/packages/aux-files/linux-libre/5.10-arm.conf	\
+  gnu/packages/aux-files/linux-libre/5.10-arm64.conf	\
+  gnu/packages/aux-files/linux-libre/5.10-i686.conf	\
+  gnu/packages/aux-files/linux-libre/5.10-x86_64.conf	\
+  gnu/packages/aux-files/linux-libre/5.9-arm.conf	\
+  gnu/packages/aux-files/linux-libre/5.9-arm64.conf	\
+  gnu/packages/aux-files/linux-libre/5.9-i686.conf	\
+  gnu/packages/aux-files/linux-libre/5.9-x86_64.conf	\
   gnu/packages/aux-files/linux-libre/5.4-arm.conf	\
   gnu/packages/aux-files/linux-libre/5.4-arm64.conf	\
   gnu/packages/aux-files/linux-libre/5.4-i686.conf	\
@@ -381,6 +398,8 @@ EXAMPLES =					\
 GOBJECTS = $(MODULES:%.scm=%.go) guix/config.go $(dist_noinst_DATA:%.scm=%.go)
 
 nobase_dist_guilemodule_DATA =					\
+  guix/d3.v3.js							\
+  guix/graph.js							\
   guix/store/schema.sql						\
   $(MODULES) $(MODULES_NOT_COMPILED) $(AUX_FILES) $(EXAMPLES)	\
   $(MISC_DISTRO_FILES)
@@ -444,7 +463,6 @@ SCM_TESTS =					\
   tests/monads.scm				\
   tests/nar.scm				\
   tests/networking.scm				\
-  tests/offload.scm				\
   tests/opam.scm				\
   tests/openpgp.scm				\
   tests/packages.scm				\
@@ -480,6 +498,12 @@ SCM_TESTS =					\
   tests/utils.scm				\
   tests/uuid.scm				\
   tests/workers.scm
+
+if BUILD_DAEMON_OFFLOAD
+SCM_TESTS  += tests/offload.scm
+else
+EXTRA_DIST += tests/offload.scm
+endif
 
 SH_TESTS =					\
   tests/guix-build.sh				\
@@ -595,8 +619,6 @@ EXTRA_DIST +=						\
   build-aux/test-driver.scm				\
   build-aux/update-guix-package.scm			\
   build-aux/update-NEWS.scm				\
-  d3.v3.js						\
-  graph.js						\
   tests/test.drv					\
   tests/signing-key.pub					\
   tests/signing-key.sec					\
@@ -706,7 +728,6 @@ AM_DISTCHECK_CONFIGURE_FLAGS =			\
   --localstatedir="$$dc_install_base/var"	\
   --with-libgcrypt-prefix="$(LIBGCRYPT_PREFIX)"	\
   --with-libgcrypt-libdir="$(LIBGCRYPT_LIBDIR)"	\
-  --with-nix-prefix="$(NIX_PREFIX)"		\
   --enable-daemon				\
   ac_cv_guix_test_root="$(GUIX_TEST_ROOT)"
 
@@ -967,9 +988,12 @@ download-po.$(1):
 	fi ;									\
 	for lang in $$$$LINGUAS; do						\
 	  if wget -nv -O "$(top_srcdir)/$(2)/$(3)$$$$lang.po.tmp"		\
-	     "https://translationproject.org/latest/$(1)/$$$$lang.po" ;		\
+	     "https://translate.fedoraproject.org/api/translations/guix/$(1)/$$$$lang/file/" ; \
 	  then									\
-	    mv "$(top_srcdir)/$(2)/$(3)$$$$lang.po"{.tmp,} ;			\
+	    msgfilter --no-wrap -i "$(top_srcdir)/$(2)/$(3)$$$$lang.po.tmp"	\
+	      cat > "$(top_srcdir)/$(2)/$(3)$$$$lang.po.tmp2" ;			\
+	    rm "$(top_srcdir)/$(2)/$(3)$$$$lang.po.tmp" ;			\
+	    mv "$(top_srcdir)/$(2)/$(3)$$$$lang.po"{.tmp2,} ;			\
 	  else									\
 	    rm "$(top_srcdir)/$(2)/$(3)$$$$lang.po.tmp" ;			\
 	  fi ;									\
@@ -979,12 +1003,48 @@ download-po.$(1):
 
 endef
 
-$(eval $(call make-download-po-rule,guix,po/guix))
-$(eval $(call make-download-po-rule,guix-packages,po/packages))
-$(eval $(call make-download-po-rule,guix-manual,po/doc,guix-manual.))
+# Checking po files for issues.  This is useful to run after downloading new
+# po files.
 
-download-po: $(foreach domain,guix guix-packages guix-manual,download-po.$(domain))
+# make-check-po-rule DOMAIN DIRECTORY [FILE-NAME-PREFIX]
+define make-check-po-rule
+
+check-po.$(1):
+	if [ -f "$(top_srcdir)/$(2)/LINGUAS" ]; then				\
+	  LINGUAS="`grep -v '^[[:blank:]]*#' < $(top_srcdir)/$(2)/LINGUAS`" ;	\
+	else									\
+	  LINGUAS="`(cd $(top_srcdir)/$(2);					\
+	    for i in *.po; do echo $$$$i; done) | cut -d . -f 2`" ;		\
+	fi ;									\
+	for lang in $$$$LINGUAS; do						\
+	  if [ -f "$(top_srcdir)/$(2)/$(3)$$$$lang.po" ];			\
+	  then									\
+	    if ! msgfmt -c "$(top_srcdir)/$(2)/$(3)$$$$lang.po" ;		\
+		then								\
+		  exit 1 ;							\
+	    fi ;								\
+	  fi ;									\
+	done
+
+.PHONY: check-po.$(1)
+
+endef
+
+$(eval $(call make-download-po-rule,documentation-cookbook,po/doc,guix-cookbook.))
+$(eval $(call make-download-po-rule,documentation-manual,po/doc,guix-manual.))
+$(eval $(call make-download-po-rule,guix,po/guix))
+$(eval $(call make-download-po-rule,packages,po/packages))
+
+$(eval $(call make-check-po-rule,documentation-cookbook,po/doc,guix-cookbook.))
+$(eval $(call make-check-po-rule,documentation-manual,po/doc,guix-manual.))
+$(eval $(call make-check-po-rule,guix,po/guix))
+$(eval $(call make-check-po-rule,packages,po/packages))
+
+download-po: $(foreach domain,guix packages documentation-manual documentation-cookbook,download-po.$(domain))
 .PHONY: download-po
+
+check-po: $(foreach domain,guix packages documentation-manual documentation-cookbook,check-po.$(domain))
+.PHONY: check-po
 
 ## -------------- ##
 ## Silent rules.  ##

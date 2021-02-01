@@ -8,7 +8,7 @@
 ;;; Copyright © 2016, 2017, 2020 Kei Kebreau <kkebreau@posteo.net>
 ;;; Copyright © 2016, 2018, 2019 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2016, 2017, 2018 Julian Graham <joolean@gmail.com>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017 Manolis Fragkiskos Ragkousis <manolis837@gmail.com>
 ;;; Copyright © 2017 Peter Mikkelsen <petermikkelsen10@gmail.com>
 ;;; Copyright © 2017 Arun Isaac <arunisaac@systemreboot.net>
@@ -163,21 +163,22 @@ is used in some video games and movies.")
 (define-public deutex
   (package
    (name "deutex")
-   (version "5.2.1")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "https://github.com/Doom-Utils/deutex"
-                                "/releases/download/v" version "/"
-                                "deutex-" version ".tar.xz"))
-            (sha256
-             (base32
-              "07w3asqxx89wl2wfv1z3cak8v83h3ys3b39mq9qq4gyf3xdhs76n"))))
+   (version "5.2.2")
+   (source
+    (origin
+      (method url-fetch)
+      (uri (string-append "https://github.com/Doom-Utils/deutex"
+                          "/releases/download/v" version "/"
+                          "deutex-" version ".tar.zst"))
+      (sha256
+       (base32 "0psb2za6ldrlak7s8pjvli98ij5yiwjx8j1ms2v7rj9yadx0xv8h"))))
    (build-system gnu-build-system)
    (inputs
     `(("libpng" ,libpng)))
    (native-inputs
     `(("asciidoc" ,asciidoc)
-      ("pkg-config" ,pkg-config)))
+      ("pkg-config" ,pkg-config)
+      ("zstd" ,zstd)))
    (home-page "https://github.com/Doom-Utils/deutex")
    (synopsis "WAD file composer for Doom and related games")
    (description
@@ -277,14 +278,14 @@ PCM data.")
 (define-public gzochi
   (package
     (name "gzochi")
-    (version "0.12")
+    (version "0.13")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://savannah/gzochi/gzochi-"
                                   version ".tar.gz"))
               (sha256
                (base32
-                "0h8yvk7154kd8zdfa9nqy73blrjq2x19kv305jcnwlmm09vvss59"))))
+                "1vcvf04qqzs3q8kaild2x7qvkwc6bwzfsisb78147b8z747j7hj0"))))
     (build-system gnu-build-system)
     (arguments
      '(#:phases (modify-phases %standard-phases
@@ -298,7 +299,7 @@ PCM data.")
     (native-inputs `(("pkgconfig" ,pkg-config)))
     (inputs `(("bdb" ,bdb)
               ("glib" ,glib)
-              ("guile" ,guile-2.2)
+              ("guile" ,guile-3.0)
               ("libmicrohttpd" ,libmicrohttpd)
               ("ncurses" ,ncurses)
               ("sdl" ,sdl)
@@ -489,7 +490,7 @@ clone.")
 (define-public tsukundere
   (package
     (name "tsukundere")
-    (version "0.2.0")
+    (version "0.2.3")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -498,21 +499,47 @@ clone.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0qmqch8hh7vsa8qaz853vwbkz0krb106955dnz8dsl7skbm5jpn6"))))
+                "05ckds2df810441wfavllx9lsw5jsc9h3nb7m31df01nsj56azdw"))))
     (build-system gnu-build-system)
+    (arguments
+     `(#:modules (((guix build guile-build-system)
+                   #:select (target-guile-effective-version))
+                  ,@%gnu-build-system-modules)
+       #:imported-modules ((guix build guile-build-system)
+                           ,@%gnu-build-system-modules)
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-command
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (version (target-guile-effective-version))
+                    (scm (string-append out "/share/guile/site/"
+                                        version))
+                    (go (string-append out "/lib/guile/"
+                                       version "/site-ccache")))
+
+               (substitute* "bin/tsukundere"
+                 (("exec guile .*" all)
+                  (string-append
+                   (format #f "export GUILE_LOAD_PATH=~@?~%"
+                           "\"~a:~a\"" scm (getenv "GUILE_LOAD_PATH"))
+                   (format #f "export GUILE_LOAD_COMPILED_PATH=~@?~%"
+                           "\"~a:~a\"" go (getenv "GUILE_LOAD_COMPILED_PATH"))
+                   all)))
+               #t))))))
     (native-inputs
      `(("autoconf" ,autoconf-wrapper)
        ("automake" ,automake)
        ("guile" ,guile-3.0)
-       ("pkg-config" ,pkg-config)))
+       ("pkg-config" ,pkg-config)
+       ("texinfo" ,texinfo)))
     (propagated-inputs
      `(("guile-sdl2" ,guile3.0-sdl2)))
     (home-page "https://gitlab.com/leoprikler/tsukundere")
     (synopsis "Visual novel engine")
     (description "Tsukundere is a game engine geared heavily towards the
 development of visual novels, written on top of Guile-SDL2.  It is still
-experimental and at the time of writing contains little more than the Guile
-modules, that make up its runtime.")
+experimental.")
     (license license:lgpl3+)))
 
 (define-public sfml
@@ -1071,7 +1098,14 @@ to create fully featured games and multimedia programs in the python language.")
          (method url-fetch)
          (uri (string-append "https://www.renpy.org/dl/" renpy-version
                              "/pygame_sdl2-" version ".tar.gz"))
-         (sha256 (base32 "1bmr7j9mlsc4czpgw70ld15ymyp4wxrk9hdsqad40wjwdxvvg2dr"))))
+         (sha256 (base32 "1bmr7j9mlsc4czpgw70ld15ymyp4wxrk9hdsqad40wjwdxvvg2dr"))
+         (modules '((guix build utils)))
+         (snippet
+          '(begin
+             ;; drop generated sources
+             (delete-file-recursively "gen")
+             (delete-file-recursively "gen3")
+             #t))))
       (build-system python-build-system)
       (arguments
        `(#:tests? #f                ; tests require pygame to be installed first
@@ -1090,11 +1124,6 @@ to create fully featured games and multimedia programs in the python language.")
                                       "/lib -Wl,-rpath,"
                                       (assoc-ref inputs "sdl-union")
                                       "/lib -Wl,--enable-new-dtags -lSDL2"))
-               #t))
-           (add-before 'build 'drop-generated-files
-             (lambda args
-               (delete-file-recursively "gen")
-               (delete-file-recursively "gen3")
                #t)))))
       (inputs
        `(("sdl-union"
@@ -1118,7 +1147,18 @@ developed mainly for Ren'py.")
        (method url-fetch)
        (uri (string-append "https://www.renpy.org/dl/" version
                            "/renpy-" version "-source.tar.bz2"))
-       (sha256 (base32 "1anr5cfbvbsbik4v4rvrkdkciwhg700k4lydfbs4n85raimz9mw4"))))
+       (sha256 (base32 "1anr5cfbvbsbik4v4rvrkdkciwhg700k4lydfbs4n85raimz9mw4"))
+       (modules '((guix build utils)))
+       (patches
+        (search-patches
+         "renpy-use-system-fribidi.patch"))
+       (snippet
+        '(with-directory-excursion "module"
+           ;; drop generated sources
+           (delete-file-recursively "gen")
+           ;; drop fribidi sources
+           (delete-file-recursively "fribidi-src")
+           #t))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #f ; Ren'py doesn't seem to package tests
@@ -1130,6 +1170,13 @@ developed mainly for Ren'py.")
              (substitute* "renpy/editor.py"
                (("xdg-open")
                 (which "xdg-open")))
+             #t))
+         (add-after 'unpack 'fix-include-paths
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "module/setup.py"
+               (("/usr/include/fribidi")
+                (string-append (assoc-ref inputs "fribidi")
+                               "/include/fribidi")))
              #t))
          (add-after 'set-paths 'set-build-vars
            (lambda* (#:key inputs #:allow-other-keys)
@@ -1168,6 +1215,7 @@ developed mainly for Ren'py.")
     (inputs
      `(("ffmpeg" ,ffmpeg)
        ("freetype" ,freetype)
+       ("fribidi" ,fribidi)
        ("glew" ,glew)
        ("libpng" ,libpng)
        ("python2-pygame" ,python2-pygame-sdl2)
@@ -1764,22 +1812,23 @@ a 2D editor view.")
 (define-public guile-chickadee
   (package
     (name "guile-chickadee")
-    (version "0.5.0")
+    (version "0.6.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://files.dthompson.us/chickadee/"
                                   "chickadee-" version ".tar.gz"))
               (sha256
                (base32
-                "0y3s0p4zyghys48sayfhcbmxmflh8hwawnx5an2jlb3x84yr0dsx"))))
+                "1jv4jkc35b7rizz8iflh74hhk9qy665isn1xa6gqz0qp9grwb019"))))
     (build-system gnu-build-system)
     (arguments
      '(#:make-flags '("GUILE_AUTO_COMPILE=0")))
     (propagated-inputs
-     `(("guile-opengl" ,guile-opengl)
-       ("guile-sdl2" ,guile-sdl2)))
+     `(("guile-opengl" ,guile3.0-opengl)
+       ("guile-sdl2" ,guile3.0-sdl2)))
     (inputs
-     `(("guile" ,guile-2.2)
+     `(("freetype" ,freetype)
+       ("guile" ,guile-3.0)
        ("libvorbis" ,libvorbis)
        ("mpg123" ,mpg123)
        ("openal" ,openal)))
@@ -1802,43 +1851,7 @@ that parenthetically inclined game developers need to make 2D (and eventually
     (license license:gpl3+)))
 
 (define-public guile3.0-chickadee
-  (package
-    (inherit guile-chickadee)
-    (name "guile3.0-chickadee")
-    (version "0.5.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://files.dthompson.us/chickadee/"
-                                  "chickadee-" version ".tar.gz"))
-              (sha256
-               (base32
-                "0y3s0p4zyghys48sayfhcbmxmflh8hwawnx5an2jlb3x84yr0dsx"))))
-    (build-system gnu-build-system)
-    (propagated-inputs
-     `(("guile-opengl" ,guile3.0-opengl)
-       ("guile-sdl2" ,guile3.0-sdl2)))
-    (inputs
-     `(("guile" ,guile-3.0)
-       ("libvorbis" ,libvorbis)
-       ("mpg123" ,mpg123)
-       ("openal" ,openal)))
-    (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("texinfo" ,texinfo)))
-    (home-page "https://dthompson.us/projects/chickadee.html")
-    (synopsis "Game development toolkit for Guile Scheme with SDL2 and OpenGL")
-    (description "Chickadee is a game development toolkit for Guile Scheme
-built on top of SDL2 and OpenGL.  Chickadee aims to provide all the features
-that parenthetically inclined game developers need to make 2D (and eventually
-3D) games in Scheme, such as:
-
-@enumerate
-@item extensible, fixed-timestep game loop
-@item OpenGL-based rendering engine
-@item keyboard, mouse, controller input
-@item REPL-driven development model
-@end enumerate\n")
-    (license license:gpl3+)))
+  (deprecated-package "guile3.0-chickadee" guile-chickadee))
 
 (define-public bennu-game-development
   (package

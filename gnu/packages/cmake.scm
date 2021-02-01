@@ -7,8 +7,8 @@
 ;;; Copyright © 2016 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2017, 2018, 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2018 Arun Isaac <arunisaac@systemreboot.net>
-;;; Copyright © 2018 Tobias Geerinckx-Rice <me@tobias.gr>
-;;; Copyright © 2019 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2018, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2019, 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2019 Pierre-Moana Levesque <pierre.moana.levesque@gmail.com>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;;
@@ -31,6 +31,7 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix download)
+  #:use-module (guix git-download)
   #:use-module (guix utils)
   #:use-module (guix deprecation)
   #:use-module (guix build-system gnu)
@@ -43,6 +44,7 @@
   #:use-module (gnu packages curl)
   #:use-module (gnu packages file)
   #:use-module (gnu packages hurd)
+  #:use-module (gnu packages kde-frameworks)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages serialization)
@@ -51,6 +53,33 @@
   #:use-module (gnu packages xml)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1))
+
+(define-public cmake-shared
+  (package
+    (name "cmake-shared")
+    (version "1.1.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/lirios/cmake-shared.git")
+         (commit
+          (string-append "v" version))))
+       (file-name
+        (git-file-name name version))
+       (sha256
+        (base32 "1srd3jmlalf0szgyp88ymhbnwds4qiywmf8lq1pif9g8irjjhdry"))))
+    (build-system cmake-build-system)
+    (arguments
+     `(#:tests? #f))                    ; No target
+    (native-inputs
+     `(("extra-cmake-modules" ,extra-cmake-modules)))
+    (synopsis "Shared CMake functions and macros")
+    (description "CMake-Shared are shared functions and macros for projects
+using the CMake build system.")
+    (home-page "https://github.com/lirios/cmake-shared/")
+    (license license:bsd-3)))
 
 ;;; Build phases shared between 'cmake-bootstrap' and the later variants
 ;;; that use cmake-build-system.
@@ -297,6 +326,39 @@ and workspaces that can be used in the compiler environment of your choice.")
   (package
     (inherit cmake-minimal)
     (name "cmake")
+    (version "3.19.2")
+    ;; TODO: Move the following source field to the cmake-bootstrap package in
+    ;; the next rebuild cycle.
+    (source (origin
+              (inherit (package-source cmake-bootstrap))
+              (uri (string-append "https://cmake.org/files/v"
+                                  (version-major+minor version)
+                                  "/cmake-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1w67w0ak6vf37501dlz9yhnzlvvpw1w10n2nm3hi7yxp4cxzvq73"))
+              (snippet
+               (match (origin-snippet (package-source cmake-bootstrap))
+                 ((_ _ exp ...)
+                  ;; Now we can delete the remaining software bundles.
+                  (append `(begin
+                             (define preserved-files
+                               '(,@%preserved-third-party-files
+                                 ;; TODO: Move this file to the
+                                 ;; %preserved-third-party-files variable in
+                                 ;; the next rebuild cycle.
+                                 "Utilities/cm3p" ;CMake header wrappers
+                                 ;; Use the bundled JsonCpp during bootstrap
+                                 ;; to work around a circular dependency.
+                                 ;; TODO: JsonCpp can be built with Meson
+                                 ;; instead of CMake, but meson-build-system
+                                 ;; currently does not support
+                                 ;; cross-compilation.
+                                 "Utilities/cmjsoncpp"
+                                 ;; LibUV is required to bootstrap the initial
+                                 ;; build system.
+                                 "Utilities/cmlibuv")))
+                          exp))))))
     (arguments
      (substitute-keyword-arguments (package-arguments cmake-minimal)
        ;; Use cmake-minimal this time.
@@ -318,6 +380,42 @@ and workspaces that can be used in the compiler environment of your choice.")
                  ,flags))
        ((#:phases phases)
         `(modify-phases ,phases
+           ;; TODO: Remove this override in the next rebuild cycle and adjust
+           ;; the %common-build-phases variable instead: the
+           ;; Utilities/Release/release_cmake.cmake file no longer exists in
+           ;; version 3.19.0.
+           (replace 'patch-bin-sh
+             (lambda _
+               ;; Replace "/bin/sh" by the right path in... a lot of
+               ;; files.
+               (substitute*
+                   '("Modules/CompilerId/Xcode-3.pbxproj.in"
+                     "Modules/Internal/CPack/CPack.RuntimeScript.in"
+                     "Source/cmGlobalXCodeGenerator.cxx"
+                     "Source/cmLocalUnixMakefileGenerator3.cxx"
+                     "Source/cmExecProgramCommand.cxx"
+                     "Tests/CMakeLists.txt"
+                     "Tests/RunCMake/File_Generate/RunCMakeTest.cmake")
+                 (("/bin/sh") (which "sh")))
+               #t))
+           ;; TODO: Remove this override in the next rebuild cycle and adjust
+           ;; the %common-disabled-tests variable instead.
+           (replace 'check
+             (lambda* (#:key tests? parallel-tests? #:allow-other-keys)
+               (let ((skipped-tests (list ,@%common-disabled-tests
+                                          ;; This test fails for unknown reason.
+                                          "RunCMake.file-GET_RUNTIME_DEPENDENCIES"
+                                          ;; This test requires the bundled libuv.
+                                          "BootstrapTest")))
+                 (if tests?
+                     (begin
+                       (invoke "ctest" "-j" (if parallel-tests?
+                                                (number->string (parallel-job-count))
+                                                "1")
+                               "--exclude-regex"
+                               (string-append "^(" (string-join skipped-tests "|") ")$")))
+                     (format #t "test suite not run~%"))
+                 #t)))
            (add-after 'install 'move-html-doc
              (lambda* (#:key outputs #:allow-other-keys)
                (let ((out (assoc-ref outputs "out"))

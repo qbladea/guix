@@ -23,7 +23,7 @@
 ;;; Copyright © 2017 Jelle Licht <jlicht@fsfe.org>
 ;;; Copyright © 2017 Adriano Peluso <catonano@gmail.com>
 ;;; Copyright © 2017 Arun Isaac <arunisaac@systemreboot.net>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017, 2018 Alex Vong <alexvong1995@gmail.com>
 ;;; Copyright © 2017, 2018 Ben Woodcroft <donttrustben@gmail.com>
 ;;; Copyright © 2017 Rutger Helling <rhelling@mykolab.com>
@@ -45,6 +45,8 @@
 ;;; Copyright © 2020 Guy Fleury Iteriteka <gfleury@disroot.org>
 ;;; Copyright © 2020 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020 Vincent Legoll <vincent.legoll@gmail.com>
+;;; Copyright © 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -84,15 +86,16 @@
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnupg)
-  #:use-module (gnu packages guile)
-  #:use-module (gnu packages time)
   #:use-module (gnu packages golang)
+  #:use-module (gnu packages guile)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages jemalloc)
   #:use-module (gnu packages language)
   #:use-module (gnu packages libedit)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages lisp)
+  #:use-module (gnu packages lisp-xyz)
   #:use-module (gnu packages logging)
   #:use-module (gnu packages man)
   #:use-module (gnu packages maths)
@@ -109,8 +112,8 @@
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-crypto)
-  #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-science)
+  #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages rdf)
   #:use-module (gnu packages readline)
@@ -123,6 +126,7 @@
   #:use-module (gnu packages tcl)
   #:use-module (gnu packages terminals)
   #:use-module (gnu packages textutils)
+  #:use-module (gnu packages time)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages valgrind)
   #:use-module (gnu packages web)
@@ -516,14 +520,14 @@ mapping from string keys to string values.")
 (define-public memcached
   (package
     (name "memcached")
-    (version "1.5.20")
+    (version "1.6.9")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
              "https://memcached.org/files/memcached-" version ".tar.gz"))
        (sha256
-        (base32 "1r511qr95q0ywdaql3pdjiwzkfqxhhfzb13ilvl7mznfm4iv1myg"))))
+        (base32 "1lcjy1b9krnb2gk72qd1fvivlfiyfvknfi3wngyvyk9ifzijr9nm"))))
     (build-system gnu-build-system)
     (inputs
      `(("libevent" ,libevent)
@@ -898,7 +902,7 @@ Language.")
 (define-public mariadb
   (package
     (name "mariadb")
-    (version "10.1.45")
+    (version "10.5.6")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://downloads.mariadb.com/MariaDB"
@@ -906,8 +910,7 @@ Language.")
                                   version ".tar.gz"))
               (sha256
                (base32
-                "1mfs0x4c0z7d306n128dxdawk3llk25vxif5zwl20fv1z5qhz3wx"))
-              (patches (search-patches "mariadb-client-test-32bit.patch"))
+                "1i257h0zdypdfj5wkg6ck9pxlkph0jvjs92k22pjr6gnx5lxs1gz"))
               (modules '((guix build utils)))
               (snippet
                '(begin
@@ -925,8 +928,8 @@ Language.")
                   (for-each (lambda (file)
                               (unless (string-suffix? "CMakeLists.txt" file)
                                 (delete-file file)))
-                            (append (find-files "extra/yassl")
-                                    (find-files "pcre") (find-files "zlib")))
+                            (append (find-files "extra/wolfssl")
+                                    (find-files "zlib")))
                   #t))))
     (build-system cmake-build-system)
     (outputs '("out" "lib" "dev"))
@@ -980,29 +983,20 @@ Language.")
          "-DINSTALL_SHAREDIR=share")
        #:phases
        (modify-phases %standard-phases
-         ,@(if (string-prefix? "arm" (%current-system))
-               ;; XXX: Because of the GCC 5 input, we need to hide GCC 7 from
-               ;; CPLUS_INCLUDE_PATH so that its headers do not shadow GCC 5.
-               '((add-after 'set-paths 'hide-default-gcc
-                   (lambda* (#:key inputs #:allow-other-keys)
-                     (let ((gcc (assoc-ref inputs "gcc")))
-                       (setenv "CPLUS_INCLUDE_PATH"
-                               (string-join
-                                (delete (string-append gcc "/include/c++")
-                                        (string-split (getenv "CPLUS_INCLUDE_PATH")
-                                                      #\:))
-                                ":"))
-                       #t))))
-               '())
-         (add-after 'unpack 'fix-pcre-detection
+         (add-after 'unpack 'adjust-output-references
            (lambda _
-             ;; The bundled PCRE in MariaDB has a patch that was upstreamed
-             ;; in version 8.34.  Unfortunately the upstream patch behaves
-             ;; slightly differently and the build system fails to detect it.
-             ;; See <https://bugs.exim.org/show_bug.cgi?id=2173>.
-             ;; XXX: Consider patching PCRE instead.
-             (substitute* "cmake/pcre.cmake"
-               ((" OR NOT PCRE_STACK_SIZE_OK") ""))
+             ;; The build system invariably prepends $CMAKE_INSTALL_PREFIX
+             ;; to other variables such as $INSTALL_INCLUDEDIR, which does
+             ;; not work when the latter uses an absolute file name.
+             (substitute* "libmariadb/mariadb_config/mariadb_config.c.in"
+               (("@CMAKE_INSTALL_PREFIX@/@INSTALL_INCLUDEDIR@")
+                "@INSTALL_INCLUDEDIR@"))
+             (substitute* "libmariadb/mariadb_config/libmariadb.pc.in"
+               (("\\$\\{prefix\\}/@INSTALL_INCLUDEDIR@")
+                "@INSTALL_INCLUDEDIR@"))
+             (substitute* "include/CMakeLists.txt"
+               (("\\\\\\$\\{CMAKE_INSTALL_PREFIX\\}/\\$\\{INSTALL_INCLUDEDIR\\}")
+                "${INSTALL_INCLUDEDIR}"))
              #t))
          (add-after 'unpack 'adjust-tests
            (lambda _
@@ -1010,6 +1004,7 @@ Language.")
                     '(;; These fail because root@hostname == root@localhost in
                       ;; the build environment, causing a user count mismatch.
                       ;; See <https://jira.mariadb.org/browse/MDEV-7761>.
+                      "funcs_1.is_columns_mysql"
                       "main.join_cache"
                       "main.explain_non_select"
                       "main.stat_tables"
@@ -1018,20 +1013,7 @@ Language.")
 
                       ;; This file contains a time bomb which makes it fail after
                       ;; 2030-12-31.  See <https://bugs.gnu.org/34351> for details.
-                      "main.mysqldump"
-
-                      ;; FIXME: This test fails on i686:
-                      ;; -myisampack: Can't create/write to file (Errcode: 17 "File exists")
-                      ;; +myisampack: Can't create/write to file (Errcode: 17 "File exists)
-                      ;; When running "myisampack --join=foo/t3 foo/t1 foo/t2"
-                      ;; (all three tables must exist and be identical)
-                      ;; in a loop it produces the same error around 1/240 times.
-                      ;; montywi on #maria suggested removing the real_end check in
-                      ;; "strings/my_vsnprintf.c" on line 503, yet it still does not
-                      ;; reach the ending quote occasionally.  Disable it for now.
-                      "main.myisampack"
-                      ;; FIXME: This test fails on armhf-linux:
-                      "mroonga/storage.index_read_multiple_double"))
+                      "main.mysqldump"))
 
                    ;; This file contains a list of known-flaky tests for this
                    ;; release.  Append our own items.
@@ -1042,9 +1024,10 @@ Language.")
                          disabled-tests)
                (close-port unstable-tests)
 
-               ;; XXX: This test fails because it expects a latin1 charset and
+               ;; XXX: These fail because they expect a latin1 charset and
                ;; collation.  See <https://jira.mariadb.org/browse/MDEV-21264>.
-               (substitute* "mysql-test/r/gis_notembedded.result"
+               (substitute* '("mysql-test/main/gis_notembedded.result"
+                              "mysql-test/main/system_mysql_db.result")
                  (("latin1_swedish_ci") "utf8_general_ci")
                  (("\tlatin1") "\tutf8"))
 
@@ -1077,6 +1060,10 @@ Language.")
                            "--testcase-timeout=40"
                            "--suite-timeout=600"
                            "--parallel" (number->string (parallel-job-count))
+                           ;; Skip the replication tests: they are very I/O
+                           ;; intensive and frequently causes indeterministic
+                           ;; failures even on powerful hardware.
+                           "--skip-rpl"
                            "--skip-test-list=unstable-tests"))
                  (format #t "test suite not run~%"))
              #t))
@@ -1087,56 +1074,57 @@ Language.")
                    (dev     (assoc-ref outputs "dev"))
                    (lib     (assoc-ref outputs "lib"))
                    (openssl (assoc-ref inputs "openssl")))
-              (substitute* (string-append out "/bin/mysql_install_db")
+              (substitute* (list (string-append out "/bin/mariadb-install-db")
+                                 (string-append out "/bin/mysql_install_db"))
                 (("basedir=\"\"")
-                 (string-append "basedir=\"" out "\"")))
+                 (string-append "basedir=\"" out "\""))
+                (("\\$basedir/share/mysql")
+                 (string-append lib "/share/mysql")))
+
               ;; Remove unneeded files for testing.
               (with-directory-excursion lib
                 (for-each delete-file-recursively
-                          '("data" "mysql-test" "sql-bench"))
+                          '("mysql-test" "sql-bench"))
                 ;; And static libraries.
                 (for-each delete-file (find-files "lib" "\\.a$")))
               (with-directory-excursion out
                 (delete-file "share/man/man1/mysql-test-run.pl.1")
                 ;; Delete huge and unnecessary executables.
-                (for-each delete-file (find-files "bin" "(test|embedded)")))
+                (for-each delete-file (find-files "bin" "test$")))
               (mkdir-p (string-append dev "/share"))
               (mkdir-p (string-append dev "/bin"))
+              (rename-file (string-append lib "/bin/mariadbd")
+                           (string-append out "/bin/mariadbd"))
               (rename-file (string-append lib "/bin/mysqld")
                            (string-append out "/bin/mysqld"))
-              (rename-file (string-append lib "/share/pkgconfig")
-                           (string-append dev "/share/pkgconfig"))
+              (mkdir-p (string-append dev "/lib"))
+              (rename-file (string-append lib "/lib/pkgconfig")
+                           (string-append dev "/lib/pkgconfig"))
+              (rename-file (string-append lib "/bin/mariadb_config")
+                           (string-append dev "/bin/mariadb_config"))
               (rename-file (string-append out "/bin/mysql_config")
                            (string-append dev "/bin/mysql_config"))
 
-
-              (substitute*  (string-append out "/bin/mysql_install_db")
-                (("\\$basedir/share/mysql")
-                 (string-append lib "/share/mysql")))
-
               ;; Embed an absolute reference to OpenSSL in mysql_config
               ;; and the pkg-config file to avoid propagation.
+              ;; XXX: how to do this for mariadb_config.c.in?
               (substitute* (list (string-append dev "/bin/mysql_config")
-                                 (string-append dev "/share/pkgconfig/mariadb.pc"))
+                                 (string-append dev "/lib/pkgconfig/mariadb.pc"))
                 (("-lssl -lcrypto" all)
                  (string-append "-L" openssl "/lib " all)))
 
               #t))))))
     (native-inputs
      `(("bison" ,bison)
-       ;; XXX: On armhf, use GCC 5 to work around <https://bugs.gnu.org/37605>.
-       ,@(if (string-prefix? "armhf" (%current-system))
-             `(("gcc@5" ,gcc-5))
-             '())
        ("perl" ,perl)))
     (inputs
      `(("jemalloc" ,jemalloc)
        ("libaio" ,libaio)
        ("libxml2" ,libxml2)
        ("ncurses" ,ncurses)
-       ("openssl" ,openssl-1.0)
+       ("openssl" ,openssl)
        ("pam" ,linux-pam)
-       ("pcre" ,pcre)
+       ("pcre2" ,pcre2)
        ("xz" ,xz)
        ("zlib" ,zlib)))
     ;; The test suite is very resource intensive and can take more than three
@@ -1222,6 +1210,18 @@ pictures, sounds, or video.")
 
 (define-public postgresql-10 postgresql)
 
+(define-public postgresql-13
+  (package
+    (inherit postgresql)
+    (version "13.1")
+    (source (origin
+              (inherit (package-source postgresql))
+              (uri (string-append "https://ftp.postgresql.org/pub/source/v"
+                                  version "/postgresql-" version ".tar.bz2"))
+              (sha256
+               (base32
+                "07z6zwr58dckaa97yl9ml240z83d1lhgaxw9aq49i8lsp21mqd0j"))))))
+
 (define-public postgresql-11
   (package
     (inherit postgresql)
@@ -1247,6 +1247,89 @@ pictures, sounds, or video.")
               (sha256
                (base32
                 "1rr2dgv4ams8r2lp13w85c77rkmzpb88fjlc28mvlw6zq2fblv2w"))))))
+
+(define-public pgloader
+  (package
+    (name "pgloader")
+    (version "3.6.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dimitri/pgloader")
+             (commit (string-append "v" version))))
+       (sha256
+        (base32 "06i1jd2za3ih5caj2b4vzlzags5j65vv8dfdbz0ggdrp40wfd5lh"))
+       (file-name (git-file-name name version))))
+    (build-system gnu-build-system)
+    (arguments
+     ;; NOTE: (Sharlatan-20210119T211511+0000) Tests are disabled due to being
+     ;; dependent on Quicklisp, main build target is `pgloader-standalone' which
+     ;; does not require Quicklisp workarounds. There is no `install' target
+     ;; configured in Makefile.
+     `(#:tests? #f
+       #:strip-binaries? #f
+       #:make-flags
+       (list "pgloader-standalone" "BUILDAPP_SBCL=buildapp")
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-after 'unpack 'set-home
+           (lambda _
+             (setenv "HOME" "/tmp")
+             #t))
+         (add-after 'unpack 'patch-Makefile
+           (lambda _
+             (substitute* "Makefile"
+               (("--sbcl.*") "--sbcl $(CL) --asdf-path . \\\n"))
+             #t))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((bin (string-append (assoc-ref outputs "out") "/bin")))
+               (mkdir-p bin)
+               (install-file "build/bin/pgloader"  bin))
+             #t)))))
+    (native-inputs
+     `(("buildapp" ,buildapp)
+       ("sbcl" ,sbcl)))
+    (inputs
+     `(("alexandria" ,sbcl-alexandria)
+       ("cl-abnf" ,sbcl-cl-abnf)
+       ("cl-base64" ,sbcl-cl-base64)
+       ("cl-csv" ,sbcl-cl-csv)
+       ("cl-fad" ,sbcl-cl-fad)
+       ("cl-log" ,sbcl-cl-log)
+       ("cl-markdown" ,sbcl-cl-markdown)
+       ("cl-mustache" ,sbcl-cl-mustache)
+       ("cl-ppcre" ,sbcl-cl-ppcre)
+       ("cl-sqlite" ,sbcl-cl-sqlite)
+       ("closer-mop" ,sbcl-closer-mop)
+       ("command-line-arguments" ,sbcl-command-line-arguments)
+       ("db3" ,sbcl-db3)
+       ("drakma" ,sbcl-drakma)
+       ("esrap" ,sbcl-esrap)
+       ("flexi-streams" ,sbcl-flexi-streams)
+       ("ixf" ,sbcl-ixf)
+       ("local-time" ,sbcl-local-time)
+       ("lparallel" ,sbcl-lparallel)
+       ("metabang-bind" ,sbcl-metabang-bind)
+       ("mssql" ,sbcl-mssql)
+       ("postmodern" ,sbcl-postmodern)
+       ("py-configparser" ,sbcl-py-configparser)
+       ("qmynd" ,sbcl-qmynd)
+       ("quri" ,sbcl-quri)
+       ("split-sequence" ,sbcl-split-sequence)
+       ("trivial-backtrace" ,sbcl-trivial-backtrace)
+       ("usocket" ,sbcl-usocket)
+       ("uuid" ,sbcl-uuid)
+       ("yason" ,sbcl-yason)
+       ("zs3" ,sbcl-zs3)))
+    (home-page "https://pgloader.io/")
+    (synopsis "Tool to migrate data to PostgreSQL")
+    (description
+     "@code{pgloader} is a program that can load data or migrate databases from
+CSV, DB3, iXF, SQLite, MS-SQL or MySQL to PostgreSQL.")
+    (license (license:x11-style "file://LICENSE"))))
 
 (define-public python-pymysql
   (package
@@ -1323,7 +1406,7 @@ organized in a hash table or B+ tree.")
 
     (native-inputs `(("bc" ,bc)
                      ("bash:include" ,bash "include")
-                     ("check" ,check)
+                     ("check" ,check-0.14)
                      ("pkg-config" ,pkg-config)))
 
     ;; TODO: Add more optional inputs.
@@ -2086,7 +2169,7 @@ valid SQL query.")
 (define-public unixodbc
   (package
    (name "unixodbc")
-   (version "2.3.7")
+   (version "2.3.9")
    (source (origin
             (method url-fetch)
             (uri
@@ -2094,7 +2177,7 @@ valid SQL query.")
               "ftp://ftp.unixodbc.org/pub/unixODBC/unixODBC-"
               version ".tar.gz"))
             (sha256
-             (base32 "0xry3sg497wly8f7715a7gwkn2k36bcap0mvzjw74jj53yx6kwa5"))))
+             (base32 "01xj65d02i3yjy7p9z08y9jakcs5szmz4rask868n7387nn3x0sj"))))
    (build-system gnu-build-system)
    (synopsis "Data source abstraction library")
    (description "Unixodbc is a library providing an API with which to access
@@ -2133,19 +2216,43 @@ similar to BerkeleyDB, LevelDB, etc.")
 (define-public redis
   (package
     (name "redis")
-    (version "5.0.7")
+    (version "6.0.10")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://download.redis.io/releases/redis-"
                                   version".tar.gz"))
               (sha256
                (base32
-                "0ax8sf3vw0yadr41kzc04917scrg5wir1d94zmbz00b8pzm79nv1"))))
+                "1gc529nfh8frk4pynyjlnmzvwa0j9r5cmqwyd7537sywz6abifvr"))
+              (modules '((guix build utils)))
+              (snippet
+               ;; Delete bundled jemalloc, as the package will use the libc one
+               '(begin (delete-file-recursively "deps/jemalloc")
+                       #t))))
     (build-system gnu-build-system)
+    (native-inputs
+     `(("procps" ,procps) ; for tests
+       ("tcl" ,tcl)))     ; for tests
     (arguments
-     '(#:tests? #f ; tests related to master/slave and replication fail
-       #:phases (modify-phases %standard-phases
-                  (delete 'configure))
+     '(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-after 'unpack 'use-correct-tclsh
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "runtest"
+               (("^TCLSH=.*")
+                (string-append "TCLSH="
+                               (assoc-ref inputs "tcl")
+                               "/bin/tclsh")))
+             #t))
+         (add-after 'unpack 'adjust-tests
+           (lambda _
+             ;; Disable failing tests
+             (substitute* "tests/test_helper.tcl"
+               (("    integration/replication[^-]") "")
+               (("    integration/replication-4") "")
+               (("    integration/replication-psync") ""))
+             #t)))
        #:make-flags `("CC=gcc"
                       "MALLOC=libc"
                       "LDFLAGS=-ldl"
@@ -2161,14 +2268,14 @@ sets, bitmaps and hyperloglogs.")
 (define-public kyotocabinet
   (package
     (name "kyotocabinet")
-    (version "1.2.78")
+    (version "1.2.79")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://fallabs.com/kyotocabinet/pkg/"
                                   "kyotocabinet-" version ".tar.gz"))
               (sha256
                (base32
-                "1bxkf9kmcavq9rqridb8mvmrk3hj4447ffi24m2admsbm61n6k29"))))
+                "079ymsahlrijswgwfr2la9yw5h57l752cprhp5dz31iamsj1vyv7"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -2336,7 +2443,7 @@ database.")
 (define-public lmdb
   (package
     (name "lmdb")
-    (version "0.9.26")
+    (version "0.9.27")
     (source
      (origin
        (method git-fetch)
@@ -2345,7 +2452,7 @@ database.")
              (commit (string-append "LMDB_" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0323xwb2rqyrr9vr6gbxc2kl89drhqw0ifmyh9pg9qgqmymyhxdx"))))
+        (base32 "09xqqm8yjsf1gv4gd4llal48sms76hfhxadx6rik1j2g5v3d3f1k"))))
     (build-system gnu-build-system)
     (arguments
      `(#:test-target "test"
@@ -2356,7 +2463,25 @@ database.")
              (chdir "libraries/liblmdb")
              (substitute* "Makefile"
                (("/usr/local") (assoc-ref outputs "out")))
-            #t)))))
+            #t))
+         (add-after 'install 'create-pkg-config-file
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((out (assoc-ref outputs "out")))
+               (mkdir-p (string-append out "/lib/pkgconfig"))
+               (with-output-to-file (string-append out "/lib/pkgconfig/liblmdb.pc")
+                 (lambda _
+                   (format #t "prefix=~a~@
+                           exec_prefix=~a~@
+                           libdir=~a/lib~@
+                           includedir=~a/include~@
+                           ~@
+                           Name: liblmdb~@
+                           Version: ~a~@
+                           Description: Lightning Memory-Mapped Database library~@
+                           Libs: -L${libdir} -llmdb~@
+                           Cflags: -I${includedir}~%"
+                           out out out out ,version)))
+                 #t))))))
     (home-page "https://symas.com/lmdb/")
     (synopsis "Lightning Memory-Mapped Database library")
     (description
@@ -3222,8 +3347,7 @@ files or Python scripts that define a list of migration steps.")
     (build-system python-build-system)
     (arguments '(#:tests? #f))          ;XXX: requires a live database
     (inputs
-     `(("mysql" ,mariadb "lib")
-       ("mysql-dev" ,mariadb "dev")))
+     `(("mysql-dev" ,mariadb "dev")))
     (home-page "https://github.com/PyMySQL/mysqlclient-python")
     (synopsis "MySQLdb is an interface to the popular MySQL database server for Python")
     (description "MySQLdb is an interface to the popular MySQL database server
@@ -3768,9 +3892,6 @@ implementation, along with tools for interoperability with pandas, NumPy, and
 other traditional Python scientific computing packages.")
     (license license:asl2.0)))
 
-(define-public python2-pyarrow
-  (package-with-python2 python-pyarrow))
-
 (define-public python-crate
   (package
     (name "python-crate")
@@ -3905,8 +4026,7 @@ The drivers officially supported by @code{libdbi} are:
        ("sqlite" ,sqlite)
        ("odbc" ,unixodbc)
        ("boost" ,boost)
-       ("mariadb:dev" ,mariadb "dev")
-       ("mariadb:lib" ,mariadb "lib")))
+       ("mariadb:dev" ,mariadb "dev")))
     (arguments
      `(#:configure-flags
        ;; C++11 (-DSOCI_CXX11) is OFF by default.  hyperledger-iroha needs it.
@@ -3919,3 +4039,26 @@ The drivers officially supported by @code{libdbi} are:
 PostreSQL, SQLite, ODBC and MySQL.")
     (home-page "http://soci.sourceforge.net/")
     (license license:boost1.0)))
+
+(define-public freetds
+  (package
+    (name "freetds")
+    (version "1.2.18")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://www.freetds.org/files/stable/"
+                           "freetds-" version ".tar.gz"))
+       (sha256
+        (base32 "1hspvwxwdd1apadsy2b40dpjik8kfwcvdamvhpg3lnm15n02fb50"))))
+    (build-system gnu-build-system)
+    (arguments
+     ;; NOTE: (Sharlatan-20210110213908+0000) some tests require DB connection,
+     ;; disabled for now.
+     `(#:tests? #f))
+    (home-page "https://www.freetds.org/")
+    (synopsis "Client libraries for MS SQL and Sybase servers")
+    (description
+     "FreeTDS is an implementation of the Tabular DataStream protocol, used for
+connecting to MS SQL and Sybase servers over TCP/IP.")
+    (license license:lgpl2.0+)))

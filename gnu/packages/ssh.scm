@@ -4,7 +4,7 @@
 ;;; Copyright © 2014, 2015, 2016 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015, 2016, 2018, 2019 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016, 2019 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2016 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2016, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2016 Christopher Allan Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017 Stefan Reichör <stefan@xsteve.at>
@@ -189,7 +189,8 @@ a server that supports the SSH-2 protocol.")
              (method url-fetch)
              (uri (string-append "mirror://openbsd/OpenSSH/portable/"
                                  "openssh-" version ".tar.gz"))
-             (patches (search-patches "openssh-hurd.patch"))
+             (patches (search-patches "openssh-hurd.patch"
+                                      "openssh-fix-ssh-copy-id.patch"))
              (sha256
               (base32
                "091b3pxdlj47scxx6kkf4agkx8c8sdacdxx8m1dw1cby80pd40as"))))
@@ -487,36 +488,6 @@ of user keystrokes.  It's a replacement for SSH that's more robust and
 responsive, especially over Wi-Fi, cellular, and long-distance links.")
     (license license:gpl3+)))
 
-(define-public et
-  (package
-    (name "et")
-    (version "3.1.0")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/MisterTea/EternalTCP")
-             (commit (string-append "et-v" version))))
-       (file-name (git-file-name name version))
-       (sha256
-        (base32 "1m5caxckn2ihwp9s2pbyh5amxlpwr7yc54q8s0kb10fr52w2vfnm"))))
-    (build-system cmake-build-system)
-    (arguments `(#:tests? #f))
-    (native-inputs
-     `(("pkg-config" ,pkg-config)))
-    (inputs `(("glog" ,glog)
-              ("gflags" ,gflags)
-              ("libsodium" ,libsodium)
-              ("protobuf" ,protobuf)))
-    (synopsis "Remote shell that automatically reconnects")
-    (description
-     "Eternal Terminal (ET) is a remote shell that automatically reconnects
-without interrupting the session.  Unlike SSH sessions, ET sessions will
-survive even network outages and IP changes.  ET uses a custom protocol over
-TCP, not the SSH protocol.")
-    (home-page "https://eternalterminal.dev/")
-    (license license:asl2.0)))
-
 (define-public dropbear
   (package
     (name "dropbear")
@@ -694,18 +665,17 @@ manipulating key files.")
 (define-public sshpass
   (package
     (name "sshpass")
-    (version "1.06")
-    (synopsis "Non-interactive password authentication with SSH")
-    (home-page "https://sourceforge.net/projects/sshpass/")
+    (version "1.09")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/sshpass/sshpass/"
                            version "/sshpass-" version ".tar.gz"))
        (sha256
-        (base32
-         "0q7fblaczb7kwbsz0gdy9267z0sllzgmf0c7z5c9mf88wv74ycn6"))))
+        (base32 "1dwzqknpswa8vjlbwsx9rcq1j2a7px9h9i2anh09pzkz0mg6wx3i"))))
     (build-system gnu-build-system)
+    (home-page "https://sourceforge.net/projects/sshpass/")
+    (synopsis "Non-interactive password authentication with SSH")
     (description "sshpass is a tool for non-interactively performing password
 authentication with SSH's so-called @dfn{interactive keyboard password
 authentication}.")
@@ -907,7 +877,7 @@ clients at a time.")
 (define-public webssh
   (package
     (name "webssh")
-    (version "1.5.2")
+    (version "1.5.3")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -916,7 +886,7 @@ clients at a time.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1l4bwzaifsd6pl120d400qkhvaznj2ck1lvwg76ycb08jsk6gpaz"))))
+                "1bcy9flrzbvams5p77swwiygv54ac58ia7hpic1bvg30b3wpvv7b"))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-paramiko" ,python-paramiko)

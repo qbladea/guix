@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2012, 2013, 2014, 2015, 2016, 2017 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2013, 2019, 2020 Andreas Enge <andreas@enge.fr>
-;;; Copyright © 2015, 2016, 2017, 2019 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2016, 2017, 2019, 2021 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015, 2016, 2017, 2019, 2020 Eric Bavier <bavier@posteo.net>
 ;;; Copyright © 2015 Eric Dvorsak <eric@dvorsak.fr>
 ;;; Copyright © 2016, 2018 Mark H Weaver <mhw@netris.org>
@@ -28,6 +28,7 @@
 ;;; Copyright © 2020 Paul Garlick <pgarlick@tourbillion-technology.com>
 ;;; Copyright © 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Malte Frank Gerdes <malte.f.gerdes@gmail.com>
+;;; Copyright © 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1712,7 +1713,7 @@ and objects.")
 (define-public perl-common-sense
   (package
     (name "perl-common-sense")
-    (version "3.74")
+    (version "3.75")
     (source
      (origin
        (method url-fetch)
@@ -1720,7 +1721,7 @@ and objects.")
                            "common-sense-" version ".tar.gz"))
        (sha256
         (base32
-         "1wxv2s0hbjkrnssvxvsds0k213awg5pgdlrpkr6xkpnimc17s7vp"))))
+         "0zhfp8f0czg69ycwn7r6ayg6idm5kyh2ai06g5s6s07kli61qsm8"))))
     (build-system perl-build-system)
     (home-page "https://metacpan.org/release/common-sense")
     (synopsis "Sane defaults for Perl programs")
@@ -2033,14 +2034,14 @@ CPAN::Meta object are present.")
 (define-public perl-cpanel-json-xs
   (package
     (name "perl-cpanel-json-xs")
-    (version "4.18")
+    (version "4.25")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://cpan/authors/id/R/RU/RURBAN/"
                            "Cpanel-JSON-XS-" version ".tar.gz"))
        (sha256
-        (base32 "1dnnf6bjz0fi9hk8gzmsklmh5y0z137vk62k3d7s88q30maf3rk3"))))
+        (base32 "061940vyj9y3rzwq47z2a3f5i5rfpa90ccz7fgz228zr7njkvfpr"))))
     (build-system perl-build-system)
     (propagated-inputs
      `(("perl-common-sense" ,perl-common-sense)))
@@ -4056,6 +4057,41 @@ environment, other than a fixed list of specified variables.  Compilation
 errors are rethrown automatically.")
     (license (package-license perl))))
 
+(define-public perl-eval-withlexicals
+  (package
+    (name "perl-eval-withlexicals")
+    (version "1.003006")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://cpan/authors/id/H/HA/HAARG/Eval-WithLexicals-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "0x09mq0q745cxkw3xgr0h7dil7p1pdq3l5299kj3mk2ijkk2gwb6"))))
+    (build-system perl-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (add-after 'install 'wrap-tinyrepl
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let* ((out (assoc-ref outputs "out")))
+                        (wrap-program (string-append out "/bin/tinyrepl")
+                          `("PERL5LIB" ":" prefix
+                            (,(getenv "PERL5LIB")
+                             ,(string-append out "/lib/perl5/site_perl"))))
+                        #t))))))
+    (propagated-inputs
+     `(("perl-moo" ,perl-moo)
+       ("perl-strictures" ,perl-strictures)))
+    (home-page "https://metacpan.org/release/Eval-WithLexicals")
+    (synopsis "Lexical scope evaluation library for Perl")
+    (description "The Eval::WithLexicals Perl library provides support for
+lexical scope evaluation.  This package also includes the @command{tinyrepl}
+command, which can be used as a minimal Perl read-eval-print loop (REPL).")
+    (license (package-license perl))))
+
 (define-public perl-exception-class
   (package
     (name "perl-exception-class")
@@ -5553,18 +5589,18 @@ installed.")
 (define-public perl-json-maybexs
   (package
     (name "perl-json-maybexs")
-    (version "1.004000")
+    (version "1.004003")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://cpan/authors/id/H/HA/HAARG/"
+       (uri (string-append "mirror://cpan/authors/id/E/ET/ETHER/"
                            "JSON-MaybeXS-" version ".tar.gz"))
        (sha256
         (base32
-         "09m1w03as6n0a00pzvaldkhm494yaf5n0g3j2cwwfx24iwpa1gar"))))
+         "1grg8saa318bs4x2wqnww7y0nra7azrzg35bk5pgvkwxzwbkpvjv"))))
     (build-system perl-build-system)
     (native-inputs
-     `(("perl-test-without-module" ,perl-test-without-module)))
+     `(("perl-test-needs" ,perl-test-needs)))
     (inputs
      `(("perl-cpanel-json-xs" ,perl-cpanel-json-xs)))
     (home-page "https://metacpan.org/release/JSON-MaybeXS")
@@ -8368,14 +8404,14 @@ for a given module is comprehensive.")
 (define-public perl-pod-simple
   (package
     (name "perl-pod-simple")
-    (version "3.35")
+    (version "3.42")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://cpan/authors/id/K/KH/KHW/"
                                   "Pod-Simple-" version ".tar.gz"))
               (sha256
                (base32
-                "0gg11ibbc02l2aw0bsv4jx0jax8z0apgfy3p5csqnvhlsb6218cr"))))
+                "1icagrjqw1azmff82h17cbrhqgql7rg21gz64mjpiqqq0cpfpz59"))))
     (build-system perl-build-system)
     (home-page "https://metacpan.org/release/Pod-Simple")
     (synopsis "Parsing library for text in Pod format")
@@ -11105,6 +11141,39 @@ package takes some liberties with the SDL API, and attempts to adhere to the
 spirit of both the SDL and Perl.")
     (license license:lgpl2.1)))
 
+(define-public perl-sgmls
+  (package
+    (name "perl-sgmls")
+    (version "1.1")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://cpan/authors/id/R/RA/RAAB/SGMLSpm-"
+                                  version ".tar.gz"))
+              (sha256
+               (base32
+                "1gdjf3mcz2bxir0l9iljxiz6qqqg3a9gg23y5wjg538w552r432m"))))
+    (build-system perl-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (add-after 'install 'wrap-script
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let* ((out (assoc-ref outputs "out"))
+                             (site (string-append out "/lib/perl5/site_perl")))
+                        (with-directory-excursion out
+                          (rename-file "bin/sgmlspl.pl" "bin/sgmlspl")
+                          (wrap-program "bin/sgmlspl"
+                            `("PERL5LIB" suffix (,site))))
+                        #t))))))
+    (native-inputs
+     `(("perl-module-build" ,perl-module-build)))
+    (home-page "https://metacpan.org/release/RAAB/SGMLSpm-1.1")
+    (synopsis "Perl module for processing SGML parser output")
+    (description "This package contains @code{SGMLS.pm}, a perl5 class library
+for parsing the output from an SGML parser such as OpenSP.  It also includes
+the @command{sgmlspl} command, an Perl script showcasing how the library can
+be used.")
+    (license license:gpl2+)))
+
 (define-public perl-shell-command
   (package
     (name "perl-shell-command")
@@ -11385,6 +11454,33 @@ to open the source file it is called from, and does so directly either by
 lookup in %INC or by assuming it is $0 if the caller is @code{main}
 (or it can't find %INC{caller()}).")
     (license license:artistic2.0)))
+
+(define-public perl-text-soundex
+  (package
+    (name "perl-text-soundex")
+    (version "3.05")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://cpan/authors/id/R/RJ/RJBS/Text-Soundex-"
+                           version ".tar.gz"))
+       (sha256
+        (base32
+         "1vb0vg1109gfzaak74ynw5s00ml28f33j612g2lxw98b52s5bpgn"))))
+    (build-system perl-build-system)
+    (home-page
+     "https://metacpan.org/release/Text-Soundex")
+    (synopsis "Implementation of the soundex algorithm.")
+    (description "Soundex is a phonetic algorithm for indexing names by sound,
+as pronounced in English.  The goal is for names with the same pronunciation to
+be encoded to the same representation so that they can be matched despite
+minor differences in spelling.
+
+This module implements the original soundex algorithm developed by Robert
+Russell and Margaret Odell, patented in 1918 and 1922, as well as a variation
+called \"American Soundex\" used for US census data, and current maintained by
+the National Archives and Records Administration (NARA).")
+    (license license:perl-license)))
 
 (define-public perl-regexp-pattern
   (package

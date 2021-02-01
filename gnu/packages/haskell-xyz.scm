@@ -997,6 +997,32 @@ Users wishing to have an improved Prelude can use BasicPrelude.  Developers
 wishing to create a new prelude should use CorePrelude.")
     (license license:expat)))
 
+(define-public ghc-bencode
+  (package
+    (name "ghc-bencode")
+    (version "0.6.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://hackage.haskell.org/package/bencode/bencode-"
+             version ".tar.gz"))
+       (sha256
+        (base32 "0znv0y3b3zm5jvhlvj5f5s7y93db67j9yd59w1bnrw2pqv30gqaq"))))
+    (build-system haskell-build-system)
+    (inputs
+     `(("ghc-transformers-compat" ,ghc-transformers-compat)))
+    (native-inputs
+     `(("ghc-hspec" ,ghc-hspec)
+       ("ghc-quickcheck" ,ghc-quickcheck)))
+    (home-page "https://hackage.haskell.org/package/bencode")
+    (synopsis "Parsers and printers for bencoded data")
+    (description
+     "This library provides parsers and printers for bencoded data.  Bencode
+is the encoding used by the peer-to-peer file sharing system BitTorrent for
+storing and transmitting loosely structured data.")
+    (license license:bsd-3)))
+
 (define-public ghc-bifunctors
   (package
     (name "ghc-bifunctors")
@@ -1637,7 +1663,7 @@ very simple example of encoding CSV data:
 (define-public ghc-cassava-megaparsec
   (package
     (name "ghc-cassava-megaparsec")
-    (version "2.0.2")
+    (version "2.0.1")
     (source
      (origin
        (method url-fetch)
@@ -1648,7 +1674,7 @@ very simple example of encoding CSV data:
              ".tar.gz"))
        (sha256
         (base32
-         "03x1462agrfdagklp8c89b8p4z2hd8nbf6d3895sz770zjkawda7"))))
+         "0q4skw98nzy6icmgpwqvgw0c5pqcgi25rf7nmwh2pksvv94pi3p3"))))
     (build-system haskell-build-system)
     (inputs
      `(("ghc-cassava" ,ghc-cassava)
@@ -3525,7 +3551,7 @@ Writer monad), where list append quickly becomes too expensive.")
 (define-public ghc-doctest
   (package
     (name "ghc-doctest")
-    (version "0.16.3")
+    (version "0.16.2")
     (source
      (origin
        (method url-fetch)
@@ -3535,7 +3561,7 @@ Writer monad), where list append quickly becomes too expensive.")
              ".tar.gz"))
        (sha256
         (base32
-         "1y1l7aa80qkib1z8lsizgg7fpfdmdwhxvi5m255a42jdkjgn5sfg"))))
+         "0lk4cjfzi5bx2snfzw1zi06li0gvgz3ckfh2kwa98l7nxfdl39ag"))))
     (build-system haskell-build-system)
     (arguments `(#:tests? #f))          ; FIXME: missing test framework
     (inputs
@@ -3547,7 +3573,6 @@ Writer monad), where list append quickly becomes too expensive.")
      `(("ghc-hunit" ,ghc-hunit)
        ("ghc-quickcheck" ,ghc-quickcheck)
        ("ghc-hspec" ,ghc-hspec)
-       ("ghc-hspec-core" ,ghc-hspec-core)
        ("ghc-mockery" ,ghc-mockery)
        ("ghc-setenv" ,ghc-setenv)
        ("ghc-silently" ,ghc-silently)
@@ -4414,7 +4439,7 @@ file contents, and more.")
 (define-public ghc-filepath-bytestring
   (package
     (name "ghc-filepath-bytestring")
-    (version "1.4.2.1.1")
+    (version "1.4.2.1.6")
     (source
      (origin
        (method url-fetch)
@@ -4423,7 +4448,7 @@ file contents, and more.")
               "filepath-bytestring-" version ".tar.gz"))
        (sha256
         (base32
-         "06shdskjj391hb9295slm9gg2rbn5fdq5v6fg0mgn3yl5dv8q5dx"))))
+         "11xrrzdkm5i96dazbz0gi1qp8nnj2lwbnxzwy7f4cnahskz4f4g7"))))
     (build-system haskell-build-system)
     (native-inputs
      `(("ghc-quickcheck" ,ghc-quickcheck)))
@@ -5841,7 +5866,7 @@ accessed or modified.")
 (define-public ghc-hledger-lib
   (package
     (name "ghc-hledger-lib")
-    (version "1.19.1")
+    (version "1.14.1")
     (source
      (origin
        (method url-fetch)
@@ -5851,14 +5876,10 @@ accessed or modified.")
              ".tar.gz"))
        (sha256
         (base32
-         "0py11011r358nmnvwwkc8mlx6mpy36jm8sqlr4i8ihx3x0zjdgya"))))
+         "1w6qp01cak6spnpldm01czlm6i5a2alw47w76875l2nagrc4rfp2"))))
     (build-system haskell-build-system)
     (inputs
-     `(("ghc-decimal" ,ghc-decimal)
-       ("ghc-glob" ,ghc-glob)
-       ("ghc-aeson" ,ghc-aeson)
-       ("ghc-aeson-pretty" ,ghc-aeson-pretty)
-       ("ghc-ansi-terminal" ,ghc-ansi-terminal)
+     `(("ghc-ansi-terminal" ,ghc-ansi-terminal)
        ("ghc-base-compat-batteries" ,ghc-base-compat-batteries)
        ("ghc-blaze-markup" ,ghc-blaze-markup)
        ("ghc-call-stack" ,ghc-call-stack)
@@ -5866,11 +5887,14 @@ accessed or modified.")
        ("ghc-cassava-megaparsec" ,ghc-cassava-megaparsec)
        ("ghc-cmdargs" ,ghc-cmdargs)
        ("ghc-data-default" ,ghc-data-default)
+       ("ghc-decimal" ,ghc-decimal)
+       ("ghc-easytest" ,ghc-easytest)
        ("ghc-extra" ,ghc-extra)
-       ("ghc-fgl" ,ghc-fgl)
        ("ghc-file-embed" ,ghc-file-embed)
+       ("ghc-glob" ,ghc-glob)
        ("ghc-hashtables" ,ghc-hashtables)
        ("ghc-megaparsec" ,ghc-megaparsec)
+       ("ghc-mtl-compat" ,ghc-mtl-compat)
        ("ghc-old-time" ,ghc-old-time)
        ("ghc-parser-combinators" ,ghc-parser-combinators)
        ("ghc-pretty-show" ,ghc-pretty-show)
@@ -5878,14 +5902,9 @@ accessed or modified.")
        ("ghc-safe" ,ghc-safe)
        ("ghc-split" ,ghc-split)
        ("ghc-tabular" ,ghc-tabular)
-       ("ghc-tasty" ,ghc-tasty)
-       ("ghc-tasty-hunit" ,ghc-tasty-hunit)
-       ("ghc-timeit" ,ghc-timeit)
        ("ghc-uglymemo" ,ghc-uglymemo)
-       ("ghc-unordered-containers" ,ghc-unordered-containers)
        ("ghc-utf8-string" ,ghc-utf8-string)))
-    (native-inputs
-     `(("ghc-doctest" ,ghc-doctest)))
+    (native-inputs `(("ghc-doctest" ,ghc-doctest)))
     (home-page "https://hledger.org")
     (synopsis "Reusable library providing the core functionality of hledger")
     (description
@@ -7192,11 +7211,11 @@ compiler versions.")
     (build-system haskell-build-system)
     (arguments
      `(#:configure-flags `("--flags=system-libyaml")
-       #:extra-directories ("libyaml")))
+       #:extra-directories ("libyaml+static")))
     (inputs
      `(("ghc-conduit" ,ghc-conduit)
        ("ghc-resourcet" ,ghc-resourcet)
-       ("libyaml" ,libyaml)))
+       ("libyaml+static" ,libyaml+static)))
     (home-page "https://github.com/snoyberg/yaml#readme")
     (synopsis "Low-level, streaming YAML interface.")
     (description "This package provides a Haskell wrapper over the
@@ -9167,7 +9186,7 @@ require aeson
     (home-page "https://hackage.haskell.org/package/text-short")
     (synopsis "Memory-efficient representation of Unicode text strings")
     (description "This package provides the @code{ShortText} type which
-is suitable for keeping many short strings in memory.  This is similiar
+is suitable for keeping many short strings in memory.  This is similar
 to how @code{ShortByteString} relates to @code{ByteString}.
 
 The main difference between @code{Text} and @code{ShortText} is that
@@ -9562,6 +9581,7 @@ getDataFileName name = do
          ("pandoc" ,pandoc "lib")
          ,@all-static-inputs
          ,@direct-inputs)))
+    (outputs '("out" "lib" "static" "doc"))
     (synopsis "Pandoc filter for bibliographic references")))
 
 (define-public ghc-pandoc-types
@@ -13028,7 +13048,7 @@ increasing type safety.")
 (define-public ghc-tabular
   (package
     (name "ghc-tabular")
-    (version "0.2.2.8")
+    (version "0.2.2.7")
     (source
      (origin
        (method url-fetch)
@@ -13038,7 +13058,7 @@ increasing type safety.")
              ".tar.gz"))
        (sha256
         (base32
-         "0z936gh8n8i8qdkagyxwd9gqq13skd5fv013vdvwsibrxkm0czfb"))))
+         "1ysgq7rrks7f98nnvxil8xz1q27hxdgz4szbjhqwzbwd209dmy0k"))))
     (build-system haskell-build-system)
     (inputs
      `(("ghc-csv" ,ghc-csv)
@@ -13795,6 +13815,28 @@ objects from the timezone-series package.")
 Haskell client library allowing users to update and view @code{tldr} pages
 from a shell.  The @code{tldr} pages are a community effort to simplify the
 man pages with practical examples.")
+    (license license:bsd-3)))
+
+(define-public ghc-torrent
+  (package
+    (name "ghc-torrent")
+    (version "10000.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://hackage.haskell.org/package/torrent/torrent-"
+             version ".tar.gz"))
+       (sha256
+        (base32 "0m7s0q7f8c7glxzqhf2j86ch5xhk6jnzwwsa4mkywag22119c290"))))
+    (build-system haskell-build-system)
+    (inputs
+     `(("ghc-bencode" ,ghc-bencode)
+       ("ghc-syb" ,ghc-syb)))
+    (home-page "https://hackage.haskell.org/package/torrent")
+    (synopsis "BitTorrent file parser and generator")
+    (description "This library provides support for parsing and generating
+BitTorrent files.")
     (license license:bsd-3)))
 
 (define-public ghc-transformers

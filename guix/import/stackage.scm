@@ -1,6 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2017 Federico Beffa <beffa@fbengineering.ch>
 ;;; Copyright © 2018 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2020 Martin Becze <mjbecze@riseup.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -30,7 +31,8 @@
   #:use-module (guix memoization)
   #:use-module (guix packages)
   #:use-module (guix upstream)
-  #:export (stackage->guix-package
+  #:export (%stackage-url
+            stackage->guix-package
             stackage-recursive-import
             %stackage-updater))
 
@@ -39,7 +41,8 @@
 ;;; Stackage info fetcher and access functions
 ;;;
 
-(define %stackage-url "https://www.stackage.org")
+(define %stackage-url
+  (make-parameter "https://www.stackage.org"))
 
 ;; Latest LTS version compatible with GHC 8.6.5.
 (define %default-lts-version "14.27")
@@ -55,7 +58,7 @@
   ;; "Retrieve the information about the LTS Stackage release VERSION."
   (memoize
    (lambda* (#:optional (version ""))
-     (let* ((url (string-append %stackage-url
+     (let* ((url (string-append (%stackage-url)
                                 "/lts-" (if (string-null? version)
                                             %default-lts-version
                                             version)))
@@ -107,8 +110,8 @@ included in the Stackage LTS release."
            (leave-with-message "~a: Stackage package not found" package-name))))))
 
 (define (stackage-recursive-import package-name . args)
-  (recursive-import package-name #f
-                    #:repo->guix-package (lambda (name repo)
+  (recursive-import package-name
+                    #:repo->guix-package (lambda* (name #:key repo version)
                                            (apply stackage->guix-package (cons name args)))
                     #:guix-name hackage-name->package-name))
 

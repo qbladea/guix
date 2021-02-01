@@ -1,11 +1,13 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2014, 2015 Ludovic Courtès <ludo@gnu.org>
-;;; Copyright © 2016, 2017, 2018, 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2017, 2018, 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2020 Vincent Legoll <vincent.legoll@gmail.com>
 ;;; Copyright © 2020 Marius Bakke <marius@gnu.org>
+;;; Copyright © 2021 Björn Höfling <bjoern.hoefling@bjoernhoefling.de>
+;;; Copyright © 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -51,24 +53,25 @@
 (define-public gpsbabel
   (package
     (name "gpsbabel")
-    (version "1.5.4")
+    (version "1.7.0")
     (source (origin
-              (method url-fetch)
-              ;; XXX: Downloads from gpsbabel.org are hidden behind a POST, so
-              ;; get it from elsewhere.
-              (uri (string-append
-                    "mirror://debian/pool/main/g/gpsbabel/gpsbabel_"
-                    version ".orig.tar.gz"))
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/gpsbabel/gpsbabel")
+                    (commit (string-append
+                             "gpsbabel_"
+                             (string-replace-substring version "." "_")))))
+              (file-name (git-file-name name version))
               (sha256
                (base32
-                "19hykxhyl567gf8qcrl33qhv95w0g4vxw9r3h9b8d8plx9bnaf8l"))
-              (patches (search-patches
-                        "gpsbabel-minizip.patch"
-                        ;; XXX: Remove this patch on the next release.
-                        "gpsbabel-qstring.patch"))
+                "010g0vd2f5knpq5p7qfnl31kv3r8m5sjdsafcinbj5gh02j2nzpy"))
+              (patches (search-patches "gpsbabel-fix-i686-test.patch"))
               (modules '((guix build utils)))
               (snippet
                '(begin
+                  (delete-file-recursively "zlib")
+                  (substitute* "Makefile.in"
+                    ((" zlib/z.*\\.h") ""))
                   ;; Delete files under GPL-compatible licences but never used
                   ;; on GNU systems, rather than bloating the LICENSE field.
                   (delete-file "gui/serial_mac.cc")           ; Apple MIT
@@ -78,17 +81,12 @@
     ;; TODO: "make doc" requires Docbook & co.
     (arguments
      `(#:configure-flags
-       '("--with-zlib=system")
-       ;; On i686, 'raymarine.test' fails because of a rounding error:
-       ;; <http://hydra.gnu.org/build/133040>.  As a workaround, disable tests
-       ;; on these platforms.
-       ;; FIXME: On x86_64 with -std=gnu++11 tests also fail due to rounding
-       ;; error.
-       #:tests? #f))
+       '("--with-zlib=system")))
     (inputs
      `(("expat" ,expat)
-       ("zlib" ,zlib)
-       ("qtbase" ,qtbase)))
+       ("libusb" ,libusb)
+       ("qtbase" ,qtbase)
+       ("zlib" ,zlib)))
     (native-inputs
      `(("which" ,which)
        ("qttools" ,qttools)
@@ -151,7 +149,7 @@ between two other data points.")
 (define-public gama
   (package
     (name "gama")
-    (version "2.11")
+    (version "2.13")
     (source
       (origin
         (method url-fetch)
@@ -159,7 +157,7 @@ between two other data points.")
                             version ".tar.gz"))
         (sha256
          (base32
-          "1iw7d0lfjhvp7lnyj0lxy62zpa2d05gfra3fq4sz8nyjwss0gmqh"))
+          "041cprbj4lfs42i7sd1c2zlx3r16g6c5shz3qls79gxb7kqflkgb"))
         (modules '((guix build utils)))
         (snippet
          '(begin
@@ -184,7 +182,7 @@ coordinates as well as partial support for adjustments in global coordinate syst
 (define-public gpxsee
   (package
     (name "gpxsee")
-    (version "7.36")
+    (version "7.37")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -193,7 +191,7 @@ coordinates as well as partial support for adjustments in global coordinate syst
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "18vsw6hw6kn5wmr4iarhx1v8q455j60fhf0hq69jkfyarl56b99j"))))
+                "0fpb43smh0kwic5pdxs46c0hkqj8g084h72pa024x1my6w12y9b8"))))
     (build-system gnu-build-system)
     (arguments
      '(#:phases

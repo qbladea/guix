@@ -1,11 +1,11 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2019, 2021 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015, 2016, 2017, 2019 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015, 2016, 2017, 2018 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2017 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2017 Mark H Weaver <mhw@netris.org>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -28,6 +28,7 @@
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages avahi)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages fonts)     ; font-dejavu
   #:use-module (gnu packages fontutils)
@@ -46,6 +47,7 @@
   #:use-module (gnu packages qt)
   #:use-module (gnu packages scanner)
   #:use-module (gnu packages tls)
+  #:use-module (guix build-system cmake)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
   #:use-module (guix download)
@@ -55,6 +57,73 @@
   #:use-module (guix utils)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
+
+(define-public brlaser
+  (let ((commit "9d7ddda8383bfc4d205b5e1b49de2b8bcd9137f1")
+        (revision "1"))
+    (package
+      (name "brlaser")
+      (version (git-version "6" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/pdewacht/brlaser")
+                      (commit commit)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "1drh0nk7amn9a8wykki4l9maqa4vy7vwminypfy1712alwj31nd4"))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:configure-flags
+         (list (string-append "-DCUPS_DATA_DIR="
+                              (assoc-ref %outputs "out")
+                              "/share/cups")
+               (string-append "-DCUPS_SERVER_BIN="
+                              (assoc-ref %outputs "out")
+                              "/lib/cups"))))
+      (inputs
+       `(("ghostscript" ,ghostscript)
+         ("cups" ,cups)
+         ("zlib" ,zlib)))
+      (home-page "https://github.com/pdewacht/brlaser")
+      (synopsis "Brother laser printer driver")
+      (description "Brlaser is a CUPS driver for Brother laser printers.  This
+driver is known to work with these printers:
+
+@enumerate
+@item Brother DCP-1510 series
+@item Brother DCP-1600 series
+@item Brother DCP-7030
+@item Brother DCP-7040
+@item Brother DCP-7055
+@item Brother DCP-7055W
+@item Brother DCP-7060D
+@item Brother DCP-7065DN
+@item Brother DCP-7080
+@item Brother DCP-L2500D series
+@item Brother DCP-L2520D series
+@item Brother DCP-L2540DW series
+@item Brother HL-1110 series
+@item Brother HL-1200 series
+@item Brother HL-2030 series
+@item Brother HL-2140 series
+@item Brother HL-2220 series
+@item Brother HL-2270DW series
+@item Brother HL-5030 series
+@item Brother HL-L2300D series
+@item Brother HL-L2320D series
+@item Brother HL-L2340D series
+@item Brother HL-L2360D series
+@item Brother MFC-1910W
+@item Brother MFC-7240
+@item Brother MFC-7360N
+@item Brother MFC-7365DN
+@item Brother MFC-7840W
+@item Brother MFC-L2710DW series
+@item Lenovo M7605D
+@end enumerate")
+      (license license:gpl2+))))
 
 (define-public cups-filters
   (package
@@ -415,17 +484,16 @@ should only be used as part of the Guix cups-pk-helper service.")
 (define-public hplip
   (package
     (name "hplip")
-    (version "3.20.9")
+    (version "3.20.11")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://sourceforge/hplip/hplip/" version
                                   "/hplip-" version ".tar.gz"))
               (sha256
                (base32
-                "1prdbp410405xrfggjc7y34nzljg7jnbgjzalgv4khwwma4i299n"))
+                "04fvdyjyjbkviy3awgm7g43p3lrvrsmgaqz8bwra22g7v2rpa5hb"))
               (modules '((guix build utils)))
-              (patches (search-patches "hplip-fix-bug-1898438.patch"
-                                       "hplip-remove-imageprocessor.patch"))
+              (patches (search-patches "hplip-remove-imageprocessor.patch"))
               (snippet
                '(begin
                   ;; Delete non-free blobs: .so files, pre-compiled
@@ -446,6 +514,7 @@ should only be used as part of the Guix cups-pk-helper service.")
                      "locatedriverdir = $(pkglibexecdir)\n"))
                   #t))))
     (build-system gnu-build-system)
+    (outputs (list "out" "ppd"))
     (home-page "https://developers.hp.com/hp-linux-imaging-and-printing")
     (synopsis "HP printer drivers")
     (description
@@ -473,6 +542,8 @@ should only be used as part of the Guix cups-pk-helper service.")
                          (assoc-ref %outputs "out") "/lib/cups/filter")
          ,(string-append "--with-cupsbackenddir="
                          (assoc-ref %outputs "out") "/lib/cups/backend")
+         ,(string-append "--with-hpppddir="
+                         (assoc-ref %outputs "ppd") "/share/ppd/HP")
          ,(string-append "--with-icondir="
                          (assoc-ref %outputs "out") "/share/applications")
          ,(string-append "--with-systraydir="
@@ -534,7 +605,7 @@ should only be used as part of the Guix cups-pk-helper service.")
          (add-before 'configure 'fix-build-with-python-3.8
            (lambda* (#:key inputs #:allow-other-keys)
              (let ((python (assoc-ref inputs "python")))
-               ;; XXX: The configure script of looks for Python headers in the
+               ;; XXX: The configure script looks for Python headers in the
                ;; wrong places as of version 3.20.3.  Help it by adding the
                ;; include directory on C_INCLUDE_PATH.
                (when python
@@ -714,6 +785,41 @@ printer/driver specific, but spooler-independent PPD file.")
                         (("^MODTIME[[:blank:]]*=.*$")
                          "MODTIME = echo Thu Jan 01 01:00:00 1970\n"))
                       #t))
+                  (add-before 'install 'make-install-dirs
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      ;; Make missing install dirs
+                      (let ((out (assoc-ref outputs "out"))
+                            (dirs '("/share/cups/model"
+                                    "/share/foomatic/db/source/opt"
+                                    "/share/foomatic/db/source/printer"
+                                    "/share/foomatic/db/source/driver"
+                                    "/lib/cups/filter")))
+                        (for-each (lambda (dir)
+                                    (mkdir-p (string-append out dir)))
+                                  dirs))))
+                  (add-after 'install 'wrap-wrappers
+                    (lambda* (#:key inputs outputs #:allow-other-keys)
+                      (let ((out (assoc-ref outputs "out"))
+                            (ghostscript (assoc-ref inputs "ghostscript"))
+                            (coreutils (assoc-ref inputs "coreutils"))
+                            (sed (assoc-ref inputs "sed")))
+                        (for-each (lambda (file)
+                                    (wrap-program file
+                                      `("PATH" ":" prefix
+                                        (,(string-append ghostscript "/bin:"
+                                                         coreutils "/bin:"
+                                                         sed "/bin")))))
+                                  (find-files (string-append
+                                               out "/bin") "wrapper$")))))
+                  (add-after 'install 'install-cups-filters-symlinks
+                    (lambda* (#:key inputs outputs #:allow-other-keys)
+                      (let ((out (assoc-ref outputs "out")))
+                        (for-each
+                         (lambda (file)
+                           (symlink file
+                                    (string-append out "/lib/cups/filter/"
+                                                   (basename file))))
+                         (find-files (string-append out "/bin"))))))
                   (add-after 'install 'remove-pdf
                     (lambda* (#:key outputs #:allow-other-keys)
                       ;; Remove 'manual.pdf' which is (1) useless (it's a
@@ -727,7 +833,9 @@ printer/driver specific, but spooler-independent PPD file.")
        #:tests? #f                                ;no tests
        #:make-flags '("CC=gcc")))
     (inputs
-     `(("ghostscript" ,ghostscript)
+     `(("coreutils" ,coreutils)
+       ("sed" ,sed)
+       ("ghostscript" ,ghostscript)
        ("foomatic-filters" ,foomatic-filters)))   ;for 'foomatic-rip'
     (native-inputs
      `(("bc" ,bc)
@@ -744,9 +852,9 @@ HP@tie{}LaserJet, and possibly other printers.  See @file{README} for details.")
     (license (list license:expat        ; icc2ps/*.[ch]
                    license:gpl2+))))    ; everything else
 
-(define-public escpr
+(define-public epson-inkjet-printer-escpr
   (package
-    (name "escpr")
+    (name "epson-inkjet-printer-escpr")
     (version "1.7.8")
     ;; XXX: This currently works.  But it will break as soon as a newer
     ;; version is available since the URLs for older versions are not
@@ -766,7 +874,8 @@ HP@tie{}LaserJet, and possibly other printers.  See @file{README} for details.")
        ((srfi srfi-26)
         ,@%gnu-build-system-modules)
        #:configure-flags
-       `(,(string-append "--prefix="
+       `("--disable-static"
+         ,(string-append "--prefix="
                          (assoc-ref %outputs "out"))
          ,(string-append "--with-cupsfilterdir="
                          (assoc-ref %outputs "out") "/lib/cups/filter")
@@ -804,6 +913,9 @@ printers.  It can be used only with printers that support the Epson@tie{}ESC/P-R
 language.")
     (home-page "http://download.ebz.epson.net/dsc/search/01/search/?OSC=LX")
     (license license:gpl2+)))
+
+(define-public escpr
+  (deprecated-package "escpr" epson-inkjet-printer-escpr))
 
 (define-public splix
   ;; Last released in 2009 <https://sourceforge.net/projects/splix/files/>.

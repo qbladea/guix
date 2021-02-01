@@ -7,7 +7,7 @@
 ;;; Copyright © 2015, 2017 Cyril Roelandt <tipecaml@gmail.com>
 ;;; Copyright © 2015 Federico Beffa <beffa@fbengineering.ch>
 ;;; Copyright © 2015 Andreas Enge <andreas@enge.fr>
-;;; Copyright © 2015, 2016, 2018, 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2015, 2016, 2018, 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016, 2017 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2016 Christopher Allan Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2016, 2017 Danny Milosavljevic <dannym+a@scratchpost.org>
@@ -35,6 +35,7 @@
 ;;; Copyright © 2020 Josh Marshall <joshua.r.marshall.1991@gmail.com>
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Tanguy Le Carrour <tanguy@bioneland.org>
+;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -66,6 +67,7 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages time)
@@ -81,7 +83,8 @@
   #:use-module (guix build-system go)
   #:use-module (guix build-system meson)
   #:use-module (guix build-system python)
-  #:use-module (guix build-system trivial))
+  #:use-module (guix build-system trivial)
+  #:use-module (srfi srfi-1))
 
 (define-public pedansee
   (package
@@ -135,7 +138,7 @@ like Jasmine or Mocha.")
 (define-public check
   (package
     (name "check")
-    (version "0.14.0")
+    (version "0.15.2")
     (source
      (origin
       (method url-fetch)
@@ -143,7 +146,7 @@ like Jasmine or Mocha.")
                           version "/check-" version ".tar.gz"))
       (sha256
        (base32
-        "02zkfiyklckmivrfvdsrlzvzphkdsgjrz3igncw05dv5pshhq3xx"))))
+        "02m25y9m46pb6n46s51av62kpd936lkfv3b13kfpckgvmh5lxpm8"))))
     (build-system gnu-build-system)
     (home-page "https://libcheck.github.io/check/")
     (synopsis "Unit test framework for C")
@@ -156,7 +159,19 @@ faults or other signals.  The output from unit tests can be used within
 source code editors and IDEs.")
     (license license:lgpl2.1+)))
 
-;; Some packages require this older version.  Removed once no longer needed.
+;; Some packages require older versions.  Removed once no longer needed.
+(define-public check-0.14
+  (package
+    (inherit check)
+    (version "0.14.0")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://github.com/libcheck/check/releases"
+                                  "/download/" version "/check-" version ".tar.gz"))
+              (sha256
+               (base32
+                "02zkfiyklckmivrfvdsrlzvzphkdsgjrz3igncw05dv5pshhq3xx"))))))
+
 (define-public check-0.12
   (package
    (inherit check)
@@ -252,14 +267,14 @@ with a flexible variety of user interfaces.")
 (define-public cppunit
   (package
     (name "cppunit")
-    (version "1.14.0")
+    (version "1.15.1")
     (source (origin
              (method url-fetch)
               (uri (string-append "http://dev-www.libreoffice.org/src/"
                                   name "-" version ".tar.gz"))
              (sha256
               (base32
-               "1027cyfx5gsjkdkaf6c2wnjh68882grw8n672018cj3vs9lrhmix"))))
+               "19qpqzy66bq76wcyadmi3zahk5v1ll2kig1nvg96zx9padkcdic9"))))
     ;; Explicitly link with libdl. This is expected to be done by packages
     ;; relying on cppunit for their tests. However, not all of them do.
     ;; If we added the linker flag to such packages, we would pollute all
@@ -273,6 +288,55 @@ with a flexible variety of user interfaces.")
 unit testing.  Test output is in XML for automatic testing and GUI based for
 supervised tests.")
     (license license:lgpl2.1))) ; no copyright notices. LGPL2.1 is in the tarball
+
+(define-public shunit2
+  (package
+    (name "shunit2")
+    (version "2.1.8")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/kward/shunit2")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "08vs0jjl3pfh100sjlw31x4638xj7fghr0j2g1zfikba8n1f9491"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)    ; no configure script
+         (delete 'build)
+         (add-after 'patch-source-shebangs 'patch-more-shebangs
+           (lambda _
+             (substitute* "shunit2"
+               (("#! /bin/sh") (string-append "#! " (which "sh")))
+               (("/usr/bin/od") (which "od")))
+             (substitute* "test_runner"
+               (("/bin/sh") (which "sh"))
+               (("/bin/bash") (which "bash")))
+             #t))
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               ;; This test is buggy in the build container.
+               (delete-file "shunit2_misc_test.sh")
+               (invoke "sh" "test_runner"))
+             #t))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (install-file "shunit2"
+                           (string-append (assoc-ref outputs "out")
+                                          "/bin"))
+             #t)))))
+    (home-page "https://github.com/kward/shunit2")
+    (synopsis "@code{xUnit} based unit testing for Unix shell scripts")
+    (description "@code{shUnit2} was originally developed to provide a
+consistent testing solution for @code{log4sh}, a shell based logging framework
+similar to @code{log4j}.  It is designed to work in a similar manner to JUnit,
+PyUnit and others.")
+    (license license:asl2.0)))
 
 ;; When dependent packages upgraded to use newer version of catch, this one should
 ;; be removed.
@@ -428,7 +492,7 @@ format.")
 (define-public cppcheck
   (package
     (name "cppcheck")
-    (version "1.90")
+    (version "2.3")
     (source (origin
       (method git-fetch)
       (uri (git-reference
@@ -436,7 +500,7 @@ format.")
              (commit version)))
       (file-name (git-file-name name version))
       (sha256
-       (base32 "0h7ir2x0k005fm586dxmaphgv5cyz25k3k4sh02p7zb78gzx398h"))))
+       (base32 "03ic5mig3ryzkf85r95ryagf84s7y5nd6sqr915l3zj30apnifvz"))))
     (build-system cmake-build-system)
     (arguments
      '(#:configure-flags '("-DBUILD_TESTS=ON")))
@@ -497,7 +561,7 @@ and it supports a very flexible form of test discovery.")
 (define-public doctest
   (package
     (name "doctest")
-    (version "2.4.1")
+    (version "2.4.4")
     (home-page "https://github.com/onqtam/doctest")
     (source (origin
               (method git-fetch)
@@ -505,7 +569,7 @@ and it supports a very flexible form of test discovery.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "17g7n6rjs90i0b231x5s934qnr8m80ga2yg1z344bnsdiqcjd63w"))))
+                "0xldd6cr1w3bn33rdb7yc6p57w143cgnjb48ig1b99iwvvkw599n"))))
     (build-system cmake-build-system)
     (synopsis "C++ test framework")
     (description
@@ -919,18 +983,57 @@ and many external plugins.")
     (license license:expat)
     (properties `((python2-variant . ,(delay python2-pytest))))))
 
+(define-public python-pytest-6
+  (package
+    (inherit (strip-python2-variant python-pytest))
+    (version "6.1.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest" version))
+       (sha256
+        (base32
+         "0gl2sdm322vzmsh5k4f8kj9raiq2y7kdinnca4m45ifvii5fk9y0"))))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key (tests? #t) #:allow-other-keys)
+             (setenv "TERM" "dumb")     ;attempt disabling markup tests
+             (if tests?
+                 (invoke "pytest" "-vv" "-k"
+                         (string-append
+                          ;; This test involve the /usr directory, and fails.
+                          " not test_argcomplete"
+                          ;; These test do not honor the isatty detection and
+                          ;; fail.
+                          " and not test_code_highlight"
+                          " and not test_color_yes"))
+                 (format #t "test suite not run~%"))
+             #t)))))
+    (propagated-inputs
+     (append (alist-delete "python-py"
+                           (package-propagated-inputs python-pytest))
+             `(("python-py" ,python-py-next))))
+    (native-inputs
+     (append (alist-delete "python-pytest"
+                           (package-native-inputs python-pytest))
+             `(("python-pytest" ,python-pytest-6-bootstrap)
+               ("python-toml" ,python-toml)
+               ("python-iniconfig" ,python-iniconfig))))))
+
 ;; Pytest 4.x are the last versions that support Python 2.
 (define-public python2-pytest
   (package
     (inherit (strip-python2-variant python-pytest))
     (name "python2-pytest")
-    (version "4.6.9")
+    (version "4.6.11")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "pytest" version))
               (sha256
                (base32
-                "0fgkmpc31nzy97fxfrkqbzycigdwxwwmninx3qhkzp81migggs0r"))))
+                "0ls3pqr86xgif6bphsb6wrww9r2vc7p7a2naq8zcq8115wwq5yjh"))))
     (build-system python-build-system)
     (arguments
      `(#:python ,python-2
@@ -962,6 +1065,15 @@ and many external plugins.")
     (native-inputs `(("python-setuptools-scm" ,python-setuptools-scm)))
     (arguments `(#:tests? #f))
     (properties `((python2-variant . ,(delay python2-pytest-bootstrap))))))
+
+(define-public python-pytest-6-bootstrap
+  (package
+    (inherit (strip-python2-variant python-pytest-6))
+    (name "python-pytest-bootstrap")
+    (arguments `(#:tests? #f))
+    (native-inputs
+     `(("python-setuptools-scm" ,python-setuptools-scm)
+       ("python-toml" ,python-toml)))))
 
 (define-public python2-pytest-bootstrap
   (hidden-package
@@ -1136,14 +1248,14 @@ same arguments.")
 (define-public python-pytest-xdist
   (package
     (name "python-pytest-xdist")
-    (version "1.25.0")
+    (version "2.1.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pytest-xdist" version))
        (sha256
         (base32
-         "1d812apvcmshh2l8f38spqwb3bpp0x43yy7lyfpxxzc99h4r7y4n"))
+         "0wh6pn66nncfs6ay0n863bgyriwsgppn8flx5l7551j1lbqkinc2"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -1293,9 +1405,6 @@ subprocess and see the output as well as any file modifications.")
      "This package is only for bootstrapping.  Do not use this.")
     (license license:psfl)))
 
-(define-public python2-testtools-bootstrap
-  (package-with-python2 python-testtools-bootstrap))
-
 (define-public python-testtools
   (package
     (inherit python-testtools-bootstrap)
@@ -1320,9 +1429,6 @@ subprocess and see the output as well as any file modifications.")
      "Testtools extends the Python standard library unit testing framework to
 provide matchers, more debugging information, and cross-Python
 compatibility.")))
-
-(define-public python2-testtools
-  (package-with-python2 python-testtools))
 
 (define-public python-testscenarios-bootstrap
   (package
@@ -1351,9 +1457,6 @@ compatibility.")))
      "This package is only for bootstrapping.  Don't use this.")
     (license (list license:bsd-3 license:asl2.0)))) ; at the user's option
 
-(define-public python2-testscenarios-bootstrap
-  (package-with-python2 python-testscenarios-bootstrap))
-
 (define-public python-testscenarios
   (package
     (inherit python-testscenarios-bootstrap)
@@ -1364,9 +1467,6 @@ compatibility.")))
     (description
      "Testscenarios provides clean dependency injection for Python unittest
 style tests.")))
-
-(define-public python2-testscenarios
-  (package-with-python2 python-testscenarios))
 
 ;; Testresources requires python-pbr at runtime, but pbr needs it for its
 ;; own tests.  Hence this bootstrap variant.
@@ -1392,9 +1492,6 @@ style tests.")))
 testresources package instead.")
     (license (list license:bsd-3 license:asl2.0)))) ; at the user's option
 
-(define-public python2-testresources-bootstrap
-  (package-with-python2 python-testresources-bootstrap))
-
 (define-public python-testresources
   (package
     (inherit python-testresources-bootstrap)
@@ -1408,9 +1505,6 @@ testresources package instead.")
     (description
      "Testresources is an extension to Python's unittest to allow declarative
 use of resources by test cases.")))
-
-(define-public python2-testresources
-  (package-with-python2 python-testresources))
 
 (define-public python-subunit-bootstrap
   (package
@@ -1438,9 +1532,6 @@ use of resources by test cases.")))
 python-subunit package instead.")
     (license (list license:bsd-3 license:asl2.0)))) ; at the user's option
 
-(define-public python2-subunit-bootstrap
-  (package-with-python2 python-subunit-bootstrap))
-
 (define-public python-subunit
   (package
     (inherit python-subunit-bootstrap)
@@ -1455,9 +1546,6 @@ python-subunit package instead.")
     (description
      "Python-subunit is a Python implementation of the subunit test streaming
 protocol.")))
-
-(define-public python2-subunit
-  (package-with-python2 python-subunit))
 
 ;; Fixtures requires python-pbr at runtime, but pbr uses fixtures for its
 ;; own tests.  Hence this bootstrap variant.
@@ -1483,9 +1571,6 @@ protocol.")))
 python-fixtures package instead.")
     (license (list license:bsd-3 license:asl2.0)))) ; at user's option
 
-(define-public python2-fixtures-bootstrap
-  (package-with-python2 python-fixtures-bootstrap))
-
 (define-public python-fixtures
   (package
     (inherit python-fixtures-bootstrap)
@@ -1507,9 +1592,6 @@ python-fixtures package instead.")
     (description
      "Fixtures provides a way to create reusable state, useful when writing
 Python tests.")))
-
-(define-public python2-fixtures
-  (package-with-python2 python-fixtures))
 
 (define-public python-testrepository-bootstrap
   (package
@@ -1536,9 +1618,6 @@ Python tests.")))
      "Bootstrap package for python-testrepository.  Don't use this.")
     (license (list license:bsd-3 license:asl2.0)))) ; at user's option
 
-(define-public python2-testrepository-bootstrap
-  (package-with-python2 python-testrepository-bootstrap))
-
 (define-public python-testrepository
   (package
     (inherit python-testrepository-bootstrap)
@@ -1556,20 +1635,17 @@ Python tests.")))
 be used as part of a developer's workflow to check things such as what tests
 have failed since the last commit or what tests are currently failing.")))
 
-(define-public python2-testrepository
-  (package-with-python2 python-testrepository))
-
 (define-public python-coverage
   (package
     (name "python-coverage")
-    (version "5.0.3")
+    (version "5.2.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "coverage" version))
        (sha256
         (base32
-         "1vrg8panqw79pswg52ygbrff3wdnxarrd9qz6c64ah0c4h2cmbvp"))))
+         "16z8i18msgs8k74n73dj9x49wzkl0vk4vq8k5pl1bsj70y7b4k53"))))
     (build-system python-build-system)
     (arguments
      ;; FIXME: 95 tests failed, 539 passed, 6 skipped, 2 errors.
@@ -2087,50 +2163,7 @@ Pylint has many rules enabled by default, way too much to silence them
 all on a minimally sized program.  It's highly configurable and handle
 pragmas to control it from within your code.  Additionally, it is
 possible to write plugins to add your own checks.")
-    (properties `((python2-variant . ,(delay python2-pylint))))
     (license license:gpl2+)))
-
-;; Python2 is not supported anymore by Pylint. See:
-;; https://github.com/PyCQA/pylint/issues/1763.
-(define-public python2-pylint
-  (let ((pylint (package-with-python2
-                 (strip-python2-variant python-pylint))))
-    (package (inherit pylint)
-             (version "1.9.5")
-             (source
-              (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/PyCQA/pylint")
-                      (commit (string-append "pylint-" version))))
-                (file-name (git-file-name (package-name pylint) version))
-                (sha256
-                 (base32
-                  "02a89d8a47s7nfiv1ady3j0sg2sbyja3np145brarfp5x9qxz9x2"))))
-             (arguments
-              `(,@(strip-keyword-arguments '(#:tests?) (package-arguments pylint))
-                #:phases
-                (modify-phases %standard-phases
-                  (replace 'check
-                    (lambda _
-                      ;; Somehow, tests fail if run from the build directory.
-                      (let ((work "/tmp/work"))
-                        (mkdir-p work)
-                        (setenv "PYTHONPATH"
-                                (string-append (getenv "PYTHONPATH") ":" work))
-                        (copy-recursively "." work)
-                        (with-directory-excursion "/tmp"
-                          (invoke "python" "-m" "unittest" "discover"
-                                  "-s" (string-append work "/pylint/test")
-                                  "-p" "*test_*.py"))))))))
-             (native-inputs
-              `(("python2-futures" ,python2-futures)
-                ,@(package-native-inputs pylint)))
-             (propagated-inputs
-              `(("python2-backports-functools-lru-cache"
-                 ,python2-backports-functools-lru-cache)
-                ("python2-configparser" ,python2-configparser)
-                ,@(package-propagated-inputs pylint))))))
 
 (define-public python-paramunittest
   (package
@@ -2359,9 +2392,6 @@ tests written in a natural language style, backed up by Python code.")
     (description "This package provides testing utility modules for testing
 JSON APIs with Behave.")
     (license license:expat)))
-
-(define-public python2-behave-web-api
-  (package-with-python2 python-behave-web-api))
 
 (define-public python-rednose
   (package

@@ -11,7 +11,7 @@
 ;;; Copyright © 2018 Adriano Peluso <catonano@gmail.com>
 ;;; Copyright © 2018, 2019, 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2018 Arun Isaac <arunisaac@systemreboot.net>
-;;; Copyright © 2019, 2020 Guillaume Le Vaillant <glv@posteo.net>
+;;; Copyright © 2019, 2020, 2021 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2019 Tanguy Le Carrour <tanguy@bioneland.org>
 ;;; Copyright © 2019, 2020 Martin Becze <mjbecze@riseup.net>
 ;;; Copyright © 2019 Sebastian Schott <sschott@mailbox.org>
@@ -21,6 +21,7 @@
 ;;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Carlo Holl <carloholl@gmail.com>
+;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -69,6 +70,7 @@
   #:use-module (gnu packages dbm)
   #:use-module (gnu packages gettext)
   #:use-module (gnu packages gnome)
+  #:use-module (gnu packages golang)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnupg)
   #:use-module (gnu packages graphviz)
@@ -90,6 +92,7 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-crypto)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
@@ -186,7 +189,7 @@ line client and a client based on Qt.")
 (define-public hledger
   (package
     (name "hledger")
-    (version "1.19.1")
+    (version "1.14.2")
     (source
      (origin
        (method url-fetch)
@@ -196,22 +199,22 @@ line client and a client based on Qt.")
              ".tar.gz"))
        (sha256
         (base32
-         "0wfsyf2q1kf90mj3lxs0m5ghj153axmpkc8xfy12vkz5imnyphfm"))))
+         "1si9zqparkdq77yji87lhcsrf11fr3gisqwsv82cabhrhc36x6l4"))))
     (build-system haskell-build-system)
     (inputs
-     `(("ghc-decimal" ,ghc-decimal)
-       ("ghc-diff" ,ghc-diff)
-       ("ghc-aeson" ,ghc-aeson)
-       ("ghc-ansi-terminal" ,ghc-ansi-terminal)
+     `(("ghc-ansi-terminal" ,ghc-ansi-terminal)
        ("ghc-base-compat-batteries" ,ghc-base-compat-batteries)
        ("ghc-cmdargs" ,ghc-cmdargs)
        ("ghc-data-default" ,ghc-data-default)
-       ("ghc-extra" ,ghc-extra)
+       ("ghc-decimal" ,ghc-decimal)
+       ("ghc-diff" ,ghc-diff)
+       ("ghc-easytest" ,ghc-easytest)
        ("ghc-hashable" ,ghc-hashable)
        ("ghc-hledger-lib" ,ghc-hledger-lib)
        ("ghc-lucid" ,ghc-lucid)
        ("ghc-math-functions" ,ghc-math-functions)
        ("ghc-megaparsec" ,ghc-megaparsec)
+       ("ghc-mtl-compat" ,ghc-mtl-compat)
        ("ghc-old-time" ,ghc-old-time)
        ("ghc-pretty-show" ,ghc-pretty-show)
        ("ghc-regex-tdfa" ,ghc-regex-tdfa)
@@ -219,13 +222,14 @@ line client and a client based on Qt.")
        ("ghc-shakespeare" ,ghc-shakespeare)
        ("ghc-split" ,ghc-split)
        ("ghc-tabular" ,ghc-tabular)
-       ("ghc-tasty" ,ghc-tasty)
        ("ghc-temporary" ,ghc-temporary)
-       ("ghc-timeit" ,ghc-timeit)
        ("ghc-unordered-containers" ,ghc-unordered-containers)
        ("ghc-utf8-string" ,ghc-utf8-string)
        ("ghc-utility-ht" ,ghc-utility-ht)
        ("ghc-wizards" ,ghc-wizards)))
+    (native-inputs
+     `(("ghc-test-framework" ,ghc-test-framework)
+       ("ghc-test-framework-hunit" ,ghc-test-framework-hunit)))
     (home-page "https://hledger.org")
     (synopsis "Command-line interface for the hledger accounting system")
     (description
@@ -492,7 +496,7 @@ do so.")
 (define-public electrum
   (package
     (name "electrum")
-    (version "3.3.8")
+    (version "4.0.9")
     (source
      (origin
        (method url-fetch)
@@ -500,7 +504,7 @@ do so.")
                            version "/Electrum-"
                            version ".tar.gz"))
        (sha256
-        (base32 "1g00cj1pmckd4xis8r032wmraiv3vd3zc803hnyxa2bnhj8z3bg2"))
+        (base32 "1fvjiagi78f32nxgr2rx8jas8hxfvpp1c8fpfcalvykmlhdc2gva"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -509,21 +513,19 @@ do so.")
            #t))))
     (build-system python-build-system)
     (inputs
-     `(("python-pyaes" ,python-pyaes)
-       ("python-pysocks" ,python-pysocks)
-       ("python-sip" ,python-sip)
-       ("python-pyqt" ,python-pyqt)
-       ("python-ecdsa" ,python-ecdsa)
-       ("python-pbkdf2" ,python-pbkdf2)
-       ("python-requests" ,python-requests)
+     `(("python-pyqt" ,python-pyqt)
        ("python-qrcode" ,python-qrcode)
        ("python-protobuf" ,python-protobuf)
        ("python-aiohttp" ,python-aiohttp)
        ("python-aiohttp-socks" ,python-aiohttp-socks)
        ("python-aiorpcx" ,python-aiorpcx)
        ("python-certifi" ,python-certifi)
+       ("python-bitstring" ,python-bitstring)
+       ("python-attrs" ,python-attrs)
+       ("python-cryptography" ,python-cryptography)
+       ("python-qdarkstyle" ,python-qdarkstyle)
        ("python-dnspython" ,python-dnspython)
-       ("python-jsonrpclib-pelix" ,python-jsonrpclib-pelix)))
+       ("libsecp256k1" ,libsecp256k1)))
     (arguments
      `(#:tests? #f                      ; no tests
        #:phases
@@ -537,7 +539,14 @@ do so.")
                (substitute* "setup.py"
                  (("sys\\.prefix")
                   (format #f "\"~a\"" out)))
-               #t))))))
+               #t)))
+         (add-after 'unpack 'use-libsecp256k1-input
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "electrum/ecc_fast.py"
+               (("library_paths = .* 'libsecp256k1.so.0'.")
+                (string-append "library_paths = ('"
+                               (assoc-ref inputs "libsecp256k1")
+                               "/lib/libsecp256k1.so.0'"))))))))
     (home-page "https://electrum.org/")
     (synopsis "Bitcoin wallet")
     (description
@@ -550,7 +559,7 @@ other machines/servers.  Electrum does not download the Bitcoin blockchain.")
 (define-public electron-cash
   (package
     (name "electron-cash")
-    (version "4.1.1")
+    (version "4.2.3")
     (source
      (origin
        (method git-fetch)
@@ -559,7 +568,7 @@ other machines/servers.  Electrum does not download the Bitcoin blockchain.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1fllz2s20lg4hrppzmnlgjy9mrq7gaq66l2apb3vz1avzvsjw3gm"))))
+        (base32 "1q18p86a3a3wpf9nbpymhyilmaw9vffvwxh4hhx29bywfzvav11f"))))
     (build-system python-build-system)
     (inputs
      `(("libevent" ,libevent)
@@ -594,20 +603,17 @@ other machines/servers.  Electrum does not download the Bitcoin blockchain.")
          (add-after 'unpack 'create-output-directories
            (lambda* (#:key outputs #:allow-other-keys)
              ;; setup.py installs to ~/.local/share if this doesn't exist.
-             (mkdir-p (string-append (assoc-ref outputs "out") "/share"))
-             #t))
+             (mkdir-p (string-append (assoc-ref outputs "out") "/share"))))
          (add-after 'unpack 'use-libsecp256k1-input
            (lambda* (#:key inputs #:allow-other-keys)
-             (substitute* "lib/secp256k1.py"
+             (substitute* "electroncash/secp256k1.py"
                (("library_paths = .* 'libsecp256k1.so.0'.")
                 (string-append "library_paths = ('"
                                (assoc-ref inputs "libsecp256k1")
-                               "/lib/libsecp256k1.so.0'")))
-             #t))
+                               "/lib/libsecp256k1.so.0'")))))
          (add-after 'install 'wrap-qt
            (lambda* (#:key outputs #:allow-other-keys)
-             (wrap-qt-program (assoc-ref outputs "out") "electron-cash")
-             #t)))))
+             (wrap-qt-program (assoc-ref outputs "out") "electron-cash"))))))
     (home-page "https://electroncash.org/")
     (synopsis "Bitcoin Cash wallet")
     (description
@@ -625,7 +631,7 @@ other machines/servers.  Electroncash does not download the Bitcoin Cash blockch
   ;; the system's dynamically linked library.
   (package
     (name "monero")
-    (version "0.17.1.3")
+    (version "0.17.1.9")
     (source
      (origin
        (method git-fetch)
@@ -645,7 +651,7 @@ other machines/servers.  Electroncash does not download the Bitcoin Cash blockch
               "external/unbound"))
            #t))
        (sha256
-        (base32 "1ddkdfd8i5q509qziwcx1f6nm8axs4a1ppzv2y5lgsqpq375if6j"))))
+        (base32 "0jqss4csvkcrhrmaa3vrnyv6yiwqpbfw7037clx9xcfm4qrrfiwy"))))
     (build-system cmake-build-system)
     (native-inputs
      `(("doxygen" ,doxygen)
@@ -735,16 +741,24 @@ the Monero command line client and daemon.")
 (define-public monero-gui
   (package
     (name "monero-gui")
-    (version "0.17.1.4")
+    (version "0.17.1.9")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/monero-project/monero-gui")
-             (commit (string-append "v" version))))
+             (commit (string-append "v" version))
+             (recursive? #t)))
        (file-name (git-file-name name version))
+       (modules '((guix build utils)))
+       (snippet
+        '(begin
+           ;; Delete bundled monero sources, we already have them.
+           ;; See the 'extract-monero-sources' phase.
+           (delete-file-recursively "monero")
+           #t))
        (sha256
-        (base32 "1ixjfdlvwr2an2s9jaql240bk7jpq5hhm5c4hww0bicyy3fp12ng"))))
+        (base32 "0vpvpvsbbj547yir15g84qy9l9lwbip795zlliz79i7d66l23b1w"))))
     (build-system qt-build-system)
     (native-inputs
      `(,@(package-native-inputs monero)
@@ -766,26 +780,24 @@ the Monero command line client and daemon.")
        (list "-DARCH=default"
              "-DENABLE_PASS_STRENGTH_METER=ON"
              (string-append "-DReadline_ROOT_DIR="
-                            (assoc-ref %build-inputs "readline"))
-             "-DCMAKE_PREFIX_PATH=\"\"")
+                            (assoc-ref %build-inputs "readline")))
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'extract-monero-sources
            ;; Some of the monero package source code is required
            ;; to build the GUI.
            (lambda* (#:key inputs #:allow-other-keys)
+             (mkdir-p "monero")
              (invoke "tar" "-xv" "--strip-components=1"
                      "-C" "monero"
-                     "-f" (assoc-ref inputs "monero-source"))
-             #t))
+                     "-f" (assoc-ref inputs "monero-source"))))
          (add-after 'extract-monero-sources 'fix-build
            (lambda _
              (substitute* "src/version.js.in"
                (("@VERSION_TAG_GUI@")
                 ,version))
              (substitute* "src/zxcvbn-c/makefile"
-               (("\\?=") "="))
-             #t))
+               (("\\?=") "="))))
          (add-before 'configure 'generate-zxcvbn-c-header
            (lambda _
              (invoke "make" "-C" "src/zxcvbn-c" "dict-src.h")))
@@ -793,8 +805,7 @@ the Monero command line client and daemon.")
            (lambda* (#:key outputs #:allow-other-keys)
              (let ((bin (string-append (assoc-ref outputs "out") "/bin")))
                (mkdir-p bin)
-               (install-file "../build/bin/monero-wallet-gui" bin))
-             #t))
+               (install-file "../build/bin/monero-wallet-gui" bin))))
          (add-after 'qt-wrap 'install-monerod-link
            ;; The monerod program must be available so that monero-wallet-gui
            ;; can start a Monero daemon if necessary.
@@ -802,8 +813,7 @@ the Monero command line client and daemon.")
              (symlink (string-append (assoc-ref inputs "monero")
                                      "/bin/monerod")
                       (string-append (assoc-ref outputs "out")
-                                     "/bin/monerod"))
-             #t)))))
+                                     "/bin/monerod")))))))
     (home-page "https://web.getmonero.org/")
     (synopsis "Graphical user interface for the Monero currency")
     (description
@@ -1236,20 +1246,25 @@ trezord as a regular user instead of needing to it run as root.")
 (define-public trezord
   (package
     (name "trezord")
-    (version "2.0.29")
+    (version "2.0.30")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
-              (url "https://github.com/trezor/trezord-go")
-              (commit (string-append "v" version))))
+             (url "https://github.com/trezor/trezord-go")
+             (commit (string-append "v" version))))
        (sha256
         (base32
-         "1ks1fa0027s3xp0z6qp0dxmayvrb4dwwscfhbx7da0khp153f2cp"))
+         "1hzvk0wfgg7b4wpqjk3738yqxlv3pj5i7zxwm0jady2h97hmrqrr"))
        (file-name (git-file-name name version))))
     (build-system go-build-system)
     (arguments
      '(#:import-path "github.com/trezor/trezord-go"))
+    (native-inputs
+     `(("github.com/gorilla-csrf" ,go-github-com-gorilla-csrf)
+       ("github.com/gorilla/handlers" ,go-github-com-gorilla-handlers)
+       ("github.com/gorilla/mux" ,go-github-com-gorilla-mux)
+       ("gopkg.in/natefinch/lumberjack.v2" ,go-gopkg-in-natefinch-lumberjack.v2)))
     (home-page "https://trezor.io")
     (synopsis "Trezor Communication Daemon aka Trezor Bridge (written in Go)")
     (description "This allows a Trezor hardware wallet to communicate to the
@@ -1366,56 +1381,6 @@ following three utilities are included with the library:
 @end enumerate")
     (license license:gpl2+)))
 
-(define-public opensp
-  (package
-    (name "opensp")
-    (version "1.5.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://sourceforge/openjade/opensp/"
-                                  version "/OpenSP-" version ".tar.gz"))
-              (sha256
-               (base32
-                "1khpasr6l0a8nfz6kcf3s81vgdab8fm2dj291n5r2s53k228kx2p"))))
-    (build-system gnu-build-system)
-    (native-inputs
-     `(("gettext" ,gettext-minimal)))
-    (inputs
-     `(("docbook-xml" ,docbook-xml-4.1.2)
-       ("docbook-xsl" ,docbook-xsl)
-       ("xmlto" ,xmlto)))
-    (arguments
-     `(;; TODO: Fix and enable tests.
-       #:tests? #f
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'patch-docbook-paths
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((xmldoc (string-append (assoc-ref inputs "docbook-xml")
-                                          "/xml/dtd/docbook"))
-                   (xsldoc (string-append (assoc-ref inputs "docbook-xsl")
-                                          "/xml/xsl/docbook-xsl-"
-                                          ,(package-version docbook-xsl))))
-               (substitute* (find-files "docsrc" "\\.xml$")
-                 (("/usr/share/sgml/docbook/xml-dtd-4.1.2") xmldoc)
-                 (("http://.*/docbookx\\.dtd")
-                  (string-append xmldoc "/docbookx.dtd")))
-               ;; Directly pass the path to the stylesheet to xmlto.
-               (substitute* "docsrc/Makefile.in"
-                 (("\\$\\(XMLTO\\)")
-                  (string-append "$(XMLTO) -x " xsldoc
-                                 "/manpages/docbook.xsl")))
-               #t))))))
-    (home-page "http://openjade.sourceforge.net/")
-    (synopsis "Suite of SGML/XML processing tools")
-    (description "OpenSP is an object-oriented toolkit for SGML parsing and
-entity management.")
-    (license
-     ;; expat license with added clause regarding advertising
-     (license:non-copyleft
-      "file://COPYING"
-      "See COPYING in the distribution."))))
-
 (define-public bitcoin-unlimited
   (package
     (name "bitcoin-unlimited")
@@ -1469,6 +1434,11 @@ entity management.")
        (modify-phases %standard-phases
          (add-after 'unpack 'fix-tests
            (lambda _
+             ;; Fix data specific test failure
+             ;; https://reviews.bitcoinabc.org/rABC67bbd3d0aaee2952ff1cb5da51d1fd0b50c2b63a
+             (substitute* "src/test/rpc_tests.cpp"
+               (("1607731200") "9907731200"))
+
              ;; Disable utilprocess_tests because it never ends.
              ;; It looks like it tries to start /bin/sleep and waits until it
              ;; is in the list of running processes, but /bin/sleep doesn't
@@ -1655,3 +1625,54 @@ generate a variety of reports from them, and provides a web interface.")
     (synopsis "Emacs mode for beancount")
     (description
       "Emacs-beancount is an Emacs mode for the Beancount accounting tool.")))
+
+(define-public hledger-web
+  (package
+    (name "hledger-web")
+    (version "1.14.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://hackage.haskell.org/package/"
+                           "hledger-web/hledger-web-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0w59nr7mj0nx8z44cvhy1rhlj5rmx0wq4p5nfl4dycfmp7jwvsm1"))))
+    (build-system haskell-build-system)
+    (inputs
+     `(("ghc-decimal" ,ghc-decimal)
+       ("ghc-aeson" ,ghc-aeson)
+       ("ghc-blaze-html" ,ghc-blaze-html)
+       ("ghc-blaze-markup" ,ghc-blaze-markup)
+       ("ghc-case-insensitive" ,ghc-case-insensitive)
+       ("ghc-clientsession" ,ghc-clientsession)
+       ("ghc-cmdargs" ,ghc-cmdargs)
+       ("ghc-conduit" ,ghc-conduit)
+       ("ghc-conduit-extra" ,ghc-conduit-extra)
+       ("ghc-data-default" ,ghc-data-default)
+       ("ghc-hjsmin" ,ghc-hjsmin)
+       ("hledger" ,hledger)
+       ("ghc-hledger-lib" ,ghc-hledger-lib)
+       ("ghc-http-client" ,ghc-http-client)
+       ("ghc-http-conduit" ,ghc-http-conduit)
+       ("ghc-http-types" ,ghc-http-types)
+       ("ghc-json" ,ghc-json)
+       ("ghc-megaparsec" ,ghc-megaparsec)
+       ("ghc-semigroups" ,ghc-semigroups)
+       ("ghc-shakespeare" ,ghc-shakespeare)
+       ("ghc-wai" ,ghc-wai)
+       ("ghc-wai-extra" ,ghc-wai-extra)
+       ("ghc-wai-handler-launch" ,ghc-wai-handler-launch)
+       ("ghc-warp" ,ghc-warp)
+       ("ghc-yaml" ,ghc-yaml)
+       ("ghc-yesod" ,ghc-yesod)
+       ("ghc-yesod-core" ,ghc-yesod-core)
+       ("ghc-yesod-form" ,ghc-yesod-form)
+       ("ghc-yesod-static" ,ghc-yesod-static)))
+    (home-page "https://hledger.org")
+    (synopsis "Web-based user interface for the hledger accounting system")
+    (description "This package provides a simple Web-based User
+Interface (UI) for the hledger accounting system.  It can be used as a
+local, single-user UI, or as a multi-user UI for viewing, adding, and
+editing on the Web.")
+    (license license:gpl3)))

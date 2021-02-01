@@ -4,6 +4,7 @@
 ;;; Copyright © 2020 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -63,10 +64,13 @@
             %test-separate-home-os
             %test-raid-root-os
             %test-encrypted-root-os
+            %test-encrypted-root-not-boot-os
             %test-btrfs-root-os
             %test-btrfs-root-on-subvolume-os
+            %test-btrfs-raid-root-os
             %test-jfs-root-os
             %test-f2fs-root-os
+            %test-lvm-separate-home-os
 
             %test-gui-installed-os
             %test-gui-installed-os-encrypted
@@ -220,7 +224,7 @@ reboot\n")
                            #:imported-modules '((gnu services herd)
                                                 (gnu installer tests)
                                                 (guix combinators))))
-                      (installation-image-type 'raw)
+                      (installation-image-type 'efi-raw)
                       (install-size 'guess)
                       (target-size (* 2200 MiB)))
   "Run SCRIPT (a shell script following the system installation procedure) in
@@ -270,7 +274,7 @@ packages defined in installation-os."
                  "-no-reboot"
                  "-m" "1200"
                  #$@(cond
-                     ((eq? 'raw installation-image-type)
+                     ((eq? 'efi-raw installation-image-type)
                       #~("-drive"
                          ,(string-append "file=" #$image
                                          ",if=virtio,readonly")))
@@ -798,6 +802,193 @@ build (current-guix) and then store a couple of full system images.")
 
 
 ;;;
+;;; Separate /home on LVM
+;;;
+
+;; Since LVM support in guix currently doesn't allow root-on-LVM we use /home on LVM
+(define-os-with-source (%lvm-separate-home-os %lvm-separate-home-os-source)
+  (use-modules (gnu) (gnu tests))
+
+  (operating-system
+    (host-name "separate-home-on-lvm")
+    (timezone "Europe/Paris")
+    (locale "en_US.utf8")
+
+    (bootloader (bootloader-configuration
+                 (bootloader grub-bootloader)
+                 (target "/dev/vdb")))
+    (kernel-arguments '("console=ttyS0"))
+
+    (mapped-devices (list (mapped-device
+                           (source "vg0")
+                           (target "vg0-home")
+                           (type lvm-device-mapping))))
+    (file-systems (cons* (file-system
+                           (device (file-system-label "root-fs"))
+                           (mount-point "/")
+                           (type "ext4"))
+                         (file-system
+                           (device "/dev/mapper/vg0-home")
+                           (mount-point "/home")
+                           (type "ext4")
+                           (dependencies mapped-devices))
+                        %base-file-systems))
+    (users %base-user-accounts)
+    (services (cons (service marionette-service-type
+                             (marionette-configuration
+                              (imported-modules '((gnu services herd)
+                                                  (guix combinators)))))
+                    %base-services))))
+
+(define %lvm-separate-home-installation-script
+  "\
+. /etc/profile
+set -e -x
+guix --version
+
+export GUIX_BUILD_OPTIONS=--no-grafts
+parted --script /dev/vdb mklabel gpt \\
+  mkpart primary ext2 1M 3M \\
+  mkpart primary ext2 3M 1.6G \\
+  mkpart primary 1.6G 3.2G \\
+  set 1 boot on \\
+  set 1 bios_grub on
+pvcreate /dev/vdb3
+vgcreate vg0 /dev/vdb3
+lvcreate -L 1.6G -n home vg0
+vgchange -ay
+mkfs.ext4 -L root-fs /dev/vdb2
+mkfs.ext4 /dev/mapper/vg0-home
+mount /dev/vdb2 /mnt
+mkdir /mnt/home
+mount /dev/mapper/vg0-home /mnt/home
+df -h /mnt /mnt/home
+herd start cow-store /mnt
+mkdir /mnt/etc
+cp /etc/target-config.scm /mnt/etc/config.scm
+guix system init /mnt/etc/config.scm /mnt --no-substitutes
+sync
+reboot\n")
+
+(define %test-lvm-separate-home-os
+  (system-test
+   (name "lvm-separate-home-os")
+   (description
+    "Test functionality of an OS installed with a LVM /home partition")
+   (value
+    (mlet* %store-monad ((image   (run-install %lvm-separate-home-os
+                                               %lvm-separate-home-os-source
+                                               #:script
+                                               %lvm-separate-home-installation-script
+                                               #:packages (list lvm2-static)
+                                               #:target-size (* 3200 MiB)))
+                         (command (qemu-command/writable-image image)))
+      (run-basic-test %lvm-separate-home-os
+                      `(,@command) "lvm-separate-home-os")))))
+
+
+;;;
+;;; LUKS-encrypted root file system and /boot in a non-encrypted partition.
+;;;
+
+(define-os-with-source (%encrypted-root-not-boot-os
+                        %encrypted-root-not-boot-os-source)
+  ;; The OS we want to install.
+  (use-modules (gnu) (gnu tests) (srfi srfi-1))
+
+  (operating-system
+    (host-name "bootroot")
+    (timezone "Europe/Madrid")
+    (locale "en_US.UTF-8")
+
+    (bootloader (bootloader-configuration
+                 (bootloader grub-bootloader)
+                 (target "/dev/vdb")))
+
+    (mapped-devices (list (mapped-device
+                           (source
+                            (uuid "12345678-1234-1234-1234-123456789abc"))
+                           (target "root")
+                           (type luks-device-mapping))))
+    (file-systems (cons* (file-system
+                           (device (file-system-label "my-boot"))
+                           (mount-point "/boot")
+                           (type "ext4"))
+                         (file-system
+                           (device "/dev/mapper/root")
+                           (mount-point "/")
+                           (type "ext4"))
+                         %base-file-systems))
+    (users (cons (user-account
+                  (name "alice")
+                  (group "users")
+                  (supplementary-groups '("wheel" "audio" "video")))
+                 %base-user-accounts))
+    (services (cons (service marionette-service-type
+                             (marionette-configuration
+                              (imported-modules '((gnu services herd)
+                                                  (guix combinators)))))
+                    %base-services))))
+
+(define %encrypted-root-not-boot-installation-script
+  ;; Shell script for an installation with boot not encrypted but root
+  ;; encrypted.
+  (format #f "\
+. /etc/profile
+set -e -x
+guix --version
+
+export GUIX_BUILD_OPTIONS=--no-grafts
+ls -l /run/current-system/gc-roots
+parted --script /dev/vdb mklabel gpt \\
+  mkpart primary ext2 1M 3M \\
+  mkpart primary ext2 3M 50M \\
+  mkpart primary ext2 50M 1.6G \\
+  set 1 boot on \\
+  set 1 bios_grub on
+echo -n \"~a\" | cryptsetup luksFormat --uuid=\"~a\" -q /dev/vdb3 -
+echo -n \"~a\" | cryptsetup open --type luks --key-file - /dev/vdb3 root
+mkfs.ext4 -L my-root /dev/mapper/root
+mkfs.ext4 -L my-boot /dev/vdb2
+mount LABEL=my-root /mnt
+mkdir /mnt/boot
+mount LABEL=my-boot /mnt/boot
+echo \"Checking mounts\"
+mount
+herd start cow-store /mnt
+mkdir /mnt/etc
+cp /etc/target-config.scm /mnt/etc/config.scm
+guix system build /mnt/etc/config.scm
+guix system init /mnt/etc/config.scm /mnt --no-substitutes
+sync
+echo \"Debugging info\"
+blkid
+cat /mnt/boot/grub/grub.cfg
+reboot\n"
+          %luks-passphrase "12345678-1234-1234-1234-123456789abc"
+          %luks-passphrase))
+
+(define %test-encrypted-root-not-boot-os
+  (system-test
+   (name "encrypted-root-not-boot-os")
+   (description
+    "Test the manual installation on an OS with / in an encrypted partition
+but /boot on a different, non-encrypted partition.  This test is expensive in
+terms of CPU and storage usage since we need to build (current-guix) and then
+store a couple of full system images.")
+   (value
+    (mlet* %store-monad
+        ((image (run-install %encrypted-root-not-boot-os
+                             %encrypted-root-not-boot-os-source
+                             #:script
+                             %encrypted-root-not-boot-installation-script))
+         (command (qemu-command/writable-image image)))
+      (run-basic-test %encrypted-root-not-boot-os command
+                      "encrypted-root-not-boot-os"
+                      #:initialization enter-luks-passphrase)))))
+
+
+;;;
 ;;; Btrfs root file system.
 ;;;
 
@@ -869,6 +1060,74 @@ build (current-guix) and then store a couple of full system images.")
                                                %btrfs-root-installation-script))
                          (command (qemu-command/writable-image image)))
       (run-basic-test %btrfs-root-os command "btrfs-root-os")))))
+
+
+
+;;;
+;;; Btrfs RAID-0 root file system.
+;;;
+(define-os-with-source (%btrfs-raid-root-os %btrfs-raid-root-os-source)
+  ;; An OS whose root partition is a RAID partition.
+  (use-modules (gnu) (gnu tests))
+
+  (operating-system
+    (host-name "liberigilo")
+    (timezone "Europe/Paris")
+    (locale "en_US.utf8")
+
+    (bootloader (bootloader-configuration
+                 (bootloader grub-bootloader)
+                 (target "/dev/vdb")))
+    (kernel-arguments '("console=ttyS0"))
+
+    (file-systems (cons (file-system
+                          (device (file-system-label "root-fs"))
+                          (mount-point "/")
+                          (type "btrfs"))
+                        %base-file-systems))
+    (users %base-user-accounts)
+    (services (cons (service marionette-service-type
+                             (marionette-configuration
+                              (imported-modules '((gnu services herd)
+                                                  (guix combinators)))))
+                    %base-services))))
+
+(define %btrfs-raid-root-installation-script
+  "\
+. /etc/profile
+set -e -x
+guix --version
+
+export GUIX_BUILD_OPTIONS=--no-grafts
+parted --script /dev/vdb mklabel gpt \\
+  mkpart primary ext2 1M 3M \\
+  mkpart primary ext2 3M 1.4G \\
+  mkpart primary ext2 1.4G 2.8G \\
+  set 1 boot on \\
+  set 1 bios_grub on
+mkfs.btrfs -L root-fs -d raid0 -m raid0 /dev/vdb2 /dev/vdb3
+mount /dev/vdb2 /mnt
+df -h /mnt
+herd start cow-store /mnt
+mkdir /mnt/etc
+cp /etc/target-config.scm /mnt/etc/config.scm
+guix system init /mnt/etc/config.scm /mnt --no-substitutes
+sync
+reboot\n")
+
+(define %test-btrfs-raid-root-os
+  (system-test
+   (name "btrfs-raid-root-os")
+   (description "Test functionality of an OS installed with a Btrfs
+RAID-0 (stripe) root partition.")
+   (value
+    (mlet* %store-monad
+        ((image (run-install %btrfs-raid-root-os
+                             %btrfs-raid-root-os-source
+                             #:script %btrfs-raid-root-installation-script
+                             #:target-size (* 2800 MiB)))
+         (command (qemu-command/writable-image image)))
+      (run-basic-test %btrfs-raid-root-os `(,@command) "btrfs-raid-root-os")))))
 
 
 ;;;

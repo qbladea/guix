@@ -5,7 +5,7 @@
 ;;; Copyright © 2016, 2017 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 John Darrington <jmd@gnu.org>
 ;;; Copyright © 2016 Nikita <nikita@n0.is>
-;;; Copyright © 2016, 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2016–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2016, 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2017 Vasile Dumitrascu <va511e@yahoo.com>
 ;;; Copyright © 2017 Gregor Giesen <giesen@zaehlwerk.net>
@@ -13,7 +13,7 @@
 ;;; Copyright © 2019 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2019 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2019 Rutger Helling <rhelling@mykolab.com>
-;;; Copyright © 2020 Pierre Langlois <pierre.langlois@gmx.com>
+;;; Copyright © 2020, 2021 Pierre Langlois <pierre.langlois@gmx.com>
 ;;; Copyright © 2020 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2020 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2020 Brice Waegeneire <brice@waegenei.re>
@@ -277,7 +277,7 @@ prompt the user with the option to go with insecure DNS only.")
 (define-public dnsmasq
   (package
     (name "dnsmasq")
-    (version "2.82")
+    (version "2.84")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -285,7 +285,7 @@ prompt the user with the option to go with insecure DNS only.")
                     version ".tar.xz"))
               (sha256
                (base32
-                "0cn1xd1s6xs78jmrmwjnh9m6w3q38pk6dyqy2phvasqiyd33cll4"))))
+                "0305a0c3snwqcv77sipyynr55xip1fp2843yn04pc4vk9g39acb0"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("pkg-config" ,pkg-config)))
@@ -317,7 +317,7 @@ and BOOTP/TFTP for network booting of diskless machines.")
   (package
     (name "bind")
     ;; When updating, check whether isc-dhcp's bundled copy should be as well.
-    (version "9.16.8")
+    (version "9.16.11")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -325,7 +325,7 @@ and BOOTP/TFTP for network booting of diskless machines.")
                     "/bind-" version ".tar.xz"))
               (sha256
                (base32
-                "0ccdbqmpvnxlbrxjsx2w8ir4xh961svzcw7n87n8dglj6rb9r6wy"))))
+                "1hcr0q6i2mk83yi12zxjs5q21y3gx7683q99l77ibxfqsx6zc481"))))
     (build-system gnu-build-system)
     (outputs `("out" "utils"))
     (inputs
@@ -375,15 +375,18 @@ and BOOTP/TFTP for network booting of diskless machines.")
              (with-directory-excursion "fuzz"
                (invoke "make" "check"))
              #t)))))
-    (synopsis "Domain Name System (DNS) implementation")
-    (description "BIND is an implementation of the @dfn{Domain Name System}
-(DNS) protocols for the Internet.  It is a reference implementation of those
-protocols, but it is also production-grade software, suitable for use in
-high-volume and high-reliability applications.  The name BIND stands for
-\"Berkeley Internet Name Domain\", because the software originated in the
-early 1980s at the University of California at Berkeley.  The @code{utils}
-output of this package contains the following DNS name servers related command
-line utilities:
+    (synopsis "@acronym{DNS, Domain Name System} implementation")
+    (description "BIND implements the @acronym{DNS, Domain Name System}
+protocols for the Internet.  It is both a reference implementation of those
+protocols and production-grade software, suitable for use in high-volume and
+high-reliability applications.
+
+The name stands for \"Berkeley Internet Name Domain\" because the software
+originated in the early 1980s at the University of California at Berkeley.
+
+The @code{utils} output of this package contains the following command line
+utilities related to DNS name servers:
+
 @table @code
 @item delv
 DNS lookup and validation utility
@@ -533,14 +536,14 @@ asynchronous fashion.")
 (define-public nsd
   (package
     (name "nsd")
-    (version "4.3.3")
+    (version "4.3.4")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.nlnetlabs.nl/downloads/nsd/nsd-"
                            version ".tar.gz"))
        (sha256
-        (base32 "0lgdiqnkfvy245h6kkiqic586qjwmg51lsfs86vlc0kwjwddiijz"))))
+        (base32 "0l4ba80ihwg3s2ifhnkmk7rjabrcy5zw6sz4hn0vm9sif6lk9s1v"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -603,14 +606,14 @@ to result in system-wide compromise.")
 (define-public unbound
   (package
     (name "unbound")
-    (version "1.10.1")
+    (version "1.13.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.unbound.net/downloads/unbound-"
                            version ".tar.gz"))
        (sha256
-        (base32 "0dnmh9jjh2v274f0hl31bgv40pl77mmfgky8bkqr5kvi3b17fdmp"))))
+        (base32 "18dj7migq6379hps59793457l81s3z7dll3y0fj6qcmhjlx08m59"))))
     (build-system gnu-build-system)
     (outputs '("out" "python"))
     (native-inputs
@@ -760,16 +763,16 @@ served by AS112.  Stub and forward zones are supported.")
 (define-public yadifa
   (package
     (name "yadifa")
-    (version "2.4.0")
+    (version "2.4.1")
     (source
-     (let ((build "9809"))
+     (let ((build "9916"))
        (origin
          (method url-fetch)
          (uri
           (string-append "https://www.yadifa.eu/sites/default/files/releases/"
                          "yadifa-" version "-" build ".tar.gz"))
          (sha256
-          (base32 "114a1y4pzzzq0s9hyn65nd4fg19xijsqpfhsd0wkvjndsazg63ky")))))
+          (base32 "1m1j7q1f0682xig8qign5ms52igix8pd45fds7p5j285dvrfa4xd")))))
     (build-system gnu-build-system)
     (native-inputs
      `(("which" ,which)))
@@ -807,7 +810,7 @@ Extensions} (DNSSEC).")
 (define-public knot
   (package
     (name "knot")
-    (version "3.0.2")
+    (version "3.0.3")
     (source
      (origin
        (method git-fetch)
@@ -816,7 +819,7 @@ Extensions} (DNSSEC).")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1cinzz8p86fzknnr2z6b49yqr4y05mmnr0l2q3lwzcfhc6dcl8di"))
+        (base32 "0xzig9l91wj6x23mh75vw2r51ihrgx916c7wxvpcfnwrqsv4f3hy"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -937,15 +940,16 @@ synthesis, and on-the-fly re-configuration.")
 (define-public knot-resolver
   (package
     (name "knot-resolver")
-    (version "5.1.3")
+    (version "5.2.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://secure.nic.cz/files/knot-resolver/"
                                   "knot-resolver-" version ".tar.xz"))
               (sha256
                (base32
-                "12s5070nqqf599s1mb6rjas2as481rjf751qk5yrz6p34y885k90"))))
+                "09jqy23q1pgj76y2qd1xfk72wwmypnyawm3span3gx00qi2bfdxa"))))
     (build-system meson-build-system)
+    (outputs '("out" "doc"))
     (arguments
      '(#:configure-flags '("-Ddoc=enabled")
        #:phases
@@ -960,6 +964,20 @@ synthesis, and on-the-fly re-configuration.")
          (add-after 'build 'build-doc
            (lambda _
              (invoke "ninja" "doc")))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             ;; Move the manual and the example configuration files to the
+             ;; "doc" output.
+             (let ((out (assoc-ref outputs "out"))
+                   (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share/doc/knot-resolver"))
+               (for-each
+                (lambda (dir)
+                  (rename-file (string-append out "/share/" dir)
+                               (string-append doc "/share/" dir)))
+                '("doc/knot-resolver/examples"
+                  "doc/knot-resolver/html"
+                  "info")))))
          (add-after 'install 'wrap-binary
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
@@ -982,7 +1000,8 @@ synthesis, and on-the-fly re-configuration.")
        ("pkg-config" ,pkg-config)
        ("python-breathe" ,python-breathe)
        ("python-sphinx" ,python-sphinx)
-       ("python-sphinx-rtd-theme" ,python-sphinx-rtd-theme)))
+       ("python-sphinx-rtd-theme" ,python-sphinx-rtd-theme)
+       ("texinfo" ,texinfo)))
     (inputs
      `(("fstrm" ,fstrm)
        ("gnutls" ,gnutls)
@@ -991,7 +1010,8 @@ synthesis, and on-the-fly re-configuration.")
        ("lmdb" ,lmdb)
        ("luajit" ,luajit)
        ;; TODO: Add optional lua modules: basexx and psl.
-       ("lua-bitop" ,lua5.1-bitop)))
+       ("lua-bitop" ,lua5.1-bitop)
+       ("nghttp2" ,nghttp2 "lib")))
     (home-page "https://www.knot-resolver.cz/")
     (synopsis "Caching validating DNS resolver")
     (description

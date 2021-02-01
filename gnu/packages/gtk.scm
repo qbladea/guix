@@ -8,7 +8,7 @@
 ;;; Copyright © 2015 Sou Bunnbu <iyzsong@gmail.com>
 ;;; Copyright © 2015 Andy Wingo <wingo@igalia.com>
 ;;; Copyright © 2015 David Hashe <david.hashe@dhashe.com>
-;;; Coypright © 2015, 2016, 2017, 2018 Ricardo Wurmus <rekado@elephly.net>
+;;; Coypright © 2015, 2016, 2017, 2018, 2020, 2021 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2016, 2017, 2020 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Fabian Harfert <fhmgufs@web.de>
 ;;; Copyright © 2016 Kei Kebreau <kkebreau@posteo.net>
@@ -830,7 +830,7 @@ application suites.")
 (define-public gtk+
   (package (inherit gtk+-2)
    (name "gtk+")
-   (version "3.24.20")
+   (version "3.24.23")
    (source (origin
             (method url-fetch)
             (uri (string-append "mirror://gnome/sources/" name "/"
@@ -838,7 +838,7 @@ application suites.")
                                 name "-" version ".tar.xz"))
             (sha256
              (base32
-              "1wqxkd3xnqwihcawncp9mkf9bv5a5fg5i4ahm6klpl782vvnkb1d"))
+              "1cg2vbwbcp7bc84ky0b69ipgdr9djhspnf5k8lajb8jphcj4v1jx"))
             (patches (search-patches "gtk3-respect-GUIX_GTK3_PATH.patch"
                                      "gtk3-respect-GUIX_GTK3_IM_MODULE_FILE.patch"))))
    (propagated-inputs
@@ -951,8 +951,35 @@ application suites.")
     (arguments
      ;; Uses of 'scm_t_uint8' & co. are deprecated; don't stop the build
      ;; because of them.
-     '(#:configure-flags '("--disable-Werror")
-       #:make-flags '("GUILE_AUTO_COMPILE=0")))     ; to prevent guild warnings
+     `(#:configure-flags '("--disable-Werror")
+       #:make-flags '("GUILE_AUTO_COMPILE=0") ; to prevent guild warnings
+       #:modules ((guix build gnu-build-system)
+                  (guix build utils)
+                  (ice-9 rdelim)
+                  (ice-9 popen))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'install-go-files
+           (lambda* (#:key outputs inputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (effective (read-line
+                                (open-pipe* OPEN_READ
+                                            "guile" "-c"
+                                            "(display (effective-version))")))
+                    (module-dir (string-append out "/share/guile/site/"
+                                               effective))
+                    (object-dir (string-append out "/lib/guile/" effective
+                                               "/site-ccache"))
+                    (prefix     (string-length module-dir)))
+               ;; compile to the destination
+               (for-each (lambda (file)
+                           (let* ((base (string-drop (string-drop-right file 4)
+                                                     prefix))
+                                  (go   (string-append object-dir base ".go")))
+                             (invoke "guild" "compile" "-L" module-dir
+                                     file "-o" go)))
+                         (find-files module-dir "\\.scm$"))
+               #t))))))
     (inputs
      `(("guile-lib" ,guile-lib)
        ("expat" ,expat)
@@ -1013,10 +1040,36 @@ exceptions, macros, and a dynamic programming environment.")
                 (file-name (string-append name "-" version ".tar.gz"))))
       (build-system gnu-build-system)
       (arguments
-       `(#:phases (modify-phases %standard-phases
-                    (replace 'bootstrap
-                      (lambda _
-                        (invoke "autoreconf" "-vfi"))))))
+       `(#:modules ((guix build gnu-build-system)
+                    (guix build utils)
+                    (ice-9 rdelim)
+                    (ice-9 popen))
+         #:phases
+         (modify-phases %standard-phases
+           (replace 'bootstrap
+             (lambda _
+               (invoke "autoreconf" "-vfi")))
+           (add-after 'install 'install-go-files
+             (lambda* (#:key outputs inputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (effective (read-line
+                                  (open-pipe* OPEN_READ
+                                              "guile" "-c"
+                                              "(display (effective-version))")))
+                      (module-dir (string-append out "/share/guile/site/"
+                                                 effective))
+                      (object-dir (string-append out "/lib/guile/" effective
+                                                 "/site-ccache"))
+                      (prefix     (string-length module-dir)))
+                 ;; compile to the destination
+                 (for-each (lambda (file)
+                             (let* ((base (string-drop (string-drop-right file 4)
+                                                       prefix))
+                                    (go   (string-append object-dir base ".go")))
+                               (invoke "guild" "compile" "-L" module-dir
+                                       file "-o" go)))
+                           (find-files module-dir "\\.scm$"))
+                 #t))))))
       (native-inputs `(("pkg-config" ,pkg-config)
                        ("autoconf" ,autoconf)
                        ("automake" ,automake)
@@ -1509,7 +1562,7 @@ write GNOME applications.")
 (define-public perl-cairo
   (package
     (name "perl-cairo")
-    (version "1.107")
+    (version "1.108")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -1517,7 +1570,7 @@ write GNOME applications.")
                     version ".tar.gz"))
               (sha256
                (base32
-                "0sg1gf1f2pjq7pji0zsv4rbi3bzpsx82z98k7yqxafzrvlkf27ay"))))
+                "1nh5iya63q6j2w0cdi24x2ygpi8k8wwccnbh8cisnx8nqmywnhk0"))))
     (build-system perl-build-system)
     (native-inputs
      `(("perl-extutils-depends" ,perl-extutils-depends)
@@ -1619,7 +1672,7 @@ and routines to assist in editing internationalized text.")
        (sha256
         (base32 "08rpw9hkaprm4r853xy1d35i2af1pji8c3mzzl01mmwmyr9p0x8k"))))
     (native-inputs `(("pkg-config" ,pkg-config)
-                     ("check" ,check)
+                     ("check" ,check-0.14)
                      ("gettext" ,gettext-minimal)
                      ("glib:bin" ,glib "bin")
                      ("xorg-server" ,xorg-server-for-tests)))
@@ -2140,7 +2193,7 @@ library for drawing.")
 (define-public gtksheet
   (package
     (name "gtksheet")
-    (version "4.3.4")
+    (version "4.3.5")
     (source
      (origin
        (method git-fetch)
@@ -2150,7 +2203,7 @@ library for drawing.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "10qzmdkjkkvkcadxn019cbyhwaahxcfv1apv54lc711bqvh63v8r"))))
+         "13jwr1vly4ga3f09dajwky1cdrz5bmggwga3vnnd6j6zzia7dpyr"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags (list "--enable-glade"
@@ -2164,6 +2217,11 @@ library for drawing.")
            (lambda _
              (delete-file "configure")
              #t))
+         (add-after 'unpack 'rename-type
+           (lambda _
+             (substitute* "glade/glade-gtksheet-editor.c"
+               (("GladeEditableIface") "GladeEditableInterface"))
+             #t))
          ;; Fix glade install directories.
          (add-before 'bootstrap 'configure-glade-directories
            (lambda* (#:key outputs #:allow-other-keys)
@@ -2174,15 +2232,6 @@ library for drawing.")
                 (string-append (assoc-ref outputs "out") "/lib/glade/modules"))
                (("`\\$PKG_CONFIG --variable=pixmapdir gladeui-2.0`")
                 (string-append (assoc-ref outputs "out") "/share/pixmaps")))
-             #t))
-         ;; Fix incorrect typelib version. This is a known upstream bug. See
-         ;; https://github.com/fpaquet/gtksheet/issues/23
-         (add-after 'install 'fix-typelib-version
-           (lambda* (#:key outputs #:allow-other-keys)
-             (with-directory-excursion (string-append (assoc-ref outputs "out")
-                                                      "/lib/girepository-1.0")
-               (rename-file "GtkSheet-4.0.typelib"
-                            (string-append "GtkSheet-" ,version ".typelib")))
              #t)))))
     (inputs
      `(("glade" ,glade3)

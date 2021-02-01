@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -200,6 +200,17 @@
 ;;          (build-derivations %store (list d1))
 ;;          (valid-path? %store p1)
 ;;          (member (pk p2) (live-paths %store)))))
+
+(test-assert "add-indirect-root and find-roots"
+  (call-with-temporary-directory
+   (lambda (directory)
+     (let* ((item (add-text-to-store %store "something" (random-text)))
+            (root (string-append directory "/gc-root")))
+       (symlink item root)
+       (add-indirect-root %store root)
+       (let ((result (member (cons root item) (find-roots %store))))
+         (delete-file root)
+         result)))))
 
 (test-assert "permanent root"
   (let* ((p  (with-store store
@@ -715,7 +726,32 @@
                            #:substitute-urls (%test-substitute-urls))
         (and (has-substitutes? s o)
              (build-derivations s (list d))
+             (canonical-file? o)
              (equal? c (call-with-input-file o get-string-all)))))))
+
+(test-assert "substitute, deduplication"
+  (with-store s
+    (let* ((c   (random-text))                     ; contents of the output
+           (g   (package-derivation s %bootstrap-guile))
+           (d1  (build-expression->derivation s "substitute-me"
+                                              `(begin ,c (exit 1))
+                                              #:guile-for-build g))
+           (d2  (build-expression->derivation s "build-me"
+                                              `(call-with-output-file %output
+                                                 (lambda (p)
+                                                   (display ,c p)))
+                                              #:guile-for-build g))
+           (o1  (derivation->output-path d1))
+           (o2  (derivation->output-path d2)))
+      (with-derivation-substitute d1 c
+        (set-build-options s #:use-substitutes? #t
+                           #:substitute-urls (%test-substitute-urls))
+        (and (has-substitutes? s o1)
+             (build-derivations s (list d2))      ;build
+             (build-derivations s (list d1))      ;substitute
+             (canonical-file? o1)
+             (equal? c (call-with-input-file o1 get-string-all))
+             (= (stat:ino (stat o1)) (stat:ino (stat o2))))))))
 
 (test-assert "substitute + build-things with output path"
   (with-store s
@@ -735,6 +771,7 @@
         (and (has-substitutes? s o)
              (build-things s (list o))            ;give the output path
              (valid-path? s o)
+             (canonical-file? o)
              (equal? c (call-with-input-file o get-string-all)))))))
 
 (test-assert "substitute + build-things with specific output"
@@ -755,6 +792,7 @@
              (build-things s `((,(derivation-file-name d) . "out")))
 
              (valid-path? s o)
+             (canonical-file? o)
              (equal? c (call-with-input-file o get-string-all)))))))
 
 (test-assert "substitute, corrupt output hash"
@@ -786,6 +824,61 @@
                         (not (zero? (store-protocol-error-status c)))))
                (build-derivations s (list d))
                #f))))))
+
+(test-assert "substitute, corrupt output hash, build trace"
+  ;; Likewise, and check the build trace.
+  (with-store s
+    (let* ((c   "hello, world")                   ; contents of the output
+           (d   (build-expression->derivation
+                 s "corrupt-substitute"
+                 `(mkdir %output)
+                 #:guile-for-build
+                 (package-derivation s %bootstrap-guile (%current-system))))
+           (o   (derivation->output-path d)))
+      ;; Make sure we use 'guix substitute'.
+      (set-build-options s
+                         #:print-build-trace #t
+                         #:use-substitutes? #t
+                         #:fallback? #f
+                         #:substitute-urls (%test-substitute-urls))
+
+      (with-derivation-substitute d c
+        (sha256 => (make-bytevector 32 0)) ;select a hash that doesn't match C
+
+        (define output
+          (call-with-output-string
+            (lambda (port)
+              (parameterize ((current-build-output-port port))
+                (guard (c ((store-protocol-error? c) #t))
+                  (build-derivations s (list d))
+                  #f)))))
+
+        (define actual-hash
+          (let-values (((port get-hash)
+                        (gcrypt:open-hash-port
+                         (gcrypt:hash-algorithm gcrypt:sha256))))
+            (write-file-tree "foo" port
+                             #:file-type+size
+                             (lambda _
+                               (values 'regular (string-length c)))
+                             #:file-port
+                             (lambda _
+                               (open-input-string c)))
+            (close-port port)
+            (bytevector->nix-base32-string (get-hash))))
+
+        (define expected-hash
+          (bytevector->nix-base32-string (make-bytevector 32 0)))
+
+        (define mismatch
+          (string-append "@ hash-mismatch " o " sha256 "
+                         expected-hash " " actual-hash "\n"))
+
+        (define failure
+          (string-append "@ substituter-failed " o))
+
+        (and (string-contains output mismatch)
+             (string-contains output failure))))))
 
 (test-assert "substitute --fallback"
   (with-store s

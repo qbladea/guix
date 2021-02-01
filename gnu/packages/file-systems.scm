@@ -3,9 +3,10 @@
 ;;; Copyright © 2017 Gábor Boskovits <boskovits@gmail.com>
 ;;; Copyright © 2017, 2018 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2018 Leo Famulari <leo@famulari.name>
-;;; Copyright © 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2020 Raghav Gururajan <raghavgururajan@disroot.org>
 ;;; Copyright © 2020 Morgan Smith <Morgan.J.Smith@outlook.com>
+;;; Copyright © 2021 raid5atemyhoemwork <raid5atemyhomework@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -38,6 +39,7 @@
   #:use-module (gnu packages acl)
   #:use-module (gnu packages attr)
   #:use-module (gnu packages autotools)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
@@ -48,6 +50,7 @@
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages docbook)
   #:use-module (gnu packages flex)
+  #:use-module (gnu packages gawk)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnupg)
   #:use-module (gnu packages kerberos)
@@ -328,8 +331,8 @@ from a mounted file system.")
     (license license:gpl2+)))
 
 (define-public bcachefs-tools
-  (let ((commit "742dbbdbb90efb786f05a8576917fcd0e9cbd57e")
-        (revision "1"))
+  (let ((commit "db931a4571817d7d61be6bce306f1d42f7cd3398")
+        (revision "2"))
     (package
       (name "bcachefs-tools")
       (version (git-version "0.1" revision commit))
@@ -341,7 +344,7 @@ from a mounted file system.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "0kn8y3kqylz6scv47mzfmwrlh21kbb14z5vs65vks8w50i26sxnc"))))
+          (base32 "1zl8lda6ni6rhsmsng6smrcjihy2irjf03h1m7nvkqmkhq44j80s"))))
       (build-system gnu-build-system)
       (arguments
        `(#:make-flags
@@ -352,7 +355,24 @@ from a mounted file system.")
                "PYTEST=pytest")
          #:phases
          (modify-phases %standard-phases
-           (delete 'configure))         ; no configure script
+           (delete 'configure)          ; no configure script
+           (add-after 'install 'promote-mount.bcachefs.sh
+             ;; XXX The (optional) mount.bcachefs helper requires rust:cargo.
+             ;; This alternative shell script does the job well enough for now.
+             (lambda* (#:key inputs outputs #:allow-other-keys)
+               (let ((out (assoc-ref outputs "out")))
+               (with-directory-excursion (string-append out "/sbin")
+                 (rename-file "mount.bcachefs.sh" "mount.bcachefs")
+                 ;; WRAP-SCRIPT causes bogus ‘Insufficient arguments’ errors.
+                 (wrap-program "mount.bcachefs"
+                   `("PATH" ":" prefix
+                     ,(cons (string-append out "/sbin")
+                            (map (lambda (input)
+                                     (string-append (assoc-ref inputs input)
+                                                    "/bin"))
+                                   (list "coreutils"
+                                         "gawk"
+                                         "util-linux"))))))))))
          #:tests? #f))                  ; XXX 6 valgrind tests fail
       (native-inputs
        `(("pkg-config" ,pkg-config)
@@ -367,10 +387,15 @@ from a mounted file system.")
          ("libscrypt" ,libscrypt)
          ("libsodium" ,libsodium)
          ("liburcu" ,liburcu)
-         ("util-linux" ,util-linux "lib") ; lib{blkid,uuid}
+         ("util-linux:lib" ,util-linux "lib") ; lib{blkid,uuid}
          ("lz4" ,lz4)
          ("zlib" ,zlib)
-         ("zstd:lib" ,zstd "lib")))
+         ("zstd:lib" ,zstd "lib")
+
+         ;; Only for mount.bcachefs.sh.
+         ("coreutils" ,coreutils-minimal)
+         ("gawk" ,gawk)
+         ("util-linux" ,util-linux)))
       (home-page "https://bcachefs.org/")
       (synopsis "Tools to create and manage bcachefs file systems")
       (description
@@ -385,6 +410,55 @@ In addition, bcachefs provides all the functionality of bcache, a block-layer
 caching system, and lets you assign different roles to each device based on its
 performance and other characteristics.")
       (license license:gpl2+))))
+
+(define-public bcachefs-tools/static
+   (package
+     (inherit bcachefs-tools)
+     (name "bcachefs-tools-static")
+     (arguments
+      (substitute-keyword-arguments (package-arguments bcachefs-tools)
+        ((#:make-flags make-flags)
+         `(append ,make-flags
+                  (list "LDFLAGS=-static")))))
+     (inputs
+      `(("eudev:static" ,eudev "static")
+        ("libscrypt:static" ,libscrypt "static")
+        ("lz4:static" ,lz4 "static")
+        ("util-linux:static" ,util-linux "static") ; lib{blkid,uuid}
+        ("zlib" ,zlib "static")
+        ("zstd:static" ,zstd "static")
+        ,@(package-inputs bcachefs-tools)))))
+
+(define-public bcachefs/static
+  (package
+    (name "bcachefs-static")
+    (version (package-version bcachefs-tools))
+    (build-system trivial-build-system)
+    (source #f)
+    (inputs
+     `(("bcachefs-tools" ,bcachefs-tools/static)))
+    (arguments
+     `(#:modules ((guix build utils))
+       #:builder
+       (begin
+         (use-modules (guix build utils)
+                      (ice-9 ftw)
+                      (srfi srfi-26))
+         (let* ((bcachefs-tools (assoc-ref %build-inputs "bcachefs-tools"))
+                (out (assoc-ref %outputs "out")))
+           (mkdir-p out)
+           (with-directory-excursion out
+             (install-file (string-append bcachefs-tools
+                                          "/sbin/bcachefs")
+                           "sbin")
+             (remove-store-references "sbin/bcachefs")
+             (invoke "sbin/bcachefs" "version") ; test suite
+             #t)))))
+    (home-page (package-home-page bcachefs-tools))
+    (synopsis "Statically-linked bcachefs command from bcachefs-tools")
+    (description "This package provides the statically-linked @command{bcachefs}
+from the bcachefs-tools package.  It is meant to be used in initrds.")
+    (license (package-license bcachefs-tools))))
 
 (define-public exfatprogs
   (package
@@ -773,7 +847,7 @@ APFS.")
 (define-public zfs
   (package
     (name "zfs")
-    (version "0.8.5")
+    (version "2.0.1")
     (outputs '("out" "module" "src"))
     (source
       (origin
@@ -782,7 +856,7 @@ APFS.")
                               "/download/zfs-" version
                               "/zfs-" version ".tar.gz"))
           (sha256
-           (base32 "0gfdnynmsxbhi97q73smrgmcw1k8zmlr1hgljfn38sk0kimivd6v"))))
+           (base32 "0y3992l4nzr67q18lz1kizw0za1shvqbpmsjz9shv4frh5ihllbi"))))
     (build-system linux-module-build-system)
     (arguments
      `(;; The ZFS kernel module should not be downloaded since the license
@@ -811,19 +885,33 @@ APFS.")
              (let ((out        (assoc-ref outputs "out"))
                    (src        (assoc-ref outputs "src"))
                    (util-linux (assoc-ref inputs "util-linux"))
-                   (nfs-utils  (assoc-ref inputs "nfs-utils")))
+                   (nfs-utils  (assoc-ref inputs "nfs-utils"))
+                   (kmod       (assoc-ref inputs "kmod-runtime")))
+               (substitute* "etc/Makefile.in"
+                 ;; This just contains an example configuration file for
+                 ;; configuring ZFS on traditional init systems, skip it
+                 ;; since we cannot use it anyway; the install target becomes
+                 ;; misdirected.
+                 (("= default ") "= "))
+               (substitute* "lib/libzfs/os/linux/libzfs_util_os.c"
+                 ;; Use path to /gnu/store/*-kmod in actual path that is exec'ed.
+                 (("\"/sbin/modprobe\"")
+                  (string-append "\"" kmod "/bin/modprobe" "\""))
+                 ;; Just use 'modprobe' in message to user, since Guix
+                 ;; does not have a traditional /sbin/
+                 (("'/sbin/modprobe ") "'modprobe "))
                (substitute* "contrib/Makefile.in"
                  ;; This is not configurable nor is its hard-coded /usr prefix.
                  ((" initramfs") ""))
-               (substitute* "module/zfs/zfs_ctldir.c"
+               (substitute* "module/os/linux/zfs/zfs_ctldir.c"
                  (("/usr/bin/env\", \"umount")
                   (string-append util-linux "/bin/umount\", \"-n"))
                  (("/usr/bin/env\", \"mount")
                   (string-append util-linux "/bin/mount\", \"-n")))
-               (substitute* "lib/libzfs/libzfs_mount.c"
+               (substitute* "lib/libzfs/os/linux/libzfs_mount_os.c"
                  (("/bin/mount") (string-append util-linux "/bin/mount"))
                  (("/bin/umount") (string-append util-linux "/bin/umount")))
-               (substitute* "lib/libshare/nfs.c"
+               (substitute* "lib/libshare/os/linux/nfs.c"
                  (("/usr/sbin/exportfs")
                   (string-append nfs-utils "/sbin/exportfs")))
                (substitute* "config/zfs-build.m4"
@@ -841,7 +929,9 @@ APFS.")
                (substitute* "contrib/pyzfs/Makefile.in"
                  ((".*install-lib.*") ""))
                (substitute* '("Makefile.am" "Makefile.in")
-                 (("\\$\\(prefix)/src") (string-append src "/src"))))
+                 (("\\$\\(prefix)/src") (string-append src "/src")))
+               (substitute* (find-files "udev/rules.d/" ".rules.in$")
+                 (("/sbin/modprobe") (string-append kmod "/bin/modprobe"))))
              #t))
          (replace 'build
            (lambda _ (invoke "make")))
@@ -865,13 +955,15 @@ APFS.")
        ("pkg-config" ,pkg-config)))
     (inputs
      `(("eudev" ,eudev)
+       ("kmod-runtime" ,kmod)
        ("libaio" ,libaio)
        ("libtirpc" ,libtirpc)
        ("nfs-utils" ,nfs-utils)
        ("openssl" ,openssl)
        ("python" ,python)
        ("python-cffi" ,python-cffi)
-       ("util-linux" ,util-linux "lib")
+       ("util-linux" ,util-linux)
+       ("util-linux:lib" ,util-linux "lib")
        ("zlib" ,zlib)))
     (home-page "https://zfsonlinux.org/")
     (synopsis "Native ZFS on Linux")
@@ -982,14 +1074,14 @@ compatible directories.")
 (define-public python-dropbox
   (package
     (name "python-dropbox")
-    (version "10.3.1")
+    (version "11.0.0")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "dropbox" version))
         (sha256
          (base32
-          "137rn9fs1bg1p1khd5lcccfxh8jsx27dh2ix5wwd8cmddbrzdrbd"))))
+          "0r64jxm5m4a1sln2la3av0103filb0plqja1nnyibqvk9qrqs5jf"))))
     (build-system python-build-system)
     (arguments '(#:tests? #f))  ; Tests require a network connection.
     (native-inputs
@@ -1000,6 +1092,7 @@ compatible directories.")
        ("python-chardet" ,python-chardet)
        ("python-requests" ,python-requests)
        ("python-six" ,python-six)
+       ("python-stone" ,python-stone)
        ("python-urllib3" ,python-urllib3)))
     (home-page "https://www.dropbox.com/developers")
     (synopsis "Official Dropbox API Client")
@@ -1010,14 +1103,14 @@ Dropbox API v2.")
 (define-public dbxfs
   (package
     (name "dbxfs")
-    (version "1.0.43")
+    (version "1.0.50")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "dbxfs" version))
         (sha256
          (base32
-          "1f9sy2ax215dxiwszrrcadffjdsmrlxm4kwrbiap9dhxvzm226ks"))
+          "01zvk862ybz12270q0r2l1i7kdj30ib2gxrlxmwvi19b2fkf39na"))
         (patches (search-patches "dbxfs-remove-sentry-sdk.patch"))))
     (build-system python-build-system)
     (arguments

@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 Mckinley Olsen <mck.olsen@gmail.com>
 ;;; Copyright © 2016, 2017, 2019 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2016 David Craven <david@craven.ch>
@@ -16,10 +16,13 @@
 ;;; Copyright © 2018, 2019 Eric Bavier <bavier@member.fsf.org>
 ;;; Copyright © 2019 Julien Lepiller <julien@lepiller.eu>
 ;;; Copyright © 2019 Pierre Langlois <pierre.langlois@gmx.com>
-;;; Copyright © 2019 Brett Gilio <brettg@gnu.org>
+;;; Copyright © 2019, 2020 Brett Gilio <brettg@gnu.org>
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2020 Valentin Ignatev <valentignatev@gmail.com>
 ;;; Copyright © 2020 Michael Rohleder <mike@rohleder.de>
+;;; Copyright © 2020, 2021 Marius Bakke <marius@gnu.org>
+;;; Copyright © 2020, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2020 Leo Famulari <leo@famulari.name>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -43,12 +46,15 @@
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system glib-or-gtk)
   #:use-module (guix build-system go)
+  #:use-module (guix build-system meson)
   #:use-module (guix build-system python)
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix packages)
+  #:use-module (guix utils)
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
+  #:use-module (gnu packages build-tools)   ;for meson-0.55
   #:use-module (gnu packages check)
   #:use-module (gnu packages cmake)
   #:use-module (gnu packages compression)
@@ -58,8 +64,8 @@
   #:use-module (gnu packages docbook)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages freedesktop)
-  #:use-module (gnu packages gcc)
   #:use-module (gnu packages gettext)
+  #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
@@ -69,6 +75,7 @@
   #:use-module (gnu packages libcanberra)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages man)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages perl-check)
@@ -91,7 +98,7 @@
 (define-public tilda
   (package
     (name "tilda")
-    (version "1.5.2")
+    (version "1.5.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -100,8 +107,15 @@
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0psq0f4s0s92bba6wwcf6b0j7i59b76svqxhvpavwv53yvhmmamn"))))
+                "0q2i9ny8sh7zjzgvkx8vcvk593wcvchjc4xq4nrlqdd377r7cg5q"))))
     (build-system glib-or-gtk-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'make-po-writable
+           (lambda _
+             (for-each make-file-writable (find-files "po" "."))
+             #t)))))
     (native-inputs
      `(("autoconf" ,autoconf)
        ("automake" ,automake)
@@ -338,20 +352,28 @@ multi-seat support, a replacement for @command{mingetty}, and more.")
 (define-public libtermkey
   (package
     (name "libtermkey")
-    (version "0.21.1")
+    (version "0.22")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://www.leonerd.org.uk/code/libtermkey/"
                                   "libtermkey-" version ".tar.gz"))
               (sha256
-               (base32 "0psd0kf10q5ixfima0mxz10syy7qq1ilz1npr0rz862xycvzgjyf"))))
+               (base32 "002606rrxh5f6l6jrikl0dyxsknscdamq10av21xm0xa98ybsib9"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:make-flags (list
-                     "CC=gcc"
+     `(#:make-flags (list
+                     (string-append "CC=" ,(cc-for-target))
                      (string-append "PREFIX=" (assoc-ref %outputs "out")))
-       #:phases (modify-phases %standard-phases
-                  (delete 'configure))  ; no configure script
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)            ; no configure script
+         (add-before 'check 'patch-failing-test
+           ;; XXX This undoes an upstream change in version 0.22 which ‘ensures
+           ;; that the hooked function can invent TI strings for new terminal
+           ;; types’.  That fails in the build environment.  Why?
+           (lambda _
+             (substitute* "t/40ti-override.c"
+               (("vt750") "vt100")))))
        #:test-target "test"))
     (inputs `(("ncurses" ,ncurses)))
     (native-inputs `(("libtool" ,libtool)
@@ -379,7 +401,7 @@ combining, and so on, with a simple interface.")
                 "1vvjydqf0ax47nvdyyl67jafw5b3sfsav00xid6qpgia1gs2r72n"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:make-flags '("CC=gcc")
+     `(#:make-flags (list (string-append "CC=" ,(cc-for-target)))
        #:tests? #f                      ; no tests
        #:phases
        (modify-phases %standard-phases
@@ -676,6 +698,43 @@ eye-candy, customizable, and reasonably lightweight.")
                 license:x11
                 license:bsd-3)))))
 
+(define-public foot
+  (package
+    (name "foot")
+    (version "1.6.2")
+    (home-page "https://codeberg.org/dnkl/foot")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference (url home-page) (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "08i3jmjky5s2nnc0c95c009cym91rs4sj4876sr4xnlkb7ab4812"))))
+    (build-system meson-build-system)
+    (arguments
+     `(#:meson ,meson-0.55
+       ;; Using a "release" build is recommended both for performance, and
+       ;; also to address a GCC 10 issue when doing PGO builds.
+       #:build-type "release"
+       ;; Enable LTO as recommended by INSTALL.md.
+       #:configure-flags '("-Db_lto=true")))
+    (native-inputs
+     `(("ncurses" ,ncurses)             ;for 'tic'
+       ("pkg-config" ,pkg-config)
+       ("scdoc" ,scdoc)
+       ("wayland-protocols" ,wayland-protocols)))
+    (inputs
+     `(("fcft" ,fcft)
+       ("libxkbcommon" ,libxkbcommon)
+       ("wayland" ,wayland)))
+    (synopsis "Wayland-native terminal emulator")
+    (description
+     "@command{foot} is a terminal emulator for systems using the Wayland
+display server.  It is designed to be fast, lightweight, and independent of
+desktop environments.  It can be used as a standalone terminal and also has
+a server/client mode.")
+    (license license:expat)))
+
 (define-public sakura
   (package
     (name "sakura")
@@ -869,14 +928,14 @@ than a terminal.")
 (define-public python-curtsies
   (package
     (name "python-curtsies")
-    (version "0.2.11")
+    (version "0.3.4")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "curtsies" version))
        (sha256
         (base32
-         "1vljmw3sy6lrqahhpyg4gk13mzcx3mwhvg8s41698ms3cpgkjipc"))))
+         "019bpf5wmng4f6ic2ykg893ypfihpfvzi6dhblcagfwbincl79ac"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -891,16 +950,13 @@ than a terminal.")
      `(("python-mock" ,python-mock)
        ("python-pyte" ,python-pyte)
        ("python-nose" ,python-nose)))
-    (home-page "https://github.com/thomasballinger/curtsies")
+    (home-page "https://github.com/bpython/curtsies")
     (synopsis "Library for curses-like terminal interaction with colored
 strings")
     (description "Curtsies is a Python library for interacting with the
 terminal.  It features string-like objects which carry formatting information,
 per-line fullscreen terminal rendering, and keyboard input event reporting.")
     (license license:expat)))
-
-(define-public python2-curtsies
-  (package-with-python2 python-curtsies))
 
 (define-public tmate
   (package
@@ -936,7 +992,7 @@ tmux.")
 (define-public kitty
   (package
     (name "kitty")
-    (version "0.16.0")
+    (version "0.19.3")
     (home-page "https://sw.kovidgoyal.net/kitty/")
     (source
      (origin
@@ -946,7 +1002,7 @@ tmux.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1bszyddar0g1gdz67h8rd3gbrdhi6ahjg7j14cjiqxm1938z9ajf"))
+        (base32 "0r49bybqy6c0n1lz6yc85py80wb40w757m60f5rszjf200wnyl6s"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -961,46 +1017,53 @@ tmux.")
               "SPHINXBUILD = sphinx-build\n"))
            #t))))
     (build-system gnu-build-system)
-    (inputs
-     `(("python" ,python)
-       ("harfbuzz" ,harfbuzz)
-       ("zlib" ,zlib)
-       ("libcanberra" ,libcanberra)
-       ("libpng" ,libpng)
-       ("freetype" ,freetype)
-       ("fontconfig" ,fontconfig)
-       ("pygments" ,python-pygments)
-       ("wayland" ,wayland)))
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("libxrandr" ,libxrandr)
-       ("libdbus" ,dbus)
+     `(("libdbus" ,dbus)
+       ("libgl1-mesa" ,mesa)
        ("libxcursor" ,libxcursor)
        ("libxi" ,libxi)
        ("libxinerama" ,libxinerama)
-       ("libgl1-mesa" ,mesa)
        ("libxkbcommon" ,libxkbcommon)
-       ("sphinx" ,python-sphinx)
+       ("libxrandr" ,libxrandr)
        ("ncurses" ,ncurses) ;; for tic command
+       ("pkg-config" ,pkg-config)
+       ("sphinx" ,python-sphinx)
        ("wayland-protocols" ,wayland-protocols)))
+    (inputs
+     `(("fontconfig" ,fontconfig)
+       ("freetype" ,freetype)
+       ("harfbuzz" ,harfbuzz)
+       ("lcms" ,lcms)
+       ("libcanberra" ,libcanberra)
+       ("libpng" ,libpng)
+       ("pygments" ,python-pygments)
+       ("python" ,python-wrapper)
+       ("wayland" ,wayland)
+       ("zlib" ,zlib)))
     (arguments
      '(#:phases (modify-phases %standard-phases
-                  (delete 'configure)
-                  ;; Wayland backend requires EGL, which isn't found
-                  ;; out-of-the-box for some reason. Hard-code it instead.
-                  (add-after 'unpack 'hard-code-libegl
-                    (lambda _
-                      (let* ((mesa (assoc-ref %build-inputs "libgl1-mesa"))
-                             (libegl (string-append mesa "/lib/libEGL.so.1")))
-                        (substitute* "glfw/egl_context.c"
-                                     (("libEGL.so.1") libegl)))
-                      #t))
+                  (delete 'configure)   ;no configure script
                   (replace 'build
-                    (lambda _
-                      (invoke "python3" "setup.py" "linux-package")))
+                    (lambda* (#:key inputs #:allow-other-keys)
+                      ;; The "kitty" sub-directory must be writable prior to
+                      ;; configuration (e.g., un-setting updates).
+                      (for-each make-file-writable (find-files "kitty"))
+
+                      (invoke "python3" "setup.py" "linux-package"
+                              ;; Do not phone home.
+                              "--update-check-interval=0"
+                              ;; Wayland backend requires EGL, which isn't
+                              ;; found out-of-the-box for some reason.
+                              (string-append "--egl-library="
+                                             (assoc-ref inputs "libgl1-mesa")
+                                             "/lib/libEGL.so.1"))))
                   (replace 'check
                     (lambda _
-                      (invoke "python3" "setup.py" "test")))
+                      ;; Fix "cannot find kitty executable" error when running
+                      ;; tests.
+                      (setenv "PATH" (string-append "linux-package/bin:"
+                                                    (getenv "PATH")))
+                      (invoke "python3" "test.py")))
                   (add-before 'install 'rm-pycache
                     ;; created python cache __pycache__ are non deterministic
                     (lambda _
@@ -1044,7 +1107,7 @@ comfortably in a pager or editor.
 (define-public eternalterminal
   (package
     (name "eternalterminal")
-    (version "6.0.7")
+    (version "6.0.13")
     (source
       (origin
         (method git-fetch)
@@ -1053,7 +1116,7 @@ comfortably in a pager or editor.
                (commit (string-append "et-v" version))))
         (file-name (git-file-name name version))
        (sha256
-        (base32 "03pdspggqxkmz95qb96pig5x0xw18hy9a7ivszydr32ry6kxxx1h"))))
+        (base32 "0sb1hypg2276y8c2a5vivrkcxp70swddvhnd9h273if3kv6j879r"))))
     (build-system cmake-build-system)
     (arguments
      '(#:configure-flags '("-DBUILD_TEST=ON")
@@ -1080,6 +1143,9 @@ and IP roaming.  ET provides the same core functionality as @command{mosh},
 while also supporting native scrolling and @command{tmux} control mode
 (@code{tmux -CC}).")
     (license license:asl2.0)))
+
+(define-public et
+  (deprecated-package "et" eternalterminal))
 
 (define-public wterm
   (package
@@ -1140,108 +1206,71 @@ made by suckless.")
 (define-public alacritty
   (package
     (name "alacritty")
-    (version "0.4.1")
+    (version "0.7.1")
     (source
      (origin
+       ;; XXX: The crate at "crates.io" has limited contents.  In particular,
+       ;; it does not contain "extra" directory with completions, icon, etc.
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/jwilm/alacritty")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "05jcg33ifngpzw2hdhgb614j87ihhhlqgar0kky183rywg0dxikg"))
-       (modules '((guix build utils)))
-       (snippet
-         ;; Don't use a custom location for winit-0.20-alpha6.
-         '(begin (substitute* "Cargo.toml"
-                   (("winit .*") ""))
-                 #t))))
+        (base32 "1b9hy3ya72hhpl8nkayc7dy4f97xp75np48dm5na5pgyv8b45agi"))))
     (build-system cargo-build-system)
     (arguments
-     `(#:cargo-inputs
-       (("rust-clap" ,rust-clap-2)
-        ("rust-log" ,rust-log-0.4)
-        ("rust-time" ,rust-time-0.1)
-        ("rust-env-logger" ,rust-env-logger-0.7)
-        ("rust-serde" ,rust-serde-1)
-        ("rust-serde-yaml" ,rust-serde-yaml-0.8)
-        ("rust-serde-json" ,rust-serde-json-1)
-        ("rust-glutin" ,rust-glutin-0.22) ; adjust 'patch-glutin-libgl-path as needed
-        ("rust-notify" ,rust-notify-4)
-        ("rust-libc" ,rust-libc-0.2)
-        ("rust-unicode-width" ,rust-unicode-width-0.1)
-        ("rust-parking-lot" ,rust-parking-lot-0.9)
-        ("rust-urlocator" ,rust-urlocator-0.1)
-        ("rust-xdg" ,rust-xdg-2.2)
-        ("rust-image" ,rust-image-0.22)
-        ("rust-dirs" ,rust-dirs-2.0)
-        ("rust-x11-dl" ,rust-x11-dl-2)
-        ("rust-winapi" ,rust-winapi-0.3)
-        ("rust-base64" ,rust-base64-0.11)
-        ("rust-bigflags" ,rust-bitflags-1)
+     `(#:cargo-test-flags '("--release" "--" "--skip=config_read_eof")
+       #:cargo-inputs
+       (("rust-alacritty-config-derive" ,rust-alacritty-config-derive-0.1)
+        ("rust-alacritty-terminal" ,rust-alacritty-terminal-0.12)
+        ("rust-bitflags" ,rust-bitflags-1)
+        ("rust-clap" ,rust-clap-2)
+        ("rust-cocoa" ,rust-cocoa-0.24)
+        ("rust-copypasta" ,rust-copypasta-0.7)
+        ("rust-crossfont" ,rust-crossfont-0.2)
+        ("rust-dirs" ,rust-dirs-2)
+        ("rust-embed-resource" ,rust-embed-resource-1)
         ("rust-fnv" ,rust-fnv-1)
-        ("rust-mio" ,rust-mio-0.6)
-        ("rust-mio-extras" ,rust-mio-extras-2)
-        ("rust-terminfo" ,rust-terminfo-0.6)
-        ("rust-url" ,rust-url-2)
-        ("rust-vte" ,rust-vte-0.3)
-        ("rust-nix" ,rust-nix-0.15)
-        ("rust-miow" ,rust-miow-0.3)
-        ("rust-mio-anonymous-pipes" ,rust-mio-anonymous-pipes-0.1)
-        ("rust-mio-named-pipes" ,rust-mio-named-pipes-0.1)
-        ("rust-signal-hook" ,rust-signal-hook-0.1)
-        ("rust-clipboard-win" ,rust-clipboard-win-2.1)
-        ("rust-objc" ,rust-objc-0.2)
-        ("rust-objc-id" ,rust-objc-id-0.1)
-        ("rust-objc-foundation" ,rust-objc-foundation-0.1)
-        ("rust-x11-clipboard" ,rust-x11-clipboard-0.4)
-        ("rust-smithay-clipboard" ,rust-smithay-clipboard-0.3)
-        ("rust-wayland-client" ,rust-wayland-client-0.23)
-        ("rust-euclid" ,rust-euclid-0.20)
-        ("rust-foreign-types" ,rust-foreign-types-0.5)
-        ("rust-servo-fontconfig" ,rust-servo-fontconfig-0.4)
-        ("rust-freetype-rs" ,rust-freetype-rs-0.23)
-        ("rust-core-foundation" ,rust-core-foundation-0.6)
-        ("rust-core-foundation-sys" ,rust-core-foundation-sys-0.6)
-        ("rust-core-text" ,rust-core-text-13)
-        ("rust-core-graphics" ,rust-core-graphics-0.17)
-        ("rust-dwrote" ,rust-dwrote-0.9)
-        ("rust-winpty-sys" ,rust-winpty-sys-0.4))
-       #:cargo-development-inputs
-       (("rust-rustc-tools-util" ,rust-rustc-tools-util-0.2)
         ("rust-gl-generator" ,rust-gl-generator-0.14)
-        ("rust-andrew" ,rust-andrew-0.2)
-        ("rust-smithay-client-toolkit" ,rust-smithay-client-toolkit-0.6)
-        ("rust-embed-resource" ,rust-embed-resource-1.3)
-        ("rust-http-req" ,rust-http-req-0.5)
-        ("rust-zip" ,rust-zip-0.5)
-        ("rust-tempfile" ,rust-tempfile-3)
-        ("rust-named-pipe" ,rust-named-pipe-0.4)
-        ("rust-winapi" ,rust-winapi-0.3))
+        ;; XXX: Adjust `add-absolute-library-references' phase when updating
+        ;; glutin input.
+        ("rust-glutin" ,rust-glutin-0.26)
+        ("rust-libc" ,rust-libc-0.2)
+        ("rust-log" ,rust-log-0.4)
+        ("rust-notify" ,rust-notify-4)
+        ("rust-objc" ,rust-objc-0.2)
+        ("rust-parking-lot" ,rust-parking-lot-0.11)
+        ("rust-png" ,rust-png-0.16)
+        ("rust-raw-window-handle" ,rust-raw-window-handle-0.3)
+        ("rust-serde" ,rust-serde-1)
+        ("rust-serde-json" ,rust-serde-json-1)
+        ("rust-serde-yaml" ,rust-serde-yaml-0.8)
+        ("rust-time" ,rust-time-0.1)
+        ("rust-unicode-width" ,rust-unicode-width-0.1)
+        ("rust-urlocator" ,rust-urlocator-0.1)
+        ("rust-wayland-client" ,rust-wayland-client-0.28)
+        ("rust-winapi" ,rust-winapi-0.3)
+        ("rust-x11-dl" ,rust-x11-dl-2)
+        ("rust-xdg" ,rust-xdg-2))
        #:phases
        (modify-phases %standard-phases
-         (add-after 'configure 'patch-glutin-libgl-path
+         (add-after 'configure 'add-absolute-library-references
            (lambda* (#:key inputs cargo-inputs vendor-dir #:allow-other-keys)
-             (let* ((glutin-name ,(package-name rust-glutin-0.22))
-                    (glutin-version ,(package-version rust-glutin-0.22))
-                    (src-api
-                      (string-append
-                        glutin-name "-" glutin-version ".tar.gz/src/api/"))
+             (let* ((glutin-name ,(package-name rust-glutin-0.26))
+                    (glutin-version ,(package-version rust-glutin-0.26))
+                    (glutin-api (string-append glutin-name "-" glutin-version
+                                               ".tar.gz/src/api/"))
                     (mesa (assoc-ref inputs "mesa")))
-              (substitute* (string-append vendor-dir "/" src-api "glx/mod.rs")
-                (("libGL.so") (string-append mesa "/lib/libGL.so")))
-              (substitute* (string-append vendor-dir "/" src-api "egl/mod.rs")
-                (("libEGL.so") (string-append mesa "/lib/libEGL.so")))
-              #t)))
-         (add-after 'configure 'remove-alacritty-vendor
-           (lambda* (#:key vendor-dir #:allow-other-keys)
-              ;; We don't want Alacritty to be a dependency of itself
-              ;; If we don't delete it from guix-vendor then build will fail
-              ;; because Alacritty has a virtual workspace Cargo.toml.
-              (delete-file-recursively
-                (string-append vendor-dir "/alacritty-" ,version ".tar.xz"))
-              #t))
+               (substitute*
+                   (string-append vendor-dir "/" glutin-api "glx/mod.rs")
+                 (("libGL.so") (string-append mesa "/lib/libGL.so")))
+               (substitute*
+                   (string-append vendor-dir "/" glutin-api "egl/mod.rs")
+                 (("libEGL.so") (string-append mesa "/lib/libEGL.so")))
+               #t)))
          (replace 'install
+           ;; Upstream install script only takes care of executable.
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((out   (assoc-ref outputs "out"))
                     (bin   (string-append out "/bin"))
@@ -1250,31 +1279,19 @@ made by suckless.")
                     (tic   (string-append (assoc-ref inputs "ncurses") "/bin/tic"))
                     (man   (string-append share "/man/man1"))
                     (alacritty-bin "target/release/alacritty"))
-
-               ;; Install and wrap the binary.
+               ;; Install the executable.
                (install-file alacritty-bin bin)
-               (wrap-program (string-append bin "/alacritty")
-                 ;; Both libraries are dlopen()d by cargo dependencies above
-                 ;; when running Alacritty on pure Wayland.
-                 ;; XXX Find out how to patch these at the source.
-                 `("LD_LIBRARY_PATH" ":" prefix
-                   (,(string-append (assoc-ref inputs "libxkbcommon") "/lib:"
-                                    (assoc-ref inputs "wayland") "/lib"))))
-
                ;; Install man pages.
                (mkdir-p man)
                (copy-file "extra/alacritty.man"
                           (string-append man "/alacritty.1"))
-
                ;; Install desktop file.
-               (install-file "extra/linux/alacritty.desktop"
+               (install-file "extra/linux/Alacritty.desktop"
                              (string-append share "/applications"))
-
-               ;; Install icon
+               ;; Install icon.
                (mkdir-p icons)
                (copy-file "extra/logo/alacritty-term.svg"
                           (string-append icons "/Alacritty.svg"))
-
                ;; Install terminfo.
                (mkdir-p (string-append share "/terminfo"))
                ;; We don't compile alacritty-common entry because
@@ -1282,18 +1299,19 @@ made by suckless.")
                (invoke tic "-x" "-e" "alacritty,alacritty-direct"
                        "-o" (string-append share "/terminfo/")
                        "extra/alacritty.info")
-
                ;; Install completions.
-               (install-file
-                 "extra/completions/alacritty.bash"
-                 (string-append out "/etc/bash_completion.d"))
-               (install-file
-                 "extra/completions/_alacritty"
-                 (string-append share "/zsh/site-functions"))
-               (install-file
-                 "extra/completions/alacritty.fish"
-                 (string-append share "/fish/vendor_completions.d"))
+               (install-file "extra/completions/alacritty.bash"
+                             (string-append out "/etc/bash_completion.d"))
+               (install-file "extra/completions/_alacritty"
+                             (string-append share "/zsh/site-functions"))
+               (install-file "extra/completions/alacritty.fish"
+                             (string-append share "/fish/vendor_completions.d"))
                #t))))))
+    (native-inputs
+     `(("cmake" ,cmake)
+       ("ncurses" ,ncurses)
+       ("pkg-config" ,pkg-config)
+       ("python3" ,python)))
     (inputs
      `(("expat" ,expat)
        ("fontconfig" ,fontconfig)
@@ -1307,11 +1325,6 @@ made by suckless.")
        ("libxxf86vm" ,libxxf86vm)
        ("wayland" ,wayland)
        ("mesa" ,mesa)))
-    (native-inputs
-     `(("cmake" ,cmake)
-       ("ncurses" ,ncurses)
-       ("pkg-config" ,pkg-config)
-       ("python3" ,python)))
     (native-search-paths
      ;; FIXME: This should only be located in 'ncurses'.  Nonetheless it is
      ;; provided for usability reasons.  See <https://bugs.gnu.org/22138>.
@@ -1328,3 +1341,39 @@ blazingly fast.  By making sane choices for defaults, Alacritty requires no
 additional setup.  However, it does allow configuration of many aspects of the
 terminal.  Note that you need support for OpenGL 3.2 or higher.")
     (license license:asl2.0)))
+
+(define-public bootterm
+  (package
+    (name "bootterm")
+    (version "0.2")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://github.com/wtarreau/bootterm")
+                     (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "08yb4kiid3028cqsx7wzyrzk46asphxlxlj1y141hi245wbql55n"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; no test suite
+       #:make-flags (list (string-append "CC=" ,(cc-for-target))
+                          (string-append "PREFIX=" (assoc-ref %outputs "out")))
+       #:phases
+       (modify-phases %standard-phases
+         ;; No ./configure script
+         (delete 'configure)
+         (add-after 'install 'install-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (string-append out "/share/doc/" ,name "-" ,version)))
+               (install-file "README.md" doc)
+               #t))))))
+    (home-page "https://github.com/wtarreau/bootterm")
+    (synopsis "Serial terminal")
+    (description "Bootterm is a terminal designed to ease connection to
+ephemeral serial ports.  It features automatic port detection, port enumeration,
+support for non-standard baud rates, the ability to wait for ports to appear,
+and the ability to read and write via stdin and stdout.")
+    (license license:expat)))

@@ -1,17 +1,18 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015, 2016 Alex Kost <alezost@gmail.com>
 ;;; Copyright © 2016 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2017 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2019 Meiyo Peng <meiyo.peng@gmail.com>
-;;; Copyright © 2019 Miguel Ángel Arruga Vivas <rosen644835@gmail.com>
+;;; Copyright © 2019, 2020 Miguel Ángel Arruga Vivas <rosen644835@gmail.com>
 ;;; Copyright © 2020 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2020 Brice Waegeneire <brice@waegenei.re>
 ;;; Copyright © 2020 Florian Pelz <pelzflorian@pelzflorian.de>
 ;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <jannek@gnu.org>
 ;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2021 Maxime Devos <maximedevos@telenet.be>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -112,6 +113,7 @@
             operating-system-store-file-system
             operating-system-user-mapped-devices
             operating-system-boot-mapped-devices
+            operating-system-bootloader-crypto-devices
             operating-system-activation-script
             operating-system-user-accounts
             operating-system-shepherd-service-names
@@ -147,6 +149,7 @@
             boot-parameters-root-device
             boot-parameters-bootloader-name
             boot-parameters-bootloader-menu-entries
+            boot-parameters-store-crypto-devices
             boot-parameters-store-device
             boot-parameters-store-directory-prefix
             boot-parameters-store-mount-point
@@ -305,6 +308,8 @@ directly by the user."
   (store-device     boot-parameters-store-device)
   (store-mount-point boot-parameters-store-mount-point)
   (store-directory-prefix boot-parameters-store-directory-prefix)
+  (store-crypto-devices boot-parameters-store-crypto-devices
+                        (default '()))
   (locale           boot-parameters-locale)
   (kernel           boot-parameters-kernel)
   (kernel-arguments boot-parameters-kernel-arguments)
@@ -338,6 +343,13 @@ file system labels."
            (if (string-prefix? "/" device)
                device
                (file-system-label device))))))
+  (define uuid-sexp->uuid
+    (match-lambda
+      (('uuid (? symbol? type) (? bytevector? bv))
+       (bytevector->uuid bv type))
+      (x
+       (warning (G_ "unrecognized uuid ~a at '~a'~%") x (port-filename port))
+       #f)))
 
   (match (read port)
     (('boot-parameters ('version 0)
@@ -411,6 +423,23 @@ file system labels."
           ;; No store found, old format.
           #f)))
 
+      (store-crypto-devices
+       (match (assq 'store rest)
+         (('store . store-data)
+          (match (assq 'crypto-devices store-data)
+            (('crypto-devices (devices ...))
+             (map uuid-sexp->uuid devices))
+            (('crypto-devices dev)
+             (warning (G_ "unrecognized crypto-devices ~S at '~a'~%")
+                      dev (port-filename port))
+             '())
+            (_
+             ;; No crypto-devices found.
+             '())))
+         (_
+          ;; No store found, old format.
+          '())))
+
       (store-mount-point
        (match (assq 'store rest)
          (('store ('device _) ('mount-point mount-point) _ ...)
@@ -475,9 +504,9 @@ marked as 'needed-for-boot'."
     (let ((device (file-system-device fs)))
       (if (string? device)                        ;title is 'device
           (filter (lambda (md)
-                    (string=? (string-append "/dev/mapper/"
-                                             (mapped-device-target md))
-                              device))
+                    (any (cut string=? device <>)
+                         (map (cut string-append "/dev/mapper" <>)
+                              (mapped-device-targets md))))
                   (operating-system-mapped-devices os))
           '())))
 
@@ -497,11 +526,12 @@ marked as 'needed-for-boot'."
 
 (define (mapped-device-users device file-systems)
   "Return the subset of FILE-SYSTEMS that use DEVICE."
-  (let ((target (string-append "/dev/mapper/" (mapped-device-target device))))
+  (let ((targets (map (cut string-append "/dev/mapper/" <>)
+                      (mapped-device-targets device))))
     (filter (lambda (fs)
               (or (member device (file-system-dependencies fs))
                   (and (string? (file-system-device fs))
-                       (string=? (file-system-device fs) target))))
+                       (any (cut string=? (file-system-device fs) <>) targets))))
             file-systems)))
 
 (define (operating-system-user-mapped-devices os)
@@ -523,6 +553,26 @@ from the initrd."
              (let ((users (mapped-device-users md file-systems)))
                (any file-system-needed-for-boot? users)))
            devices)))
+
+(define (operating-system-bootloader-crypto-devices os)
+  "Return the subset of mapped devices that the bootloader must open.
+Only devices specified by uuid are supported."
+  (define (valid-crypto-device? dev)
+    (or (uuid? dev)
+        (begin
+          (warning (G_ "\
+mapped-device '~a' may not be mounted by the bootloader.~%")
+                   dev)
+          #f)))
+  (filter-map (match-lambda
+                ((and (= mapped-device-type type)
+                      (= mapped-device-source source))
+                 (and (eq? luks-device-mapping type)
+                      (valid-crypto-device? source)
+                      source))
+                (_ #f))
+              ;; XXX: Ordering is important, we trust the returned one.
+              (operating-system-boot-mapped-devices os)))
 
 (define (device-mapping-services os)
   "Return the list of device-mapping services for OS as a list."
@@ -809,8 +859,8 @@ syntactically correct."
                        (copy-file #$file #$output)))))
 
 (define* (operating-system-etc-service os)
-  "Return a <service> that builds containing the static part of the /etc
-directory."
+  "Return a <service> that builds a directory containing the static part of
+the /etc directory."
   (let* ((login.defs
           (plain-file "login.defs"
                       (string-append
@@ -1085,10 +1135,11 @@ we're running in the final root."
 (define (operating-system-shepherd-service-names os)
   "Return the list of Shepherd service names for OS."
   (append-map shepherd-service-provision
-              (service-value
-               (fold-services (operating-system-services os)
-                              #:target-type
-                              shepherd-root-service-type))))
+              (shepherd-configuration-services
+               (service-value
+                (fold-services (operating-system-services os)
+                               #:target-type
+                               shepherd-root-service-type)))))
 
 (define* (operating-system-derivation os)
   "Return a derivation that builds OS."
@@ -1260,6 +1311,7 @@ a list of <menu-entry>, to populate the \"old entries\" menu."
          (root-fs         (operating-system-root-file-system os))
          (root-device     (file-system-device root-fs))
          (locale          (operating-system-locale os))
+         (crypto-devices  (operating-system-bootloader-crypto-devices os))
          (params          (operating-system-boot-parameters
                            os root-device
                            #:system-kernel-arguments? #t))
@@ -1273,6 +1325,7 @@ a list of <menu-entry>, to populate the \"old entries\" menu."
     (generate-config-file bootloader-conf (list entry)
                           #:old-entries old-entries
                           #:locale locale
+                          #:store-crypto-devices crypto-devices
                           #:store-directory-prefix
 			  (btrfs-store-subvolume-file-name file-systems))))
 
@@ -1312,6 +1365,7 @@ such as '--root' and '--load' to <boot-parameters>."
                                (operating-system-initrd-file os)))
          (store           (operating-system-store-file-system os))
          (file-systems    (operating-system-file-systems os))
+         (crypto-devices  (operating-system-bootloader-crypto-devices os))
          (locale          (operating-system-locale os))
          (bootloader      (bootloader-configuration-bootloader
                            (operating-system-bootloader os)))
@@ -1334,6 +1388,7 @@ such as '--root' and '--load' to <boot-parameters>."
      (locale locale)
      (store-device (ensure-not-/dev (file-system-device store)))
      (store-directory-prefix (btrfs-store-subvolume-file-name file-systems))
+     (store-crypto-devices crypto-devices)
      (store-mount-point (file-system-mount-point store)))))
 
 (define (device->sexp device)
@@ -1392,7 +1447,10 @@ being stored into the \"parameters\" file)."
                       (mount-point #$(boot-parameters-store-mount-point
                                       params))
                       (directory-prefix
-                       #$(boot-parameters-store-directory-prefix params))))
+                       #$(boot-parameters-store-directory-prefix params))
+                      (crypto-devices
+                       #$(map device->sexp
+                              (boot-parameters-store-crypto-devices params)))))
                   #:set-load-path? #f)))
 
 (define-gexp-compiler (operating-system-compiler (os <operating-system>)

@@ -373,14 +373,14 @@ freedesktop.org project.")
   ;; Updating this will rebuild over 700 packages through libinput-minimal.
   (package
     (name "libinput")
-    (version "1.15.5")
+    (version "1.16.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://freedesktop.org/software/libinput/"
                                   "libinput-" version ".tar.xz"))
               (sha256
                (base32
-                "15ww4jl3lcxyi8m8idg8canklbqv729gnwpkz7r98c1w8a7zq3m9"))))
+                "1ab0q4iya07kvjd2g1vzamj9h57qldi15h3b8324vg3szr88qggw"))))
     (build-system meson-build-system)
     (arguments
      `(#:configure-flags '("-Ddocumentation=false")
@@ -459,7 +459,7 @@ the freedesktop.org XDG Base Directory specification.")
 (define-public elogind
   (package
     (name "elogind")
-    (version "243.4")
+    (version "243.7")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -468,7 +468,7 @@ the freedesktop.org XDG Base Directory specification.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "141frvgyk4fafcxsix94qc0d9ffrwksld8lqq4hq6xsgjlvv0mrs"))))
+                "1ccj3cbs9nsfg497wg195in1a7b9csm1jdm7z6q7vvx1ynpjxlxz"))))
     (build-system meson-build-system)
     (arguments
      `(#:configure-flags
@@ -506,14 +506,6 @@ the freedesktop.org XDG Base Directory specification.")
              (substitute* "meson.build"
                (("join_paths\\(bindir, 'pkttyagent'\\)")
                 "'\"/run/current-system/profile/bin/pkttyagent\"'"))
-             #t))
-         (add-after 'unpack 'adjust-dbus-socket-address
-           (lambda _
-             ;; Look for the D-Bus socket in /var/run instead of /run.  Remove
-             ;; this for versions > 243.4.
-             (substitute* "src/libelogind/sd-bus/bus-internal.h"
-               (("=/run/dbus/system_bus_socket")
-                "=/var/run/dbus/system_bus_socket"))
              #t))
          (add-after 'unpack 'adjust-tests
            (lambda _
@@ -825,14 +817,14 @@ Python.")
 (define-public wayland
   (package
     (name "wayland")
-    (version "1.17.0")
+    (version "1.18.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://wayland.freedesktop.org/releases/"
                                   name "-" version ".tar.xz"))
               (sha256
                (base32
-                "194ibzwpdcn6fvk4xngr4bf5axpciwg2bj82fdvz88kfmjw13akj"))))
+                "0k995rn96xkplrapz5k648j651wc43kq817xk1x8280h16gsfxa6"))))
     (build-system gnu-build-system)
     (arguments
      `(#:parallel-tests? #f))
@@ -861,7 +853,7 @@ applications, X servers (rootless or fullscreen) or other display servers.")
 (define-public wayland-protocols
   (package
     (name "wayland-protocols")
-    (version "1.18")
+    (version "1.20")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -869,7 +861,7 @@ applications, X servers (rootless or fullscreen) or other display servers.")
                     "wayland-protocols-" version ".tar.xz"))
               (sha256
                (base32
-                "1cvl93h83ymbfhb567jv5gzyq08181w7c46rsw4xqqqpcvkvfwrx"))))
+                "1rsdgvkkvxs3cjhpl6agvbkm53vm7k8rg127j9y2vn33m2hvg0lp"))))
     (build-system gnu-build-system)
     (inputs
      `(("wayland" ,wayland)))
@@ -1488,7 +1480,7 @@ wish to perform colour calibration.")
 (define-public libfprint
   (package
     (name "libfprint")
-    (version "1.90.3")
+    (version "1.90.7")
     (source
      (origin
        (method git-fetch)
@@ -1497,7 +1489,7 @@ wish to perform colour calibration.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1fs0qrfrqnvc6kcsg81l5p89n8jnsx9dr1pzxpb8ghwas8c9v52i"))))
+        (base32 "00pmdpxxjj4sh8qjq9ch3pylgg9w019rg1bbaw53a4wr637rrz43"))))
     (build-system meson-build-system)
     (arguments
      '(#:configure-flags
@@ -1623,7 +1615,7 @@ to applications simultaneously competing for fingerprint readers.")
 (define-public desktop-file-utils
   (package
     (name "desktop-file-utils")
-    (version "0.24")
+    (version "0.26")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://www.freedesktop.org/software/"
@@ -1631,10 +1623,12 @@ to applications simultaneously competing for fingerprint readers.")
                                   "desktop-file-utils-" version ".tar.xz"))
               (sha256
                (base32
-                "1nc3bwjdrpcrkbdmzvhckq0yngbcxspwj2n1r7jr3gmx1jk5vpm1"))))
+                "02bkfi6fyk4c0gh2avd897882ww5zl7qg7bzzf28qb57kvkvsvdj"))))
     (build-system gnu-build-system)
     (native-inputs
-     `(("pkg-config" ,pkg-config)))
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("pkg-config" ,pkg-config)))
     (inputs
      `(("glib" ,glib)))
     (home-page "https://www.freedesktop.org/wiki/Software/desktop-file-utils/")
@@ -2027,14 +2021,15 @@ useful with system integration.")
        ("xvfb" ,xorg-server-for-tests)))
     (inputs
      `(("dbus-glib" ,dbus-glib)
-       ("gtk+" ,gtk+)
-       ("libdbusmenu" ,libdbusmenu)
        ("libindicator" ,libindicator)
        ("python@2" ,python-2)
        ("python2-pygtk" ,python2-pygtk)
        ("python2-pygobject-2" ,python2-pygobject-2)
        ;; ("mono" ,mono) ; requires non-packaged gapi
        ("vala" ,vala)))
+    (propagated-inputs
+     `(("gtk+" ,gtk+)
+       ("libdbusmenu" ,libdbusmenu)))
     (arguments
      ;; FIXME: do not hardcode gtk version
      `(#:configure-flags '("--with-gtk=3")

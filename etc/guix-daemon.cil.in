@@ -131,14 +131,16 @@
          (lnk_file (create rename setattr unlink)))
   (allow guix_daemon_t
          tmp_t
-         (file (link rename create execute execute_no_trans write unlink setattr map relabelto)))
+         (file (link
+                rename create execute execute_no_trans write
+                unlink setattr map relabelto relabelfrom)))
   (allow guix_daemon_t
          tmp_t
          (fifo_file (open read write create getattr ioctl setattr unlink)))
   (allow guix_daemon_t
          tmp_t
          (dir (create rename
-               rmdir relabelto
+               rmdir relabelto relabelfrom reparent
                add_name remove_name
                open read write
                getattr setattr
@@ -165,7 +167,9 @@
          (process (fork execmem setrlimit setpgid setsched)))
   (allow guix_daemon_t
          guix_daemon_exec_t
-         (file (execute execute_no_trans read open entrypoint map)))
+         (file (execute
+                execute_no_trans read write open entrypoint map
+                getattr link unlink)))
 
   ;; TODO: unknown
   (allow guix_daemon_t
@@ -264,6 +268,7 @@
                 link unlink
                 map
                 rename
+                append
                 open read write relabelfrom)))
   (allow guix_daemon_t
          guix_store_content_t
@@ -277,7 +282,7 @@
          (fifo_file (create getattr open read unlink write)))
   (allow guix_daemon_t
          guix_store_content_t
-         (sock_file (create getattr unlink write)))
+         (sock_file (create getattr setattr unlink write)))
 
   ;; Access to configuration files and directories
   (allow guix_daemon_t
@@ -330,7 +335,7 @@
          (dir (add_name write)))
   (allow guix_daemon_t
          self
-         (netlink_route_socket (bind create getattr nlmsg_read read write)))
+         (netlink_route_socket (bind create getattr nlmsg_read read write getopt)))
 
   ;; Socket operations
   (allow guix_daemon_t
@@ -362,7 +367,7 @@
          (tcp_socket (name_bind name_connect accept listen)))
   (allow guix_daemon_t
          self
-         (udp_socket (connect getattr bind getopt setopt)))
+         (udp_socket (connect getattr bind getopt setopt read write)))
   (allow guix_daemon_t
          self
          (fifo_file (write read)))
@@ -372,7 +377,14 @@
   (allow guix_daemon_t
          self
          (unix_stream_socket (connectto)))
+  (allow guix_daemon_t
+         self
+         (unix_dgram_socket (create bind connect sendto read write)))
 
+  ;; For some esoteric build jobs (i.e. running PostgreSQL, etc).
+  (allow guix_daemon_t
+         self
+         (capability (kill)))
   (allow guix_daemon_t
          node_t
          (tcp_socket (node_bind)))
@@ -382,6 +394,21 @@
   (allow guix_daemon_t
          port_t
          (tcp_socket (name_connect)))
+  (allow guix_daemon_t
+         tmpfs_t
+         (file (map read write link getattr)))
+  (allow guix_daemon_t
+         usermodehelper_t
+         (file (read)))
+  (allow guix_daemon_t
+         hugetlbfs_t
+         (file (map read write)))
+  (allow guix_daemon_t
+         proc_net_t
+         (file (read)))
+  (allow guix_daemon_t
+         postgresql_port_t
+         (tcp_socket (name_connect name_bind)))
   (allow guix_daemon_t
          rtp_media_port_t
          (udp_socket (name_bind)))

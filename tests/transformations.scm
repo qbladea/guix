@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2016, 2017, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2016, 2017, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -26,9 +26,11 @@
   #:use-module (guix build-system)
   #:use-module (guix build-system gnu)
   #:use-module (guix transformations)
+  #:use-module ((guix gexp) #:select (local-file? local-file-file))
   #:use-module (guix ui)
   #:use-module (guix utils)
   #:use-module (guix git)
+  #:use-module (guix upstream)
   #:use-module (gnu packages)
   #:use-module (gnu packages base)
   #:use-module (gnu packages busybox)
@@ -368,10 +370,48 @@
     (let ((new (t p)))
       (match (bag-direct-inputs (package->bag new))
         ((("dep" dep) ("tar" tar) _ ...)
-         ;; TODO: Check whether TAR has #:tests? #f when transformations
-         ;; apply to implicit inputs.
-         (equal? (package-arguments dep)
-                 '(#:tests? #f)))))))
+         (and (equal? (package-arguments dep) '(#:tests? #f))
+              (match (memq #:tests? (package-arguments tar))
+                ((#:tests? #f _ ...) #t))))))))
+
+(test-equal "options->transformation, with-patch"
+  (search-patches "glibc-locales.patch" "guile-relocatable.patch")
+  (let* ((dep    (dummy-package "dep"
+                   (source (dummy-origin))))
+         (p      (dummy-package "foo"
+                   (inputs `(("dep" ,dep)))))
+         (patch1 (search-patch "glibc-locales.patch"))
+         (patch2 (search-patch "guile-relocatable.patch"))
+         (t      (options->transformation
+                  `((with-patch . ,(string-append "dep=" patch1))
+                    (with-patch . ,(string-append "dep=" patch2))
+                    (with-patch . ,(string-append "tar=" patch1))))))
+    (let ((new (t p)))
+      (match (bag-direct-inputs (package->bag new))
+        ((("dep" dep) ("tar" tar) _ ...)
+         (and (member patch1
+                      (filter-map (lambda (patch)
+                                    (and (local-file? patch)
+                                         (local-file-file patch)))
+                                  (origin-patches (package-source tar))))
+              (map local-file-file
+                   (origin-patches (package-source dep)))))))))
+
+(test-equal "options->transformation, with-latest"
+  "42.0"
+  (mock ((guix upstream) %updaters
+         (delay (list (upstream-updater
+                       (name 'dummy)
+                       (pred (const #t))
+                       (description "")
+                       (latest (const (upstream-source
+                                       (package "foo")
+                                       (version "42.0")
+                                       (urls '("http://example.org")))))))))
+        (let* ((p (dummy-package "foo" (version "1.0")))
+               (t (options->transformation
+                   `((with-latest . "foo")))))
+          (package-version (t p)))))
 
 (test-end)
 

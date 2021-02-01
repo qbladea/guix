@@ -53,7 +53,7 @@
 (define-public libusb
   (package
     (name "libusb")
-    (version "1.0.23")
+    (version "1.0.24")
     (source
      (origin
       (method url-fetch)
@@ -61,7 +61,7 @@
                           "releases/download/v" version
                           "/libusb-" version ".tar.bz2"))
       (sha256
-       (base32 "13dd2a9x290d1q8nb1lqiaf36grcvns5ripk5k2xm0lajmpc04fv"))))
+       (base32 "0amilbi5qncdnrds3ji21vbiz1wvdm1fwp5qrxnk49xkyy2jdzby"))))
     (build-system gnu-build-system)
 
     ;; XXX: Enabling udev is now recommended, but eudev indirectly depends on
@@ -564,7 +564,7 @@ devices.")
 (define-public hidapi
   (package
     (name "hidapi")
-    (version "0.9.0")
+    (version "0.10.1")
     (source
      (origin
        (method git-fetch)
@@ -573,7 +573,7 @@ devices.")
              (commit (string-append "hidapi-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1p4g8lgwj4rki6lbn5l6rvwj0xlbn1xfh4d255bg5pvgczmwmc4i"))))
+        (base32 "1nr4z4b10vpbh3ss525r7spz4i43zim2ba5qzfl15dgdxshxxivb"))))
     (build-system gnu-build-system)
     (inputs
      `(("libusb" ,libusb)

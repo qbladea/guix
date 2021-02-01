@@ -4,7 +4,7 @@
 ;;; Copyright © 2016 Mike Gerwitz <mtg@gnu.org>
 ;;; Copyright © 2016 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2017 Thomas Danckaert <post@thomasdanckaert.be>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017, 2019 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2018, 2019 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2018 Arun Isaac <arunisaac@systemreboot.net>
@@ -87,11 +87,11 @@
                (("/bin/echo") (which "echo")))
              #t)))))
     (native-inputs
-     `(("pcsc-lite" ,pcsc-lite)         ; only required for headers
-       ("perl" ,perl)
+     `(("perl" ,perl)
        ("pkg-config" ,pkg-config)))
     (inputs
-     `(("libusb" ,libusb)))
+     `(("libusb" ,libusb)
+       ("pcsc-lite" ,pcsc-lite)))
     (home-page "https://ccid.apdu.fr/")
     (synopsis "PC/SC driver for USB smart card devices")
     (description
@@ -104,7 +104,7 @@ readers and is needed to communicate with such devices through the
 (define-public eid-mw
   (package
     (name "eid-mw")
-    (version "5.0.8")
+    (version "5.0.11")
     (source
      (origin
        (method git-fetch)
@@ -113,7 +113,7 @@ readers and is needed to communicate with such devices through the
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1ckini00iz9w96n9hpkx6w2ivpfkd4yyxyhnmsl9n0k8x4j6jg5a"))))
+        (base32 "0590cz00cny749p99srv880gpgzvxaf9fwm2lghv3nw0qdsilss8"))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
      `(("autoconf" ,autoconf)
@@ -134,7 +134,9 @@ readers and is needed to communicate with such devices through the
        ("libxml2" ,libxml2)
        ("cyrus-sasl" ,cyrus-sasl)))
     (arguments
-     `(#:phases
+     `(#:configure-flags
+       (list "--disable-static")
+       #:phases
        (modify-phases %standard-phases
          (replace 'bootstrap
            (lambda _
@@ -216,14 +218,14 @@ with a PKCS #11 Cryptographic Token Interface.")
 (define-public pcsc-lite
   (package
     (name "pcsc-lite")
-    (version "1.8.26")
+    (version "1.9.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://pcsclite.apdu.fr/files/"
                                   "pcsc-lite-" version ".tar.bz2"))
               (sha256
                (base32
-                "1ndvvz0fgqwz70pijymsxmx25mzryb0zav1i8jjc067ndryvxdry"))))
+                "1y9f9zipnrmgiw0mxrvcgky8vfrcmg6zh40gbln5a93i2c1x8j01"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags '("--enable-usbdropdir=/var/lib/pcsc/drivers"
@@ -275,7 +277,7 @@ website for more information about Yubico and the YubiKey.")
 (define-public opensc
   (package
     (name "opensc")
-    (version "0.20.0")
+    (version "0.21.0")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -283,7 +285,7 @@ website for more information about Yubico and the YubiKey.")
                     version "/opensc-" version ".tar.gz"))
               (sha256
                (base32
-                "0qs8pabkrpj1z52bkdsk59s2z6q5m0hfh9d5j1f68qs4lksb9x5v"))))
+                "0pijycjwpll9zn83dazgsh8n9ywq0z1ragjsd1sqv3abrcfvpyrb"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases

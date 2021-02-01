@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2017 Ryan Moe <ryan.moe@gmail.com>
 ;;; Copyright © 2018, 2020 Ludovic Courtès <ludo@gnu.org>
-;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2020,2021 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -36,7 +36,6 @@
   #:use-module (gnu system file-systems)
   #:use-module (gnu system hurd)
   #:use-module (gnu system image)
-  #:use-module (gnu system images hurd)
   #:use-module (gnu system shadow)
   #:use-module (gnu system)
   #:use-module (guix derivations)
@@ -718,7 +717,7 @@ potential infinite waits blocking libvirt."))
   (platforms   qemu-binfmt-configuration-platforms
                (default '()))                     ;safest default
   (guix-support? qemu-binfmt-configuration-guix-support?
-                 (default #f)))
+                 (default #t)))
 
 (define (qemu-platform->binfmt qemu platform)
   "Return a gexp that evaluates to a binfmt string for PLATFORM, using the
@@ -913,14 +912,14 @@ that will be listening to receive secret keys on port 1004, TCP."
 (define (hurd-vm-disk-image config)
   "Return a disk-image for the Hurd according to CONFIG.  The secret-service
 is added to the OS specified in CONFIG."
-  (let ((os (secret-service-operating-system (hurd-vm-configuration-os config)))
-        (disk-size (hurd-vm-configuration-disk-size config)))
+  (let* ((os        (secret-service-operating-system
+                     (hurd-vm-configuration-os config)))
+         (disk-size (hurd-vm-configuration-disk-size config))
+         (type      (lookup-image-type-by-name 'hurd-qcow2))
+         (os->image (image-type-constructor type)))
     (system-image
-     (image
-      (inherit hurd-disk-image)
-      (format 'compressed-qcow2)
-      (size disk-size)
-      (operating-system os)))))
+     (image (inherit (os->image os))
+            (size disk-size)))))
 
 (define (hurd-vm-port config base)
   "Return the forwarded vm port for this childhurd config."

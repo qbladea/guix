@@ -6,7 +6,7 @@
 ;;; Copyright © 2017 Alex Vong <alexvong1995@gmail.com>
 ;;; Copyright © 2017 Andy Patterson <ajpatter@uwaterloo.ca>
 ;;; Copyright © 2017, 2018, 2019 Rutger Helling <rhelling@mykolab.com>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 Danny Milosavljevic <dannym@scratchpost.org>
 ;;; Copyright © 2018 Sou Bunnbu <iyzsong@member.fsf.org>
 ;;; Copyright © 2018 Julien Lepiller <julien@lepiller.eu>
@@ -16,6 +16,7 @@
 ;;; Copyright © 2020 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
+;;; Copyright © 2020 Brett Gilio <brettg@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -86,6 +87,8 @@
   #:use-module (gnu packages polkit)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
+  #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-crypto)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
@@ -135,13 +138,28 @@
               (method url-fetch)
               (uri (string-append "https://download.qemu.org/qemu-"
                                   version ".tar.xz"))
-              (sha256
-               (base32
-                "1rd41wwlvp0vpialjp2czs6i3lsc338xc72l3zkbb7ixjfslw5y9"))
-              (patches (search-patches "qemu-build-info-manual.patch"))))
-    (outputs '("out" "doc"))            ;4.7 MiB of HTML docs
-    (build-system gnu-build-system)
-    (arguments
+               (sha256
+                (base32
+                 "1rd41wwlvp0vpialjp2czs6i3lsc338xc72l3zkbb7ixjfslw5y9"))
+              (patches (search-patches "qemu-build-info-manual.patch"))
+              (modules '((guix build utils)))
+              (snippet
+               '(begin
+                  ;; Fix a bug in the do_ioctl_ifconf() function of qemu to
+                  ;; make ioctl(…, SIOCGIFCONF, …) work for emulated 64 bit
+                  ;; architectures.  The size of struct ifreq is handled
+                  ;; incorrectly.
+                  ;; https://lists.nongnu.org/archive/html/qemu-devel/2021-01/msg01545.html
+                  (substitute* '("linux-user/syscall.c")
+                    (("^([[:blank:]]*)const argtype ifreq_arg_type.*$" line indent)
+                     (string-append line indent
+                                    "const argtype ifreq_max_type[] = { MK_STRUCT(STRUCT_ifmap_ifreq) };\n"))
+                    (("^([[:blank:]]*)target_ifreq_size[[:blank:]]=.*$" _ indent)
+                     (string-append indent "target_ifreq_size = thunk_type_size(ifreq_max_type, 0);")))
+                  #t))))
+     (outputs '("out" "doc"))            ;4.7 MiB of HTML docs
+     (build-system gnu-build-system)
+     (arguments
      `(;; FIXME: Disable tests on i686 to work around
        ;; <https://bugs.gnu.org/40527>.
        #:tests? ,(or (%current-target-system)
@@ -333,34 +351,34 @@ server and embedded PowerPC, and S390 guests.")
      (substitute-keyword-arguments (package-arguments qemu)
        ((#:configure-flags _ '(list))
         ;; Restrict to the host's architecture.
-        (match (car (string-split (or (%current-target-system)
-                                      (%current-system))
-                                  #\-))
-          ("i686"
-           '(list "--target-list=i386-softmmu"))
-          ("x86_64"
-           '(list "--target-list=i386-softmmu,x86_64-softmmu"))
-          ("mips64"
-           '(list (string-append "--target-list=mips-softmmu,mipsel-softmmu,"
-                                 "mips64-softmmu,mips64el-softmmu")))
-          ("mips"
-           '(list "--target-list=mips-softmmu,mipsel-softmmu"))
-          ("aarch64"
-           '(list "--target-list=arm-softmmu,aarch64-softmmu"))
-          ("arm"
-           '(list "--target-list=arm-softmmu"))
-          ("alpha"
-           '(list "--target-list=alpha-softmmu"))
-          ("powerpc64"
-           '(list "--target-list=ppc-softmmu,ppc64-softmmu"))
-          ("powerpc"
-           '(list "--target-list=ppc-softmmu"))
-          ("s390"
-           '(list "--target-list=s390x-softmmu"))
-          ("riscv"
-           '(list "--target-list=riscv32-softmmu,riscv64-softmmu"))
-          (else   ; An empty list actually builds all the targets.
-            ''())))))
+        (let ((system (or (%current-target-system)
+                          (%current-system))))
+          (cond
+            ((string-prefix? "i686" system)
+             '(list "--target-list=i386-softmmu"))
+            ((string-prefix? "xasdf86_64" system)
+             '(list "--target-list=i386-softmmu,x86_64-softmmu"))
+            ((string-prefix? "mips64" system)
+             '(list (string-append "--target-list=mips-softmmu,mipsel-softmmu,"
+                                   "mips64-softmmu,mips64el-softmmu")))
+            ((string-prefix? "mips" system)
+             '(list "--target-list=mips-softmmu,mipsel-softmmu"))
+            ((string-prefix? "aarch64" system)
+             '(list "--target-list=arm-softmmu,aarch64-softmmu"))
+            ((string-prefix? "arm" system)
+             '(list "--target-list=arm-softmmu"))
+            ((string-prefix? "alpha" system)
+             '(list "--target-list=alpha-softmmu"))
+            ((string-prefix? "powerpc64" system)
+             '(list "--target-list=ppc-softmmu,ppc64-softmmu"))
+            ((string-prefix? "powerpc" system)
+             '(list "--target-list=ppc-softmmu"))
+            ((string-prefix? "s390" system)
+             '(list "--target-list=s390x-softmmu"))
+            ((string-prefix? "riscv" system)
+             '(list "--target-list=riscv32-softmmu,riscv64-softmmu"))
+            (else   ; An empty list actually builds all the targets.
+              ''()))))))
 
     ;; Remove dependencies on optional libraries, notably GUI libraries.
     (native-inputs (fold alist-delete (package-native-inputs qemu)
@@ -950,7 +968,7 @@ all common programming languages.  Vala bindings are also provided.")
 (define-public lxc
   (package
     (name "lxc")
-    (version "3.1.0")
+    (version "4.0.6")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -958,7 +976,7 @@ all common programming languages.  Vala bindings are also provided.")
                     version ".tar.gz"))
               (sha256
                (base32
-                "1igxqgx8q9cp15mcp1y8j564bl85ijw04jcmgb1s5bmfbg1751sd"))))
+                "0qz4l7mlhq7hx53q606qgvkyzyr01glsw290v8ppzvxn1fydlrci"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("pkg-config" ,pkg-config)))
@@ -1602,7 +1620,7 @@ Open Container Initiative (OCI) image layout and its tagged images.")
 (define-public skopeo
   (package
     (name "skopeo")
-    (version "1.2.0")
+    (version "1.2.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1611,7 +1629,7 @@ Open Container Initiative (OCI) image layout and its tagged images.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1v7k3ki10i6082r7zswblyirx6zck674y6bw3plssw4p1l2611rd"))))
+                "1y9pmijazbgxzriymrm7zrifmkd1x1wad9b3zjcj7zwr6c999dhg"))))
     (build-system go-build-system)
     (native-inputs
      `(("pkg-config" ,pkg-config)
@@ -1778,7 +1796,7 @@ DOS or Microsoft Windows.")
 (define-public xen
   (package
     (name "xen")
-    (version "4.14.0")
+    (version "4.14.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1787,7 +1805,7 @@ DOS or Microsoft Windows.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1s06zhzmkm7wylrxhas5v0sg2ackmmyw01gvv67r9idml55i0dh5"))))
+                "1r90rvypw76ya9clqw5p02gm1k8hxz73f7gr95ca778nnzvb7xjw"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -2015,14 +2033,14 @@ administrators and developers in managing the database.")
 (define-public osinfo-db
   (package
     (name "osinfo-db")
-    (version "20201011")
+    (version "20201218")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://releases.pagure.org/libosinfo/osinfo-db-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "1zzx5gsqgzg2zki6h8vl0h7kpcrk5i2s1qhz7gcb18s7g99px8aj"))))
+                "0ydbindwgw7kg861rqii5036gq0dbbbmv35dzrmmv937ddfsxwh0"))))
     (build-system trivial-build-system)
     (arguments
      `(#:modules ((guix build utils))
@@ -2047,3 +2065,48 @@ administrators and developers in managing the database.")
 libosinfo library.  It provides information about guest operating systems for
 use with virtualization provisioning tools")
     (license license:lgpl2.0+)))
+
+(define-public python-transient
+  (package
+    (name "python-transient")
+    (version "0.12")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "transient" version))
+       (sha256
+        (base32
+         "148yiqrmcscsi6787y0f27i1y9cf0gcw3mqfv5frhpmsmv62mv5z"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f ; Requires behave
+       #:phases (modify-phases %standard-phases
+                  (add-after 'unpack 'fix-dependencies
+                    (lambda _
+                      (substitute* "setup.py"
+                        (("==")
+                         ">="))
+                      #t)))))
+    (propagated-inputs
+     `(("python-beautifultable" ,python-beautifultable)
+       ("python-click" ,python-click)
+       ("python-importlib-resources"
+        ,python-importlib-resources)
+       ("python-lark-parser" ,python-lark-parser)
+       ("python-marshmallow" ,python-marshmallow)
+       ("python-progressbar2" ,python-progressbar2)
+       ("python-requests" ,python-requests)
+       ("python-toml" ,python-toml)))
+    (native-inputs
+     `(("python-black" ,python-black)
+       ("python-mypy" ,python-mypy)
+       ("python-pyhamcrest" ,python-pyhamcrest)
+       ("python-twine" ,python-twine)))
+    (home-page
+     "https://github.com/ALSchwalm/transient")
+    (synopsis
+     "QEMU Wrapper written in Python")
+    (description
+     "@code{transient} is a wrapper for QEMU allowing the creation of virtual
+machines with shared folder, ssh, and disk creation support.")
+    (license license:expat)))

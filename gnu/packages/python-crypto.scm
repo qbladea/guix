@@ -16,7 +16,7 @@
 ;;; Copyright © 2016, 2017, 2020 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2017 Carlo Zancanaro <carlo@zancanaro.id.au>
 ;;; Copyright © 2018 Tomáš Čech <sleep_walker@gnu.org>
-;;; Copyright © 2018 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2018, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2018 Vagrant Cascadian <vagrant@debian.org>
 ;;; Copyright © 2018 Nam Nguyen <namn@berkeley.edu>
 ;;; Copyright © 2019 Guillaume Le Vaillant <glv@posteo.net>
@@ -54,6 +54,7 @@
   #:use-module (gnu packages password-utils)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-compression)
   #:use-module (gnu packages python-web)
@@ -476,13 +477,13 @@ risk.")
 (define-public python-certifi
   (package
     (name "python-certifi")
-    (version "2020.4.5.1")
+    (version "2020.11.8")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "certifi" version))
               (sha256
                (base32
-                "06b5gfs7wmmipln8f3z928d2mmx2j4b3x7pnqmj6cvmyfh8v7z2i"))))
+                "1x4w18gm71dbwys5g2mbcnbw27b3dvphj5d56icg5ys45h4yypgh"))))
     (build-system python-build-system)
     (arguments '(#:tests? #f))          ;no tests
     (home-page "https://certifi.io/")
@@ -498,14 +499,14 @@ is used by the Requests library to verify HTTPS requests.")
 (define-public python-cryptography-vectors
   (package
     (name "python-cryptography-vectors")
-    (version "2.9.2")
+    (version "3.1.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "cryptography_vectors" version))
        (sha256
         (base32
-         "1d4iykcv7cn9j399hczlxm5pzxmqy6d80h3j16dkjwlmv3293b4r"))))
+         "1xp2j79c1y8qj4b97ygx451gzp8l4cp830hnvg3zw8j134bcaaam"))))
     (build-system python-build-system)
     (home-page "https://github.com/pyca/cryptography")
     (synopsis "Test vectors for the cryptography package")
@@ -520,14 +521,14 @@ is used by the Requests library to verify HTTPS requests.")
 (define-public python-cryptography
   (package
     (name "python-cryptography")
-    (version "2.9.2")
+    (version "3.1.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "cryptography" version))
        (sha256
         (base32
-         "0af25w5mkd6vwns3r6ai1w5ip9xp0ms9s261zzssbpadzdr05hx0"))))
+         "0z81q4d1nangw3r0v5f41mfl4d9r04qnbayl5ll5v5jpcfhwd7wx"))))
     (build-system python-build-system)
     (inputs
      `(("openssl" ,openssl)))
@@ -742,18 +743,23 @@ ECB and OFB).")
 (define-public python-asn1crypto
   (package
     (name "python-asn1crypto")
-    (version "0.24.0")
+    (version "1.4.0")
     (source
-      (origin
+     (origin
        (method git-fetch)
        (uri (git-reference
-              (url "https://github.com/wbond/asn1crypto")
-              (commit version)))
-        (file-name (git-file-name name version))
-        (sha256
-         (base32
-          "10lai2cs5mnz3gpaffbw1m7b885ls8328q5wxm35vfmcip1f0xmb"))))
+             (url "https://github.com/wbond/asn1crypto")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "19abibn6jw20mzi1ln4n9jjvpdka8ygm4m439hplyrdfqbvgm01r"))))
     (build-system python-build-system)
+    (arguments
+     '(#:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda _
+                      (invoke "python" "run.py" "tests"))))))
     (home-page "https://github.com/wbond/asn1crypto")
     (synopsis "ASN.1 parser and serializer in Python")
     (description "asn1crypto is an ASN.1 parser and serializer with definitions
@@ -1207,14 +1213,14 @@ none of them have everything that I'd like, so here's one more.  It uses
 (define-public python-libnacl
   (package
     (name "python-libnacl")
-    (version "1.6.1")
+    (version "1.7.2")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "libnacl" version))
        (sha256
         (base32
-         "0nv7n8nfswkhl614x5mllrkvaslraa0053q11iylb337cy43vb4v"))))
+         "0srx7i264v4dq9and8y6gpzzhrg8jpxs5iy9ggw4plimfj0rjfdm"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -1222,11 +1228,10 @@ none of them have everything that I'd like, so here's one more.  It uses
          (add-after 'unpack 'locate-libsodium
            (lambda* (#:key inputs #:allow-other-keys)
              (substitute* "libnacl/__init__.py"
-               (("(return ctypes.cdll.LoadLibrary\\(')libsodium.so('\\))"
-                 _ pre post)
-                (let ((libsodium (string-append (assoc-ref inputs "libsodium")
-                                                "/lib/libsodium.so")))
-                  (string-append pre libsodium post)))))))))
+               (("/usr/local/lib/libsodium.so")
+                (string-append (assoc-ref inputs "libsodium")
+                               "/lib/libsodium.so")))
+             #t)))))
     (native-inputs
      `(("python-pyhamcrest" ,python-pyhamcrest)))
     (inputs

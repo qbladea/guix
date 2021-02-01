@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2020 Mathieu Othacehe <othacehe@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -19,9 +19,13 @@
 
 (define-module (guix ci)
   #:use-module (guix http-client)
+  #:use-module (guix utils)
   #:use-module (json)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match)
+  #:use-module (guix i18n)
+  #:use-module (guix diagnostics)
+  #:autoload   (guix channels) (channel)
   #:export (build-product?
             build-product-id
             build-product-type
@@ -31,6 +35,7 @@
             build?
             build-id
             build-derivation
+            build-evaluation
             build-system
             build-status
             build-timestamp
@@ -49,8 +54,11 @@
             %query-limit
             queued-builds
             latest-builds
+            evaluation
             latest-evaluations
-            evaluations-for-commit))
+            evaluations-for-commit
+
+            channel-with-substitutes-available))
 
 ;;; Commentary:
 ;;;
@@ -71,6 +79,7 @@
   json->build
   (id          build-id "id")                     ;integer
   (derivation  build-derivation)                  ;string | #f
+  (evaluation  build-evaluation)                  ;integer
   (system      build-system)                      ;string
   (status      build-status "buildstatus" )       ;integer
   (timestamp   build-timestamp)                   ;integer
@@ -138,6 +147,13 @@ string such as \"x86_64-linux\"), restrict to builds for SYSTEM."
     ;; 'latestbuilds', but Cuirass does.
     (map json->build (vector->list latest))))
 
+(define (evaluation url evaluation)
+  "Return the given EVALUATION performed by the CI server at URL."
+  (let ((evaluation (json-fetch
+                     (string-append url "/api/evaluation?id="
+                                    (number->string evaluation)))))
+    (json->evaluation evaluation)))
+
 (define* (latest-evaluations url #:optional (limit %query-limit))
   "Return the latest evaluations performed by the CI server at URL."
   (map json->evaluation
@@ -155,3 +171,35 @@ as one of their inputs."
                     (string=? (checkout-commit checkout) commit))
                   (evaluation-checkouts evaluation)))
           (latest-evaluations url limit)))
+
+(define (find-latest-commit-with-substitutes url)
+  "Return the latest commit with available substitutes for the Guix package
+definitions at URL.  Return false if no commit were found."
+  (let* ((job-name (string-append "guix." (%current-system)))
+         (build (match (latest-builds url 1
+                                      #:job job-name
+                                      #:status 0) ;success
+                  ((build) build)
+                  (_ #f)))
+         (evaluation (and build
+                          (evaluation url (build-evaluation build))))
+         (commit (and evaluation
+                      (match (evaluation-checkouts evaluation)
+                        ((checkout)
+                         (checkout-commit checkout))))))
+    commit))
+
+(define (channel-with-substitutes-available chan url)
+  "Return a channel inheriting from CHAN but which commit field is set to the
+latest commit with available substitutes for the Guix package definitions at
+URL.  The current system is taken into account.
+
+If no commit with available substitutes were found, the commit field is set to
+false and a warning message is printed."
+  (let ((commit (find-latest-commit-with-substitutes url)))
+    (unless commit
+      (warning (G_ "could not find available substitutes at ~a~%")
+               url))
+    (channel
+     (inherit chan)
+     (commit commit))))

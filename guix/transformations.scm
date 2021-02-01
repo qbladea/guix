@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2016, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -25,6 +25,9 @@
   #:autoload   (guix download) (download-to-store)
   #:autoload   (guix git-download) (git-reference? git-reference-url)
   #:autoload   (guix git) (git-checkout git-checkout? git-checkout-url)
+  #:autoload   (guix upstream) (package-latest-release*
+                                upstream-source-version
+                                upstream-source-signature-urls)
   #:use-module (guix utils)
   #:use-module (guix memoization)
   #:use-module (guix gexp)
@@ -41,6 +44,7 @@
   #:use-module (srfi srfi-34)
   #:use-module (srfi srfi-37)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 vlist)
   #:export (options->transformation
             manifest-entry-with-transformations
 
@@ -456,6 +460,96 @@ to the same package but with #:strip-binaries? #f in its 'arguments' field."
         (rewrite obj)
         obj)))
 
+(define (transform-package-patches specs)
+  "Return a procedure that, when passed a package, returns a package with
+additional patches."
+  (define (package-with-extra-patches p patches)
+    (if (origin? (package-source p))
+        (package/inherit p
+          (source (origin
+                    (inherit (package-source p))
+                    (patches (append (map (lambda (file)
+                                            (local-file file))
+                                          patches)
+                                     (origin-patches (package-source p)))))))
+        p))
+
+  (define (coalesce-alist alist)
+    ;; Coalesce multiple occurrences of the same key in ALIST.
+    (let loop ((alist alist)
+               (keys '())
+               (mapping vlist-null))
+      (match alist
+        (()
+         (map (lambda (key)
+                (cons key (vhash-fold* cons '() key mapping)))
+              (delete-duplicates (reverse keys))))
+        (((key . value) . rest)
+         (loop rest
+               (cons key keys)
+               (vhash-cons key value mapping))))))
+
+  (define patches
+    ;; Spec/patch alist.
+    (coalesce-alist
+     (map (lambda (spec)
+            (match (string-tokenize spec %not-equal)
+              ((spec patch)
+               (cons spec (canonicalize-path patch)))
+              (_
+               (raise (formatted-message
+                       (G_ "~a: invalid package patch specification")
+                       spec)))))
+          specs)))
+
+  (define rewrite
+    (package-input-rewriting/spec
+     (map (match-lambda
+            ((spec . patches)
+             (cons spec (cut package-with-extra-patches <> patches))))
+          patches)))
+
+  (lambda (obj)
+    (if (package? obj)
+        (rewrite obj)
+        obj)))
+
+(define (transform-package-latest specs)
+  "Return a procedure that rewrites package graphs such that those in SPECS
+are replaced by their latest upstream version."
+  (define (package-with-latest-upstream p)
+    (let ((source (package-latest-release* p)))
+      (cond ((not source)
+             (warning
+              (G_ "could not determine latest upstream release of '~a'~%")
+              (package-name p))
+             p)
+            ((string=? (upstream-source-version source)
+                       (package-version p))
+             p)
+            (else
+             (unless (pair? (upstream-source-signature-urls source))
+               (warning (G_ "cannot authenticate source of '~a', version ~a~%")
+                        (package-name p)
+                        (upstream-source-version source)))
+
+             ;; TODO: Take 'upstream-source-input-changes' into account.
+             (package
+               (inherit p)
+               (version (upstream-source-version source))
+               (source source))))))
+
+  (define rewrite
+    (package-input-rewriting/spec
+     (map (lambda (spec)
+            (cons spec package-with-latest-upstream))
+          specs)))
+
+  (lambda (obj)
+    (if (package? obj)
+        (rewrite obj)
+        obj)))
+
 (define %transformations
   ;; Transformations that can be applied to things to build.  The car is the
   ;; key used in the option alist, and the cdr is the transformation
@@ -469,7 +563,9 @@ to the same package but with #:strip-binaries? #f in its 'arguments' field."
     (with-git-url . ,transform-package-source-git-url)
     (with-c-toolchain . ,transform-package-toolchain)
     (with-debug-info . ,transform-package-with-debug-info)
-    (without-tests . ,transform-package-tests)))
+    (without-tests . ,transform-package-tests)
+    (with-patch  . ,transform-package-patches)
+    (with-latest . ,transform-package-latest)))
 
 (define (transformation-procedure key)
   "Return the transformation procedure associated with KEY, a symbol such as
@@ -508,9 +604,21 @@ to the same package but with #:strip-binaries? #f in its 'arguments' field."
           (option '("with-debug-info") #t #f
                   (parser 'with-debug-info))
           (option '("without-tests") #t #f
-                  (parser 'without-tests)))))
+                  (parser 'without-tests))
+          (option '("with-patch") #t #f
+                  (parser 'with-patch))
+          (option '("with-latest") #t #f
+                  (parser 'with-latest))
 
-(define (show-transformation-options-help)
+          (option '("help-transform") #f #f
+                  (lambda _
+                    (format #t
+                            (G_ "Available package transformation options:~%"))
+                    (show-transformation-options-help/detailed)
+                    (newline)
+                    (exit 0))))))
+
+(define (show-transformation-options-help/detailed)
   (display (G_ "
       --with-source=[PACKAGE=]SOURCE
                          use SOURCE when building the corresponding package"))
@@ -530,6 +638,12 @@ to the same package but with #:strip-binaries? #f in its 'arguments' field."
       --with-git-url=PACKAGE=URL
                          build PACKAGE from the repository at URL"))
   (display (G_ "
+      --with-patch=PACKAGE=FILE
+                         add FILE to the list of patches of PACKAGE"))
+  (display (G_ "
+      --with-latest=PACKAGE
+                         use the latest upstream release of PACKAGE"))
+  (display (G_ "
       --with-c-toolchain=PACKAGE=TOOLCHAIN
                          build PACKAGE and its dependents with TOOLCHAIN"))
   (display (G_ "
@@ -539,6 +653,10 @@ to the same package but with #:strip-binaries? #f in its 'arguments' field."
       --without-tests=PACKAGE
                          build PACKAGE without running its tests")))
 
+(define (show-transformation-options-help)
+  "Show basic help for package transformation options."
+  (display (G_ "
+      --help-transform   list package transformation options not shown here")))
 
 (define (options->transformation opts)
   "Return a procedure that, when passed an object to build (package,

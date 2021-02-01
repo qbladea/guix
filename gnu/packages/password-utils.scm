@@ -9,7 +9,7 @@
 ;;; Copyright © 2016, 2019, 2020 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2017 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2017, 2018 Clément Lassieur <clement@lassieur.org>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017 Jelle Licht <jlicht@fsfe.org>
 ;;; Copyright © 2017, 2019 Eric Bavier <bavier@member.fsf.org>
 ;;; Copyright © 2017, 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
@@ -123,7 +123,7 @@ human.")
 (define-public keepassxc
   (package
     (name "keepassxc")
-    (version "2.6.2")
+    (version "2.6.3")
     (source
      (origin
        (method url-fetch)
@@ -131,7 +131,7 @@ human.")
                            "/releases/download/" version "/keepassxc-"
                            version "-src.tar.xz"))
        (sha256
-        (base32 "0f3ygnjzjijqmmrvrslwsbnz208jgxp5bwy4p336w3bn1bggl6qh"))))
+        (base32 "1lgp20597dzj8qn8a71x3a6b549rvqybqx4haywwb09qiznvdq77"))))
     (build-system cmake-build-system)
     (arguments
      '(#:configure-flags '("-DWITH_XC_ALL=YES"
@@ -307,15 +307,19 @@ applications, there is xclip integration." )
 (define-public yapet
   (package
     (name "yapet")
-    (version "2.4")
+    (version "2.5")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://yapet.guengel.ch/downloads/yapet-"
                            version ".tar.xz"))
        (sha256
-        (base32 "0b1v0whf70dfjzlwqwwvfv526s828skjvm4xvwly3vcvcmpz59sh"))))
+        (base32 "0hpibsdry259cmvps35isr6jn9cd9fsk3r1h0ppjx9zxfrpqwldg"))))
     (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags
+       (list (string-append "--docdir=" (assoc-ref %outputs "out")
+                            "/share/doc",name "-" ,version))))
     (inputs
      `(("argon2" ,argon2)
        ("ncurses" ,ncurses)
@@ -900,7 +904,7 @@ between hosts and entries in the password store.")
        `(("gmp" ,gmp)
          ("libpcap" ,libpcap)
          ("nss" ,nss)
-         ("openssl" ,openssl-1.0)
+         ("openssl" ,openssl)
          ("python" ,python-2)           ; For "python" and "python2" shebangs
          ("ruby" ,ruby)                 ; For genincstats.rb
          ("zlib" ,zlib)))

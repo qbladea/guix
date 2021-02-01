@@ -1,6 +1,6 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2014, 2019 Eric Bavier <bavier@member.fsf.org>
-;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015 Paul van der Walt <paul@denknerd.org>
 ;;; Copyright © 2016 Al McElrath <hello@yrns.org>
 ;;; Copyright © 2016, 2017, 2019 Efraim Flashner <efraim@flashner.co.il>
@@ -10,10 +10,10 @@
 ;;; Copyright © 2016 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2017 nikita <nikita@n0.is>
 ;;; Copyright © 2017 Rodger Fox <thylakoid@openmailbox.org>
-;;; Copyright © 2017, 2018, 2019, 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2017, 2018, 2019, 2020, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2017, 2018, 2019 Pierre Langlois <pierre.langlois@gmx.com>
 ;;; Copyright © 2017 Arun Isaac <arunisaac@systemreboot.net>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018 nee <nee.git@hidamari.blue>
 ;;; Copyright © 2018 Stefan Reichör <stefan@xsteve.at>
 ;;; Copyright © 2018 Pierre Neidhardt <mail@ambrevar.xyz>
@@ -32,6 +32,7 @@
 ;;; Copyright © 2020 Tanguy Le Carrour <tanguy@bioneland.org>
 ;;; Copyright © 2020 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2019 Riku Viitanen <riku.viitanen0@gmail.com>
+;;; Copyright © 2020 Ryan Prior <rprior@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -158,6 +159,123 @@
   #:use-module (gnu packages golang)
   #:use-module (gnu packages lua)
   #:use-module ((srfi srfi-1) #:select (last)))
+
+(define-public audacious
+  (package
+    (name "audacious")
+    (version "4.0.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://distfiles.audacious-media-player.org/"
+                           "audacious-" version ".tar.bz2"))
+       (sha256
+        (base32 "028zjgz0p7ys15lk2a30m5zcv9xrx3ga50wjsh4m4zxilgkakbji"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags
+       (list (string-append "LDFLAGS=-Wl,-rpath=" %output "/lib"))
+       #:tests? #f                      ; no check target
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'unpack-plugins
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let ((plugins (assoc-ref inputs "audacious-plugins")))
+               (invoke "tar" "xvf" plugins)
+               #t)))
+         (add-after 'unpack-plugins 'configure-plugins
+           (lambda* (#:key configure-flags outputs #:allow-other-keys)
+             (let ((out (assoc-ref outputs "out")))
+               (with-directory-excursion
+                   (string-append "audacious-plugins-" ,version)
+                 (substitute* "configure"
+                   (("/bin/sh") (which "sh")))
+                 (apply invoke "./configure"
+                        (append configure-flags
+                                ;; audacious-plugins requires audacious to build.
+                                (list (string-append "PKG_CONFIG_PATH="
+                                                     out "/lib/pkgconfig:"
+                                                     (getenv "PKG_CONFIG_PATH"))
+                                      (string-append "--prefix=" out))))))))
+         (add-after 'configure-plugins 'build-plugins
+           (lambda _
+             (with-directory-excursion
+                 (string-append "audacious-plugins-" ,version)
+               (invoke "make" "-j" (number->string (parallel-job-count))))))
+         (add-after 'build-plugins 'install-plugins
+           (lambda _
+             (with-directory-excursion
+                 (string-append "audacious-plugins-" ,version)
+               (invoke "make" "install")))))))
+    (native-inputs
+     `(("audacious-plugins"
+        ,(origin
+           (method url-fetch)
+           (uri (string-append "https://distfiles.audacious-media-player.org/"
+                               "audacious-plugins-" version ".tar.bz2"))
+           (sha256
+            (base32 "0ny5w1agr9jaz5w3wyyxf1ygmzmd1sivaf97lcm4z4w6529520lz"))))
+       ("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")         ; for gdbus-codegen
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("dbus" ,dbus)
+       ("qtbase" ,qtbase)
+       ("qtmultimedia" ,qtmultimedia)
+       ;; Plugin dependencies
+       ("alsa-lib" ,alsa-lib)
+       ("curl" ,curl)
+       ("faad2" ,faad2)
+       ("ffmpeg" ,ffmpeg)
+       ("flac" ,flac)
+       ("fluidsynth" ,fluidsynth)
+       ("lame" ,lame)
+       ("libbs2b" ,libbs2b)
+       ("libcddb" ,libcddb)
+       ("libcdio-paranoia" ,libcdio-paranoia)
+       ("libcue" ,libcue)
+       ("libmodplug" ,libmodplug)
+       ("libnotify" ,libnotify)
+       ("libogg" ,libogg)
+       ("libsamplerate" ,libsamplerate)
+       ("libsndfile" ,libsndfile)
+       ("libvorbis" ,libvorbis)
+       ("libxcomposite" ,libxcomposite)
+       ("libxml2" ,libxml2)
+       ("libxrender" ,libxrender)
+       ("lirc" ,lirc)
+       ("jack" ,jack-1)
+       ("mesa" ,mesa)
+       ("mpg123" ,mpg123)
+       ("neon" ,neon)
+       ("pulseaudio" ,pulseaudio)
+       ("sdl2" ,sdl2)
+       ("soxr" ,soxr)
+       ("wavpack" ,wavpack)))
+    (home-page "https://audacious-media-player.org")
+    (synopsis "Modular and skinnable audio player")
+    (description
+     "Audacious is an audio player descended from XMMS.  Drag and drop
+folders and individual song files, search for artists and albums in
+your entire music library, or create and edit your own custom
+playlists.  Listen to CD’s or stream music from the Internet.  Tweak
+the sound with the graphical equalizer or experiment with LADSPA
+effects.  Enjoy the modern GTK-themed interface or change things up
+with Winamp Classic skins.  Use the plugins included with Audacious to
+fetch lyrics for your music, to set an alarm in the morning, and
+more.")
+    ;; According to COPYING, Audacious and its plugins are licensed
+    ;; under the BSD 2-clause license and libguess is licensed under
+    ;; the BSD 3-clause license.
+    (license (list license:bsd-2
+                   license:bsd-3
+                   ;; Plugin licenses that aren't BSD 2- or 3-clause.
+                   license:lgpl2.1
+                   license:gpl2
+                   license:gpl3
+                   license:expat
+                   license:isc
+                   license:lgpl2.0))))
 
 (define-public aria-maestosa
   (package
@@ -1631,7 +1749,7 @@ your own lessons.")
 (define-public powertabeditor
   (package
     (name "powertabeditor")
-    (version "2.0.0-alpha13")
+    (version "2.0.0-alpha14")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1640,12 +1758,17 @@ your own lessons.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "12il5xzgg53ick5k4ivvvqdagld5pgigiiz6s829kkdaymqr7vx5"))))
+                "1wsvni2aa9h2bpndlic7ckch4n600ahwm56n521y5vxivwjx3jmj"))))
     (build-system cmake-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
-         (replace 'check (lambda _ (invoke "bin/pte_tests"))))))
+         (replace 'check (lambda _ (invoke "bin/pte_tests")))
+         (add-after 'unpack 'fix-pugixml-detection
+           (lambda _
+             (substitute* "cmake/third_party/pugixml.cmake"
+               (("add_library") "#add_library"))
+             #t)))))
     (inputs
      `(("alsa-lib" ,alsa-lib)
        ("boost" ,boost)
@@ -1716,7 +1839,7 @@ users to select LV2 plugins and run them with jalv.")
 (define-public synthv1
   (package
     (name "synthv1")
-    (version "0.9.18")
+    (version "0.9.19")
     (source (origin
               (method url-fetch)
               (uri
@@ -1724,7 +1847,7 @@ users to select LV2 plugins and run them with jalv.")
                               "/synthv1-" version ".tar.gz"))
               (sha256
                (base32
-                "1sggiaswcdpyxnnbg583ldg0m92fiys6nc5qdiqli7450w416a6c"))))
+                "17sizhav01mn07gi812n8wqdcr85290zqg609s18cww2b95dy6mn"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -1748,7 +1871,7 @@ oscillators and stereo effects.")
 (define-public drumkv1
   (package
     (name "drumkv1")
-    (version "0.9.18")
+    (version "0.9.19")
     (source (origin
               (method url-fetch)
               (uri
@@ -1756,7 +1879,7 @@ oscillators and stereo effects.")
                               "/drumkv1-" version ".tar.gz"))
               (sha256
                (base32
-                "1bzkaz7sqx1pvirja8zm7i2ckzl5ad6xspr4840389ik3l8qpnr5"))))
+                "0w9frc634yg2m0yc84szdf6x7l4f19pcviqpg065a1kdixf98qrf"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -1781,7 +1904,7 @@ effects.")
 (define-public samplv1
   (package
     (name "samplv1")
-    (version "0.9.18")
+    (version "0.9.19")
     (source (origin
               (method url-fetch)
               (uri
@@ -1789,7 +1912,7 @@ effects.")
                               "/samplv1-" version ".tar.gz"))
               (sha256
                (base32
-                "13p5aj1513fwhzi9s4i1a5dbvzmbx9867zb0ddb9s9nbwks4ry3q"))))
+                "1fwvk83sfvp1k6qyqv1a7a1l8sbm6azcldaiiqa3ls1vhl4m5wv4"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -1814,7 +1937,7 @@ effects.")
 (define-public padthv1
   (package
     (name "padthv1")
-    (version "0.9.18")
+    (version "0.9.19")
     (source (origin
               (method url-fetch)
               (uri
@@ -1822,7 +1945,7 @@ effects.")
                               "/padthv1-" version ".tar.gz"))
               (sha256
                (base32
-                "1karrprb3ijrbiwpr43rl3nxnzc33lnmwrd1832psgr3flnr9fp5"))))
+                "06fkrc4xxzr3sa3c76lnkcm4q9k0xl5993bn60la0ja4sz2kp6r7"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -2173,7 +2296,7 @@ export.")
 (define-public pd
   (package
     (name "pd")
-    (version "0.51-2")
+    (version "0.51-4")
     (source (origin
               (method url-fetch)
               (uri
@@ -2181,7 +2304,7 @@ export.")
                               version ".src.tar.gz"))
               (sha256
                (base32
-                "1jgklcnaxypc8hr5j6mng8dd4na4ygfdixsfch8b86glssddi6mh"))))
+                "1hgw1ciwr59f4f9s0h7c2l36wcsn3jsddhr1r9qj97vf64c1ynaj"))))
     (build-system gnu-build-system)
     (arguments
      (let ((wish (string-append "wish" (version-major+minor
@@ -2289,8 +2412,25 @@ main purpose is to liberate raw audio rendering from audio and MIDI drivers.")
              (let* ((out (assoc-ref outputs "out"))
                     (lib (string-append out "/lib")))
                (with-directory-excursion lib
-                 (symlink "libportmidi.so" "libporttime.so")))
-             #t)))))
+                 (symlink "libportmidi.so" "libporttime.so")))))
+         (add-after 'install 'install-pkg-config
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (pkg-config-dir (string-append out "/lib/pkgconfig")))
+               (mkdir-p pkg-config-dir)
+               (with-output-to-file (string-append pkg-config-dir "/portmidi.pc")
+                 (lambda _
+                   (format #t
+                           "prefix=~@*~a~@
+                           libdir=${prefix}/lib~@
+                           includedir=${prefix}/include~@
+
+                           Name: portmidi~@
+                           Description:~@
+                           Version: ~a~@
+                           Libs: -L${libdir} -lportmidi~@
+                           Cflags: -I${includedir}~%"
+                           out ,version)))))))))
     (inputs
      `(("alsa-lib" ,alsa-lib)))
     (native-inputs
@@ -2339,7 +2479,7 @@ using a system-independent interface.")
 (define-public frescobaldi
   (package
     (name "frescobaldi")
-    (version "3.1.2")
+    (version "3.1.3")
     (source
      (origin
        (method url-fetch)
@@ -2347,7 +2487,7 @@ using a system-independent interface.")
              "https://github.com/wbsoft/frescobaldi/releases/download/v"
              version "/frescobaldi-" version ".tar.gz"))
        (sha256
-        (base32 "084vxzvxnxl5rrhllincnh6krsyi03c8p0452ppzmn9c52wgyb2w"))))
+        (base32 "1hg9yc8kj445fjsby92g3qf50crcl1pb079zfma18sb7ycv50zww"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #f))                    ;no tests included
@@ -2373,14 +2513,14 @@ browser.")
 (define-public drumstick
   (package
     (name "drumstick")
-    (version "1.1.3")
+    (version "2.0.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://sourceforge/drumstick/"
                                   version "/drumstick-" version ".tar.bz2"))
               (sha256
                (base32
-                "1n9wvg79yvkygrkc8xd8pgrd3d7hqmr7gh24dccf0px23lla9b3m"))))
+                "088j0w3kr9i4lh78y0js0q8adlfzkr89xq2dxc8y3bafsgihax1x"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f                      ; no test target
@@ -2399,12 +2539,14 @@ browser.")
     (inputs
      `(("qtbase" ,qtbase)
        ("qtsvg" ,qtsvg)
+       ("qttools" ,qttools)
        ("alsa-lib" ,alsa-lib)))
     (native-inputs
      `(("pkg-config" ,pkg-config)
        ("libxslt" ,libxslt)             ; for xsltproc
        ("docbook-xsl" ,docbook-xsl)
-       ("doxygen" ,doxygen)))
+       ("doxygen" ,doxygen)
+       ("graphviz" ,graphviz))) ; for dot
     (home-page "http://drumstick.sourceforge.net/")
     (synopsis "C++ MIDI library")
     (description
@@ -2419,14 +2561,14 @@ backends, including ALSA, OSS, Network and FluidSynth.")
 (define-public vmpk
   (package
     (name "vmpk")
-    (version "0.7.2")
+    (version "0.8.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://sourceforge/vmpk/vmpk/"
                                   version "/vmpk-" version ".tar.bz2"))
               (sha256
                (base32
-                "1i3hnvdgz46n4k5v0q4jhgh7nkh0s390ix4nqr69z0q3026yp0p6"))))
+                "0wn45c4sbvan7schq93zmsgg5fcf144mbbawxn5kq699vrbc3473"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f  ; no test target
@@ -2511,7 +2653,7 @@ capabilities, custom envelopes, effects, etc.")
 (define-public yoshimi
   (package
     (name "yoshimi")
-    (version "1.7.3")
+    (version "1.7.4")
     (source
      (origin
        (method url-fetch)
@@ -2519,7 +2661,7 @@ capabilities, custom envelopes, effects, etc.")
                            (version-major+minor version)
                            "/yoshimi-" version ".tar.bz2"))
        (sha256
-        (base32 "1ixb2kqmfgm2lfjaj6z3h03c840hcfmca4h6pjnc4aln2mzm7fcw"))))
+        (base32 "0lxfqj4p4njww3n0wa6yfj38zfls16y3wszd47gvc5asmqyg5vjd"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f                      ; there are no tests
@@ -2771,14 +2913,14 @@ from the command line.")
 (define-public qtractor
   (package
     (name "qtractor")
-    (version "0.9.18")
+    (version "0.9.19")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://downloads.sourceforge.net/qtractor/"
                                   "qtractor-" version ".tar.gz"))
               (sha256
                (base32
-                "121vmygdzp37p6f93f8dbbg2m2r55j7amyiapzkqgypgn4vfdbwr"))))
+                "0gdr1hvda56vmv4998z9xcqsp7da6lplj00f217x9g2i2snyvkzp"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; no "check" target
@@ -3339,14 +3481,14 @@ websites such as Libre.fm.")
     (synopsis "Bandcamp plugin for beets")
     (description
      "This plugin for beets automatically obtains tag data from @uref{Bandcamp,
-                                                                      https://bandcamp.com/}.  It's also capable of getting song lyrics and album art
-    using the beets FetchArt plugin.")
+https://bandcamp.com/}.  It's also capable of getting song lyrics and album art
+using the beets FetchArt plugin.")
     (license license:gpl2)))
 
 (define-public milkytracker
   (package
     (name "milkytracker")
-    (version "1.02.00")
+    (version "1.03.00")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -3355,7 +3497,7 @@ websites such as Libre.fm.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "05a6d7l98k9i82dwrgi855dnccm3f2lkb144gi244vhk1156n0ca"))
+                "025fj34gq2kmkpwcswcyx7wdxb89vm944dh685zi4bxx0hz16vvk"))
               (modules '((guix build utils)))
               ;; Remove non-FSDG compliant sample songs.
               (snippet
@@ -4259,10 +4401,40 @@ melodies and beats and for mixing and arranging songs.  LMMS includes instrument
 audio samples and various soft sythesizers.  It can receive input from a MIDI keyboard.")
     (license license:gpl2+)))
 
+(define-public liquidsfz
+  (package
+    (name "liquidsfz")
+    (version "0.2.2")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://space.twc.de/~stefan/liquidsfz/"
+                                  "liquidsfz-" version ".tar.bz2"))
+              (sha256
+               (base32
+                "011m839vjb8gmiv1vzc0d7xz2q2jiwk4v0j9paqyx3lm61czvy93"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags '("--enable-shared")))
+    (native-inputs
+     `(("pkg-config" ,pkg-config)
+       ;; Fails with default gcc (#include <filesystem> not found).
+       ("gcc" ,gcc-9)))
+    (inputs
+     `(("jack" ,jack-2)
+       ("lv2" ,lv2)
+       ("readline" ,readline)
+       ("libsndfile" ,libsndfile)))
+    (home-page "https://github.com/swesterfeld/liquidsfz")
+    (synopsis "Sampler library")
+    (description "The main goal of liquidsfz is to provide an SFZ sampler
+implementation library that is easy to integrate into other projects.  A
+standalone JACK client and an LV2 plugin is also available.")
+    (license license:lgpl2.1+)))
+
 (define-public musescore
   (package
     (name "musescore")
-    (version "3.5.2")
+    (version "3.6.1")
     (source
      (origin
        (method git-fetch)
@@ -4271,7 +4443,7 @@ audio samples and various soft sythesizers.  It can receive input from a MIDI ke
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0yzps5xxa50cr2i5iv2ycjdywd0mcrdd6hx93l4p8lfljag3w3al"))
+        (base32 "087j474sdm8vcjczfqlbb1hpcvgvdghjsd132db9dlqwpgk4hmnv"))
        (modules '((guix build utils)))
        (snippet
         ;; Remove unused libraries.
@@ -4444,14 +4616,14 @@ specification and header.")
 (define-public rosegarden
   (package
     (name "rosegarden")
-    (version "20.06")
+    (version "20.12")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://sourceforge/rosegarden/rosegarden/"
                            version "/rosegarden-" version ".tar.bz2"))
        (sha256
-        (base32 "1i9x9rkqwwdrk77xl5ra8i48cjirbc7fbisnj0nnclccwaq0wk6r"))))
+        (base32 "0nqw2caxmv6mqh485wzvywa024yvi18q87sd4dw9b2l5qnpq8rl8"))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags '("-DCMAKE_BUILD_TYPE=Release")
@@ -5643,7 +5815,7 @@ and as an LV2 plugin.")
     ;; distros to make necessary changes to integrate the software into the
     ;; distribution.
     (name "zrythm")
-    (version "1.0.0-alpha.3.0.1")
+    (version "1.0.0-alpha.6.0.1")
     (source
       (origin
         (method url-fetch)
@@ -5651,7 +5823,7 @@ and as an LV2 plugin.")
                             version ".tar.xz"))
         (sha256
           (base32
-            "06025367x08y4g9grhcn35bk1dsrpgm04c8l8j50i3p49dl3s1n0"))))
+           "1zfky3yj0k0rmbxighlk9sp4fsgw8rj7viv44yv626kldfvc04ab"))))
    (build-system meson-build-system)
    (arguments
     `(#:glib-or-gtk? #t

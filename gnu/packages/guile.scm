@@ -310,16 +310,19 @@ without requiring the source code to be rewritten.")
 
 (define-public guile-3.0-latest
   ;; TODO: Make this 'guile-3.0' on the next rebuild cycle.
-  (package
-    (inherit guile-3.0)
-    (version "3.0.4")
-    (source (origin
-              (inherit (package-source guile-3.0))
-              (uri (string-append "mirror://gnu/guile/guile-"
-                                  version ".tar.xz"))
-              (sha256
-               (base32
-                "0c8dkyvs6xbxp7rgnhkyakajzhakay7qn9kahj1mj49x5vf4fybb"))))))
+  (package-with-extra-patches
+   (package
+     (inherit guile-3.0)
+     (version "3.0.5")
+     (source (origin
+               (inherit (package-source guile-3.0))
+               (uri (string-append "mirror://gnu/guile/guile-"
+                                   version ".tar.xz"))
+               (sha256
+                (base32
+                 "1wah6fq1h8vmbpdadjych1mq8hyqkd7p015cbxm14ri37l1gnxid")))))
+   ;; Remove on the next rebuild cycle.
+   (search-patches "guile-2.2-skip-so-test.patch")))
 
 (define-public guile-next
   (deprecated-package "guile-next" guile-3.0))
@@ -578,14 +581,14 @@ specification.  These are the main features:
   (package
     (inherit guile-json-3)
     (name "guile-json")
-    (version "4.3.2")
+    (version "4.5.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://savannah/guile-json/guile-json-"
                                   version ".tar.gz"))
               (sha256
                (base32
-                "0255c7f053z4p9mqzhpxwbfx3y47j9nfvlgnm8xasdclyzmjl9y2"))))))
+                "0iigada80cg7dl10z6ligiykci0cv9b88zmncz47nsz5g9gacdpc"))))))
 
 (define-public guile2.2-json
   (package-for-guile-2.2 guile-json-4))
@@ -686,17 +689,17 @@ Guile's foreign function interface.")
 (define-public guile-bytestructures
   (package
     (name "guile-bytestructures")
-    (version "1.0.7")
+    (version "1.0.9")
     (home-page "https://github.com/TaylanUB/scheme-bytestructures")
     (source (origin
               (method git-fetch)
               (uri (git-reference
                     (url home-page)
-                    (commit (string-append "v" version))))
+                    (commit version)))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0q0habjiy3h9cigb7q1br9kz6z212dn2ab31f6dgd3rrmsfn5rvb"))))
+                "0r59sqrvwbsknw21bf44bppi6wdhd2rl2v5dw9i2vij3v8w7pgkm"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags '("GUILE_AUTO_COMPILE=0")     ;to prevent guild warnings
@@ -846,6 +849,34 @@ Guile's foreign function interface.")
 in-memory LZMA compression and decompression.  The bindings are written in
 pure Scheme by using Guile's foreign function interface.")
     (home-page "https://notabug.org/guile-lzlib/guile-lzlib")
+    (license license:gpl3+)))
+
+(define-public guile-zstd
+  (package
+    (name "guile-zstd")
+    (version "0.1.1")
+    (home-page "https://notabug.org/guile-zstd/guile-zstd")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference (url home-page)
+                                  (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1c8l7829b5yx8wdc0mrhzjfwb6h9hb7cd8dfxcr71a7vlsi86310"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("pkg-config" ,pkg-config)
+       ("guile" ,guile-3.0)))
+    (inputs
+     `(("zstd" ,zstd "lib")
+       ("guile" ,guile-3.0)))
+    (synopsis "GNU Guile bindings to the zstd compression library")
+    (description
+     "This package provides a GNU Guile interface to the zstd (``zstandard'')
+compression library.")
     (license license:gpl3+)))
 
 ;;; guile.scm ends here

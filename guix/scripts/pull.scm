@@ -1,6 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2013, 2014, 2015, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2017 Marius Bakke <mbakke@fastmail.com>
+;;; Copyright © 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -754,66 +755,71 @@ Use '~/.config/guix/channels.scm' instead."))
 (define-command (guix-pull . args)
   (synopsis "pull the latest revision of Guix")
 
+  (define (no-arguments arg _‌)
+    (leave (G_ "~A: extraneous argument~%") arg))
+
   (with-error-handling
     (with-git-error-handling
      (let* ((opts         (parse-command-line args %options
-                                              (list %default-options)))
+                                              (list %default-options)
+                                              #:argument-handler no-arguments))
             (substitutes? (assoc-ref opts 'substitutes?))
             (dry-run?     (assoc-ref opts 'dry-run?))
-            (channels     (channel-list opts))
             (profile      (or (assoc-ref opts 'profile) %current-profile))
             (current-channels (profile-channels profile))
             (validate-pull    (assoc-ref opts 'validate-pull))
             (authenticate?    (assoc-ref opts 'authenticate-channels?)))
-       (cond ((assoc-ref opts 'query)
-              (process-query opts profile))
-             ((assoc-ref opts 'generation)
-              (process-generation-change opts profile))
-             (else
-              (with-store store
-                (with-status-verbosity (assoc-ref opts 'verbosity)
-                  (parameterize ((%current-system (assoc-ref opts 'system))
-                                 (%graft? (assoc-ref opts 'graft?)))
-                    (with-build-handler (build-notifier #:use-substitutes?
-                                                        substitutes?
-                                                        #:verbosity
-                                                        (assoc-ref opts 'verbosity)
-                                                        #:dry-run? dry-run?)
-                      (set-build-options-from-command-line store opts)
-                      (ensure-default-profile)
-                      (honor-x509-certificates store)
+       (cond
+        ((assoc-ref opts 'query)
+         (process-query opts profile))
+        ((assoc-ref opts 'generation)
+         (process-generation-change opts profile))
+        (else
+         (with-store store
+           (with-status-verbosity (assoc-ref opts 'verbosity)
+             (parameterize ((%current-system (assoc-ref opts 'system))
+                            (%graft? (assoc-ref opts 'graft?)))
+               (with-build-handler (build-notifier #:use-substitutes?
+                                                   substitutes?
+                                                   #:verbosity
+                                                   (assoc-ref opts 'verbosity)
+                                                   #:dry-run? dry-run?)
+                 (set-build-options-from-command-line store opts)
+                 (ensure-default-profile)
+                 (honor-x509-certificates store)
 
-                      (let ((instances
-                             (latest-channel-instances store channels
-                                                       #:current-channels
-                                                       current-channels
-                                                       #:validate-pull
-                                                       validate-pull
-                                                       #:authenticate?
-                                                       authenticate?)))
-                        (format (current-error-port)
-                                (N_ "Building from this channel:~%"
-                                    "Building from these channels:~%"
-                                    (length instances)))
-                        (for-each (lambda (instance)
-                                    (let ((channel
-                                           (channel-instance-channel instance)))
-                                      (format (current-error-port)
-                                              "  ~10a~a\t~a~%"
-                                              (channel-name channel)
-                                              (channel-url channel)
-                                              (string-take
-                                               (channel-instance-commit instance)
-                                               7))))
-                                  instances)
-                        (parameterize ((%guile-for-build
-                                        (package-derivation
-                                         store
-                                         (if (assoc-ref opts 'bootstrap?)
-                                             %bootstrap-guile
-                                             (default-guile)))))
-                          (with-profile-lock profile
-                            (run-with-store store
-                              (build-and-install instances profile)))))))))))))))
+                 (let* ((channels (channel-list opts))
+                        (instances
+                         (latest-channel-instances store channels
+                                                   #:current-channels
+                                                   current-channels
+                                                   #:validate-pull
+                                                   validate-pull
+                                                   #:authenticate?
+                                                   authenticate?)))
+                   (format (current-error-port)
+                           (N_ "Building from this channel:~%"
+                               "Building from these channels:~%"
+                               (length instances)))
+                   (for-each (lambda (instance)
+                               (let ((channel
+                                      (channel-instance-channel instance)))
+                                 (format (current-error-port)
+                                         "  ~10a~a\t~a~%"
+                                         (channel-name channel)
+                                         (channel-url channel)
+                                         (string-take
+                                          (channel-instance-commit instance)
+                                          7))))
+                             instances)
+                   (parameterize ((%guile-for-build
+                                   (package-derivation
+                                    store
+                                    (if (assoc-ref opts 'bootstrap?)
+                                        %bootstrap-guile
+                                        (default-guile)))))
+                     (with-profile-lock profile
+                       (run-with-store store
+                         (build-and-install instances profile)))))))))))))))
 
 ;;; pull.scm ends here

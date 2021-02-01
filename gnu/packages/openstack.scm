@@ -135,17 +135,7 @@ formatters, and other extensions.")
       "This package provides a collection of Python deprecation patterns and
 strategies that help you collect your technical debt in a non-destructive
 manner.")
-    (properties `((python2-variant . ,(delay python2-debtcollector))))
     (license asl2.0)))
-
-(define-public python2-debtcollector
-  (let ((base (package-with-python2 (strip-python2-variant
-                                     python-debtcollector))))
-    (package
-      (inherit base)
-      (propagated-inputs
-       `(("python2-funcsigs" ,python2-funcsigs)
-         ,@(package-propagated-inputs base))))))
 
 (define-public python-hacking
   (package
@@ -212,9 +202,6 @@ Google mox framework} to Python 3.  It was meant to be as compatible
 with mox as possible, but small enhancements have been made.")
     (license asl2.0)))
 
-(define-public python2-mox3
-  (package-with-python2 python-mox3))
-
 (define-public python-openstackdocstheme
   (package
     (name "python-openstackdocstheme")
@@ -241,9 +228,6 @@ with mox as possible, but small enhancements have been made.")
      "This package provides themes and extensions for Sphinx for publishing
 to docs.openstack.org and developer.openstack.org.")
     (license asl2.0)))
-
-(define-public python2-openstackdocstheme
-  (package-with-python2 python-openstackdocstheme))
 
 (define-public python-os-client-config
   (package
@@ -278,9 +262,6 @@ to docs.openstack.org and developer.openstack.org.")
   comprehensive manner.")
     (license asl2.0)))
 
-(define-public python2-os-client-config
-  (package-with-python2 python-os-client-config))
-
 (define-public python-os-testr
   (package
     (name "python-os-testr")
@@ -310,9 +291,6 @@ to docs.openstack.org and developer.openstack.org.")
       "Os-testr provides developers with a testr wrapper and an output filter
   for subunit.")
     (license asl2.0)))
-
-(define-public python2-os-testr
-  (package-with-python2 python-os-testr))
 
 (define-public python-stevedore
   (package
@@ -344,9 +322,6 @@ entry points tends to be repetitive, though, so stevedore provides manager
 classes for implementing common patterns for using dynamically loaded
 extensions.")
     (license asl2.0)))
-
-(define-public python2-stevedore
-  (package-with-python2 python-stevedore))
 
 (define-public python-tempest-lib
   (package
@@ -390,7 +365,11 @@ extensions.")
 common features used in Tempest.")
     (license asl2.0)))
 
-;; Packages from the Oslo library
+
+;;;
+;;; Packages from the Oslo library
+;;;
+
 (define-public python-oslo.config
   (package
     (name "python-oslo.config")
@@ -400,8 +379,8 @@ common features used in Tempest.")
        (method url-fetch)
        (uri (pypi-uri "oslo.config" version))
        (sha256
-         (base32
-          "0ymf7jxbq29fifyvkwhfiys1qvljqfxdw8ajwzwaf3yiqidgpxqd"))))
+        (base32
+         "0ymf7jxbq29fifyvkwhfiys1qvljqfxdw8ajwzwaf3yiqidgpxqd"))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-debtcollector" ,python-debtcollector)
@@ -426,7 +405,7 @@ common features used in Tempest.")
     (home-page "https://launchpad.net/oslo")
     (synopsis "Oslo Configuration API")
     (description
-      "The Oslo configuration API supports parsing command line arguments and
+     "The Oslo configuration API supports parsing command line arguments and
 .ini style configuration files.")
     (license asl2.0)))
 
@@ -468,41 +447,35 @@ about a request context.  The request context is usually populated in the WSGI
 pipeline and used by various modules such as logging.")
     (license asl2.0)))
 
-(define-public python2-oslo.context
-  (package-with-python2 python-oslo.context))
-
 (define-public python-oslo.i18n
   (package
     (name "python-oslo.i18n")
     (version "3.20.0")
     (source
-      (origin
-        (method url-fetch)
-        (uri (pypi-uri "oslo.i18n" version))
-        (sha256
-          (base32
-           "0kjcdw4bk3mi4vqmqwhhq053kxbbbj05si6nwxd1pzx33z067ky3"))))
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "oslo.i18n" version))
+       (sha256
+        (base32
+         "0kjcdw4bk3mi4vqmqwhhq053kxbbbj05si6nwxd1pzx33z067ky3"))))
     (build-system python-build-system)
     (propagated-inputs
-      `(("python-babel" ,python-babel)
-        ("python-six" ,python-six)))
+     `(("python-babel" ,python-babel)
+       ("python-six" ,python-six)))
     (native-inputs
-      `(("python-pbr" ,python-pbr)
-        ;; Tests
-        ("python-mock" ,python-mock)
-        ("python-mox3" ,python-mox3)
-        ("python-oslotest" ,python-oslotest)
-        ("python-testscenarios" ,python-testscenarios)))
+     `(("python-pbr" ,python-pbr)
+       ;; Tests
+       ("python-mock" ,python-mock)
+       ("python-mox3" ,python-mox3)
+       ("python-oslotest" ,python-oslotest)
+       ("python-testscenarios" ,python-testscenarios)))
     (home-page "https://launchpad.net/oslo")
     (synopsis "Oslo internationalization (i18n) library")
     (description
-      "The oslo.i18n library contain utilities for working with
+     "The oslo.i18n library contain utilities for working with
 internationalization (i18n) features, especially translation for text strings
 in an application or library.")
     (license asl2.0)))
-
-(define-public python2-oslo.i18n
-  (package-with-python2 python-oslo.i18n))
 
 (define-public python-oslo.log
   (package
@@ -611,9 +584,6 @@ in transmittable and storable formats, such as JSON and MessagePack.")
 and building documentation from them.")
     (license asl2.0)))
 
-(define-public python2-reno
-  (package-with-python2 python-reno))
-
 (define-public python-oslosphinx
   (package
     (name "python-oslosphinx")
@@ -674,9 +644,6 @@ documentation from the OpenStack project.")
     (description "The Oslo Test framework provides common fixtures, support
 for debugging, and better support for mocking results.")
     (license asl2.0)))
-
-(define-public python2-oslotest
-  (package-with-python2 python-oslotest))
 
 (define-public python-oslo.utils
   (package
@@ -861,6 +828,3 @@ permanence.")
      "Git-review is a command-line tool that helps submitting Git branches to
 Gerrit for review, or fetching existing ones.")
     (license asl2.0)))
-
-(define-public python2-git-review
-  (package-with-python2 python-git-review))

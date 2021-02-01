@@ -4,7 +4,7 @@
 ;;; Copyright © 2017 Christopher Baines <mail@cbaines.net>
 ;;; Copyright © 2016, 2017 Danny Milosavljevic <dannym+a@scratchpost.org>
 ;;; Copyright © 2013, 2014, 2015, 2016, 2020 Andreas Enge <andreas@enge.fr>
-;;; Copyright © 2016, 2017, 2020 Marius Bakke <mbakke@fastmail.com>
+;;; Copyright © 2016, 2017, 2019, 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2017 Roel Janssen <roel@gnu.org>
 ;;; Copyright © 2016, 2017, 2020 Julien Lepiller <julien@lepiller.eu>
@@ -39,6 +39,7 @@
 ;;; Copyright © 2020 Edouard Klein <edk@beaver-labs.com>
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Konrad Hinsen <konrad.hinsen@fastmail.net>
+;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -68,14 +69,17 @@
   #:use-module (gnu packages curl)
   #:use-module (gnu packages databases)
   #:use-module (gnu packages django)
+  #:use-module (gnu packages graphviz)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-check)
   #:use-module (gnu packages python-compression)
   #:use-module (gnu packages python-crypto)
+  #:use-module (gnu packages python-science)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages serialization)
   #:use-module (gnu packages sphinx)
@@ -90,14 +94,13 @@
 (define-public python-aiohttp
   (package
     (name "python-aiohttp")
-    (version "3.6.3")
+    (version "3.7.3")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "aiohttp" version))
        (sha256
-        (base32 "0i9n7h8n06m2d8ryqyk4fv1si1m44ibq7blbfaxq46vx7jydg339"))
-       (patches (search-patches "python-aiohttp-3.6.2-no-warning-fail.patch"))))
+        (base32 "1i3p4yrfgrf1zpbgnywqmb33ps4k51wylcxykhf2cwky0spq26lw"))))
     (build-system python-build-system)
     (arguments
      '(#:phases
@@ -110,33 +113,41 @@
                 "    @pytest.mark.xfail\n    async def test_feed_eof_no_err_brotli"))
              ;; make sure the timestamp of this file is > 1990, because a few
              ;; tests like test_static_file_if_modified_since_past_date depend on it
-             (invoke "touch" "-d" "2020-01-01" "tests/data.unknown_mime_type")
+             (let ((late-90s (* 60 60 24 365 30)))
+               (utime "tests/data.unknown_mime_type" late-90s late-90s))
 
-             ;; FIXME: These tests are failing due to deprecation warnings
-             ;; in Python 3.8.  Remove this when updating to aiohttp >= 3.7.
-             ;; https://github.com/aio-libs/aiohttp/issues/4477
-             ;; https://github.com/aio-libs/aiohttp/issues/4525
-             (with-directory-excursion "tests"
-               (for-each delete-file '("test_client_session.py"
-                                       "test_multipart.py"
-                                       "test_web_middleware.py"
-                                       "test_web_protocol.py"
-                                       "test_web_urldispatcher.py")))
-             #t)))))
+             ;; Disable test that attempts to access httpbin.org.
+             (substitute* "tests/test_formdata.py"
+               (("async def test_mark_formdata_as_processed.*" all)
+                (string-append "@pytest.mark.xfail\n" all)))
+
+             ;; Don't test the aiohttp pytest plugin to avoid a dependency loop.
+             (delete-file "tests/test_pytest_plugin.py")
+             #t))
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (setenv "PYTHONPATH"
+                     (string-append ".:" (getenv "PYTHONPATH")))
+             (if tests?
+                 (invoke "pytest" "-vv"
+                         ;; Disable loading the aiohttp coverage plugin
+                         ;; to avoid a circular dependency (code coverage
+                         ;; is not very interesting to us anyway).
+                         "-o" "addopts=''")
+                 (format #t "test suite not run~%")))))))
     (propagated-inputs
      `(("python-aiodns" ,python-aiodns)
        ("python-async-timeout" ,python-async-timeout)
-       ("python-attrs" ,python-attrs)
+       ("python-attrs" ,python-attrs)   ;note: remove for > 3.7
        ("python-chardet" ,python-chardet)
        ("python-idna-ssl" ,python-idna-ssl)
        ("python-multidict" ,python-multidict)
+       ("python-typing-extensions" ,python-typing-extensions)
        ("python-yarl" ,python-yarl)))
     (native-inputs
-     `(("python-pytest-runner" ,python-pytest-runner)
-       ("python-pytest-xdit" ,python-pytest-xdist)
-       ("python-pytest-timeout" ,python-pytest-timeout)
-       ("python-pytest-forked" ,python-pytest-forked)
+     `(("python-pytest" ,python-pytest)
        ("python-pytest-mock" ,python-pytest-mock)
+       ("python-re-assert" ,python-re-assert)
        ("gunicorn" ,gunicorn-bootstrap)
        ("python-freezegun" ,python-freezegun)
        ("python-async-generator" ,python-async-generator)))
@@ -157,17 +168,19 @@ Callback Hell.
 (define-public python-aiohttp-socks
   (package
     (name "python-aiohttp-socks")
-    (version "0.2.2")
+    (version "0.5.5")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "aiohttp_socks" version))
        (sha256
         (base32
-         "0473702jk66xrgpm28wbdgpnak4v0dh2qmdjw7ky7hf3lwwqkggf"))))
+         "0jmhb0l1w8k1nishij3awd9zv8zbyb5l35a2pdalrqxxasbhbcif"))))
     (build-system python-build-system)
     (propagated-inputs
-     `(("python-aiohttp" ,python-aiohttp)))
+     `(("python-aiohttp" ,python-aiohttp)
+       ("python-attrs" ,python-attrs)
+       ("python-socks" ,python-socks)))
     (home-page "https://github.com/romis2012/aiohttp-socks")
     (synopsis "SOCKS proxy connector for aiohttp")
     (description "This package provides a SOCKS proxy connector for
@@ -276,6 +289,158 @@ WSGI.  This package includes libraries for implementing ASGI servers.")
     ;; looks like the user can choose a license.
     (license (list license:gpl3+ license:lgpl3+ license:expat))))
 
+(define-public python-aws-sam-translator
+  (package
+    (name "python-aws-sam-translator")
+    (version "1.30.1")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "aws-sam-translator" version))
+              (sha256
+               (base32
+                "0d9ppd94x2kw404m49ajswmmxgdngbs4p5ajyrdvnlivfzqbv7dx"))))
+    (build-system python-build-system)
+    (arguments
+     `(;; XXX: Tests are not distributed with the PyPI archive, and would
+       ;; introduce a circular dependency on python-cfn-lint.
+       #:tests? #f
+       #:phases (modify-phases %standard-phases
+                  (add-after 'unpack 'loosen-requirements
+                    (lambda _
+                      ;; The package needlessly specifies exact versions
+                      ;; of dependencies, when it works fine with others.
+                      (substitute* "requirements/base.txt"
+                        (("(.*)(~=[0-9\\.]+)" all package version)
+                         package))
+                      #t)))))
+    (propagated-inputs
+     `(("python-boto3" ,python-boto3)
+       ("python-jsonschema" ,python-jsonschema)
+       ("python-six" ,python-six)))
+    (home-page "https://github.com/awslabs/serverless-application-model")
+    (synopsis "Transform AWS SAM templates into AWS CloudFormation templates")
+    (description
+     "AWS SAM Translator is a library that transform @dfn{Serverless Application
+Model} (SAM) templates into AWS CloudFormation templates.")
+    (license license:asl2.0)))
+
+(define-public python-aws-xray-sdk
+  (package
+    (name "python-aws-xray-sdk")
+    (version "2.6.0")
+    (home-page "https://github.com/aws/aws-xray-sdk-python")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference (url home-page) (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "12fzr0ylpa1lx3xr1x2f1jx8iiyzcr6g57fb9jign0j0lxdlbzpv"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (add-after 'unpack 'disable-tests
+                    (lambda _
+                      (for-each delete-file
+                                '(;; These tests require packages not yet in Guix.
+                                  "tests/ext/aiobotocore/test_aiobotocore.py"
+                                  "tests/ext/aiohttp/test_middleware.py"
+                                  "tests/ext/pg8000/test_pg8000.py"
+                                  "tests/ext/psycopg2/test_psycopg2.py"
+                                  "tests/ext/pymysql/test_pymysql.py"
+                                  "tests/ext/pynamodb/test_pynamodb.py"
+                                  "tests/test_async_recorder.py"
+
+                                  ;; FIXME: Why is this failing?
+                                  "tests/test_patcher.py"
+
+                                  ;; TODO: How to configure Django for these tests.
+                                  "tests/ext/django/test_db.py"
+                                  "tests/ext/django/test_middleware.py"
+
+                                  ;; These tests want to access httpbin.org.
+                                  "tests/ext/requests/test_requests.py"
+                                  "tests/ext/httplib/test_httplib.py"
+                                  "tests/ext/aiohttp/test_client.py"))))
+                  (replace 'check
+                    (lambda _
+                      (setenv "PYTHONPATH"
+                              (string-append "./build/lib:.:"
+                                             (getenv "PYTHONPATH")))
+                      (invoke "pytest" "-vv" "tests"))))))
+    (native-inputs
+     `(;; These are required for the test suite.
+       ("python-bottle" ,python-bottle)
+       ("python-flask" ,python-flask)
+       ("python-flask-sqlalchemy" ,python-flask-sqlalchemy)
+       ("python-pymysql" ,python-pymysql)
+       ("python-pytest" ,python-pytest)
+       ("python-pytest-aiohttp" ,python-pytest-aiohttp)
+       ("python-requests" ,python-requests)
+       ("python-sqlalchemy" ,python-sqlalchemy)
+       ("python-webtest" ,python-webtest)))
+    (propagated-inputs
+     `(("python-aiohttp" ,python-aiohttp)
+       ("python-botocore" ,python-botocore)
+       ("python-future" ,python-future)
+       ("python-jsonpickle" ,python-jsonpickle)
+       ("python-urllib3" ,python-urllib3)
+       ("python-wrapt" ,python-wrapt)))
+    (synopsis "Profile applications on AWS X-Ray")
+    (description
+     "The AWS X-Ray SDK for Python enables Python developers to record and
+emit information from within their applications to the AWS X-Ray service.")
+    (license license:asl2.0)))
+
+(define-public python-cfn-lint
+  (package
+    (name "python-cfn-lint")
+    (version "0.41.0")
+    (home-page "https://github.com/aws-cloudformation/cfn-python-lint")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url home-page)
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0nqs0fmj3hd7pnd9hkb4z57jvi2iv82hh6n3xxba6i6p8zgx75q4"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let ((out (assoc-ref outputs "out")))
+                        ;; Remove test for the documentation update scripts
+                        ;; to avoid a dependency on 'git'.
+                        (delete-file
+                         "test/unit/module/maintenance/test_update_documentation.py")
+                        (setenv "PYTHONPATH"
+                                (string-append "./build/lib:"
+                                               (getenv "PYTHONPATH")))
+                        (setenv "PATH" (string-append out "/bin:"
+                                                      (getenv "PATH")))
+                        (invoke "python" "-m" "unittest" "discover"
+                                "-s" "test")))))))
+    (native-inputs
+     `(("python-pydot" ,python-pydot)
+       ("python-mock" ,python-mock)))
+    (propagated-inputs
+     `(("python-aws-sam-translator" ,python-aws-sam-translator)
+       ("python-jsonpatch" ,python-jsonpatch)
+       ("python-jsonschema" ,python-jsonschema)
+       ("python-junit-xml" ,python-junit-xml)
+       ("python-networkx" ,python-networkx)
+       ("python-pyyaml" ,python-pyyaml)
+       ("python-six" ,python-six)))
+    (synopsis "Validate CloudFormation templates")
+    (description
+     "This package lets you validate CloudFormation YAML/JSON templates against
+the CloudFormation spec and additional checks.  Includes checking valid values
+for resource properties and best practices.")
+    (license license:expat)))
+
 (define-public python-falcon
   (package
     (name "python-falcon")
@@ -342,15 +507,7 @@ classes
 @item Compatible with both CPython and PyPy
 @item Cython support for better performance when used with CPython
 @end itemize")
-    (properties `((python2-variant . ,(delay python2-falcon))))
     (license license:asl2.0)))
-
-(define-public python2-falcon
-  (let ((falcon (package-with-python2 (strip-python2-variant python-falcon))))
-    (package
-      (inherit falcon)
-      (native-inputs
-       (alist-delete "python-rapidjson" (package-native-inputs falcon))))))
 
 (define-public python-falcon-cors
   (package
@@ -374,9 +531,6 @@ sharing} (CORS) support for Falcon.  It allows applying a specially crafted
 CORS object to the incoming requests, enabling the ability to serve resources
 over a different origin than that of the web application.")
     (license license:asl2.0)))
-
-(define-public python2-falcon-cors
-  (package-with-python2 python-falcon-cors))
 
 (define-public python-furl
   (package
@@ -496,6 +650,83 @@ Swartz.")
                 (sha256
                  (base32
                   "0ppgjplg06kmv9sj0x8p7acczcq2mcfgk1jdjwm4w5w40b0vj5pm")))))))
+
+(define-public python-jose
+  (package
+    (name "python-jose")
+    (version "3.2.0")
+    (home-page "http://github.com/mpdavis/python-jose")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference (url home-page) (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "1xmnf8whzv2gnkkdv0fqcn9qwmcc7y647p4kw9fi3lvcp9kch8vi"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (if tests?
+                 (invoke "pytest" "-vv")
+                 (format #t "test suite not run~%"))
+             #t)))))
+    (native-inputs
+     `(;; All native inputs are for tests.
+       ("python-pyasn1" ,python-pyasn1)
+       ("python-pytest" ,python-pytest)
+       ("python-pytest-cov" ,python-pytest-cov)
+       ("python-pytest-runner" ,python-pytest-runner)))
+    (propagated-inputs
+     `(("python-cryptography" ,python-cryptography)
+       ("python-rsa" ,python-rsa)
+       ("python-six" ,python-six)))
+    (synopsis "JOSE implementation in Python")
+    (description
+     "The @dfn{JavaScript Object Signing and Encryption} (JOSE) technologies
+- JSON Web Signature (JWS), JSON Web Encryption (JWE), JSON Web Key (JWK), and
+JSON Web Algorithms (JWA) - collectively can be used to encrypt and/or sign
+content using a variety of algorithms.")
+    (license license:expat)))
+
+(define-public python-jsonpickle
+  (package
+    (name "python-jsonpickle")
+    (version "1.4.1")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "jsonpickle" version))
+              (sha256
+               (base32
+                "1fn86z468hamw8njh2grw2xdhsm7g48dyxs3lw0n10nn1g6vgm78"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda _
+                      (setenv "PYTHONPATH"
+                              (string-append "./build/lib:"
+                                             (getenv "PYTHONPATH")))
+                      (invoke "pytest" "-vv"
+                              ;; Prevent running the flake8 and black
+                              ;; pytest plugins, which only tests style
+                              ;; and frequently causes harmless failures.
+                              "-o" "addopts=''"))))))
+    (native-inputs
+     `(("python-setuptools-scm" ,python-setuptools-scm)
+       ("python-toml" ,python-toml)  ;XXX: for setuptools_scm[toml]
+       ;; For tests.
+       ("python-numpy" ,python-numpy)
+       ("python-pandas" ,python-pandas)
+       ("python-pytest" ,python-pytest)))
+    (home-page "https://jsonpickle.github.io/")
+    (synopsis "Serialize object graphs into JSON")
+    (description
+     "This package provides a Python library for serializing any arbitrary
+object graph to and from JSON.")
+    (license license:bsd-3)))
 
 (define-public python-mechanicalsoup
   (package
@@ -722,17 +953,91 @@ both of which are installed automatically if you install this library.")
 (define-public python2-flask-babel
   (package-with-python2 python-flask-babel))
 
+(define-public python-flask-cors
+  (package
+    (name "python-flask-cors")
+    (version "3.0.9")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "Flask-Cors" version))
+              (sha256
+               (base32
+                "1f36hkaxc92zn12f88fkzwifdvlvsnmlp1dv3p5inpcc500c3kvb"))))
+    (build-system python-build-system)
+    (native-inputs
+     `(("python-flask" ,python-flask)
+       ("python-nose" ,python-nose)
+       ("python-packaging" ,python-packaging)))
+    (propagated-inputs
+     `(("python-six" ,python-six)))
+    (home-page "https://flask-cors.readthedocs.io/en/latest/")
+    (synopsis "Handle Cross-Origin Resource Sharing with Flask")
+    (description
+     "This package provides a Flask extension for handling @acronym{CORS,Cross
+Origin Resource Sharing}, making cross-origin AJAX possible.")
+    (license license:expat)))
+
+(define-public python-flask-markdown
+  (package
+    (name "python-flask-markdown")
+    (version "0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "Flask-Markdown" version))
+       (sha256
+        (base32
+         "0l32ikv4f7va926jlq4f7gx0xid247bhlxl6bd9av5dk8ljz1hyq"))))
+    (build-system python-build-system)
+    (arguments
+     '(#:tests? #f))        ; Tests seem to be incompatible with latest python
+    (propagated-inputs
+     `(("python-markdown" ,python-markdown)
+       ("python-flask" ,python-flask)))
+    (native-inputs
+     `(("python-nose" ,python-nose)))
+    (home-page "https://github.com/dcolish/flask-markdown")
+    (synopsis "Small extension to help with using Markdown in Flask")
+    (description
+     "Flask-Markdown supports several extensions for Markdown and integrates
+into Jinja2 by default.")
+    (license license:bsd-3)))
+
+(define-public python-flask-session
+  (package
+    (name "python-flask-session")
+    (version "0.3.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "Flask-Session" version))
+       (sha256
+        (base32
+         "08s4msg8jzb8vgb9bd491zvrzhrdldxdw6vimb0kx5kgy2xy4s07"))))
+    (build-system python-build-system)
+    (arguments
+     '(#:tests? #f)) ; Tests require the various storage backends to be present
+    (propagated-inputs
+     `(("python-flask" ,python-flask)))
+    (home-page "https://github.com/fengsp/flask-session")
+    (synopsis "Adds server-side session support to your Flask application")
+    (description
+     "Flask-Session is an extension for Flask that adds support for
+Server-side sessions, with a variety of different backends for session
+storage.")
+    (license license:bsd-3)))
+
 (define-public python-html5lib
   (package
     (name "python-html5lib")
-    (version "1.0.1")
+    (version "1.1")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "html5lib" version))
         (sha256
           (base32
-            "0dipzfrycv6j1jw82v9b7d8lzggx3x8xngx6l4xrqkxwvg7hvjv6"))))
+            "0vqlhk0hgbsfkh7ybmby93xhlx8dq6pr5blf356ka3z2c41b9rdj"))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-six" ,python-six)
@@ -797,6 +1102,41 @@ C, yielding parse times that can be a thirtieth of the html5lib parse times.")
 
 (define-public python2-html5-parser
   (package-with-python2 python-html5-parser))
+
+(define-public python-minio
+  (package
+    (name "python-minio")
+    (version "6.0.0")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "minio" version))
+              (sha256
+               (base32
+                "1cxpa0m7mdvpdbc1g6wlihq6ja4g4paxkl6f3q84bbnx07zpbllp"))))
+    (build-system python-build-system)
+    (arguments
+     '(#:phases (modify-phases %standard-phases
+                  (add-before 'check 'disable-failing-tests
+                    (lambda _
+                      ;; This test requires network access.
+                      (delete-file "tests/unit/credentials_test.py")
+                      #t)))))
+    (native-inputs
+     `(("python-faker" ,python-faker)
+       ("python-mock" ,python-mock)
+       ("python-nose" ,python-nose)))
+    (propagated-inputs
+     `(("python-certifi" ,python-certifi)
+       ("python-configparser" ,python-configparser)
+       ("python-dateutil" ,python-dateutil)
+       ("python-pytz" ,python-pytz)
+       ("python-urllib3" ,python-urllib3)))
+    (home-page "https://github.com/minio/minio-py")
+    (synopsis "Programmatically access Amazon S3 from Python")
+    (description
+     "This package provides a Python library for interacting with any
+Amazon S3 compatible object storage server.")
+    (license license:asl2.0)))
 
 (define-public python-pycurl
   (package
@@ -1023,6 +1363,49 @@ another XPath engine to find the matching elements in an XML or HTML document.")
 (define-public python2-cssselect
   (package-with-python2 python-cssselect))
 
+(define-public python-databricks-cli
+  (package
+    (name "python-databricks-cli")
+    (version "0.14.1")
+    (home-page "https://github.com/databricks/databricks-cli")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference (url home-page) (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "03w19rzh72jll9phai23wp0c2mlv39qsrv50mhckziy39z60yxh8"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda _
+                      (setenv "PYTHONPATH"
+                              (string-append "./build/lib:"
+                                             (getenv "PYTHONPATH")))
+                      (invoke "pytest" "tests" "-vv"
+                              ;; XXX: This fails with newer Pytest
+                              ;; (upstream uses Pytest 3..).
+                              "-k" "not test_get_request_with_list"))))))
+    (native-inputs
+     `(;; For tests.
+       ("python-decorator" ,python-decorator)
+       ("python-mock" ,python-mock)
+       ("python-pytest" ,python-pytest)
+       ("python-requests-mock" ,python-requests-mock)))
+    (propagated-inputs
+     `(("python-click" ,python-click)
+       ("python-configparser" ,python-configparser)
+       ("python-requests" ,python-requests)
+       ("python-six" ,python-six)
+       ("python-tabulate" ,python-tabulate)))
+    (synopsis "Command line interface for Databricks")
+    (description
+     "The Databricks Command Line Interface is a tool which provides an easy
+to use interface to the Databricks platform.  The CLI is built on top of the
+Databricks REST APIs.")
+    (license license:asl2.0)))
+
 (define-public python-openid-cla
   (package
     (name "python-openid-cla")
@@ -1171,6 +1554,37 @@ RFC6455, regardless of your programming paradigm.")
 wsproto libraries and inspired by Gunicorn.  It supports HTTP/1, HTTP/2,
 WebSockets (over HTTP/1 and HTTP/2), ASGI/2, and ASGI/3 specifications.  It can
 utilise asyncio, uvloop, or trio worker types.")
+    (license license:expat)))
+
+(define-public python-querystring-parser
+  (package
+    (name "python-querystring-parser")
+    (version "1.2.4")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "querystring_parser" version))
+              (sha256
+               (base32
+                "0qlar8a0wa003hm2z6wcpb625r6vjj0a70rsni9h8lz0zwfcwkv4"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (replace 'check
+                    (lambda _
+                      ;; XXX FIXME: This test is broken with Python 3.7:
+                      ;; https://github.com/bernii/querystring-parser/issues/35
+                      (substitute* "querystring_parser/tests.py"
+                        (("self\\.assertEqual\\(self\\.knownValuesNormalized, result\\)")
+                         "True"))
+                      (invoke "python" "querystring_parser/tests.py"))))))
+    (propagated-inputs
+     `(("python-six" ,python-six)))
+    (home-page "https://github.com/bernii/querystring-parser")
+    (synopsis "QueryString parser that correctly handles nested dictionaries")
+    (description
+     "This package provides a query string parser for Python and Django
+projects that correctly creates nested dictionaries from sent form/querystring
+data.")
     (license license:expat)))
 
 (define-public python-tornado
@@ -2007,13 +2421,13 @@ APIs.")
 (define-public python-requests
   (package
     (name "python-requests")
-    (version "2.23.0")
+    (version "2.24.0")
     (source (origin
              (method url-fetch)
              (uri (pypi-uri "requests" version))
              (sha256
               (base32
-               "1rhpg0jb08v0gd7f19jjiwlcdnxpmqi1fhvw7r4s9avddi4kvx5k"))))
+               "06r3017hz0hzxv42gpg73l8xvdjbzw7q904ljvp36b5p3l9rlmdk"))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-certifi" ,python-certifi)
@@ -2103,16 +2517,7 @@ library.")
     (description
       "This module provides a building block to stub out the HTTP requests
 portions of your testing code.")
-    (properties `((python2-variant . ,(delay python2-requests-mock))))
     (license license:asl2.0)))
-
-(define-public python2-requests-mock
-  (package (inherit (package-with-python2
-                     (strip-python2-variant python-requests-mock)))
-           (arguments
-            `(#:python ,python-2
-              ;; FIXME: 'subunit.run discover: error: no such option: --list'
-              #:tests? #f))))
 
 (define-public python-requests-toolbelt
   (package
@@ -2260,7 +2665,6 @@ authenticated session objects providing things like keep-alive.")
        ("python-certifi" ,python-certifi)
        ("python-cryptography" ,python-cryptography)
        ("python-idna" ,python-idna)
-       ("python-ipaddress" ,python-ipaddress)
        ("python-pyopenssl" ,python-pyopenssl)
        ("python-pysocks" ,python-pysocks)))
     (home-page "https://urllib3.readthedocs.io/")
@@ -2269,6 +2673,7 @@ authenticated session objects providing things like keep-alive.")
      "Urllib3 supports features left out of urllib and urllib2 libraries.  It
 can reuse the same socket connection for multiple requests, it can POST files,
 supports url redirection and retries, and also gzip and deflate decoding.")
+    (properties `((python2-variant . ,(delay python2-urllib3))))
     (license license:expat)))
 
 ;; Some software requires an older version of urllib3, notably Docker.
@@ -2284,19 +2689,25 @@ supports url redirection and retries, and also gzip and deflate decoding.")
 
 
 (define-public python2-urllib3
-  (package-with-python2 python-urllib3))
+  (let ((base (package-with-python2 (strip-python2-variant python-urllib3))))
+    (package/inherit
+     base
+     (propagated-inputs
+      `(("python-ipaddress" ,python2-ipaddress)
+        ,@(package-propagated-inputs base))))))
 
 (define-public awscli
   (package
+    ;; Note: updating awscli typically requires updating botocore as well.
     (name "awscli")
-    (version "1.18.6")
+    (version "1.18.203")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri name version))
        (sha256
         (base32
-         "0p479mfs9r0m82a217pap8156ijwvhv6r3kqa4k267gd05wgvygm"))))
+         "128zg24961j8nmnq2dxqg6a7zwh3qgv87cmvclsdqwwih9nigxv9"))))
     (build-system python-build-system)
     (arguments
      ;; FIXME: The 'pypi' release does not contain tests.
@@ -2588,16 +2999,34 @@ library.")
 @code{Requests} with @code{Gevent} to make asynchronous HTTP Requests easily")
     (license license:bsd-2)))
 
+(define-public python-dpkt
+  (package
+    (name "python-dpkt")
+    (version "1.9.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "dpkt" version))
+       (sha256
+        (base32
+         "1d28r8pmhzjjd6hrn1xcddinfhwv8lcl1s59ygmqa8kfmz5pkrgl"))))
+    (build-system python-build-system)
+    (home-page "https://github.com/kbandla/dpkt")
+    (synopsis "Packet generator and parser for TCP/IP protocols")
+    (description "The dpkt module is a fast, simple packet generator and parser
+for the basic TCP/IP protocols.")
+    (license license:bsd-3)))
+
 (define-public python-geventhttpclient
   (package
     (name "python-geventhttpclient")
-    (version "1.3.1")
+    (version "1.4.4")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "geventhttpclient" version))
               (sha256
                (base32
-                "07d0q3wzmml75227r6y6mrl5a0zpf4v9gj0ni5rhbyzmaj4az1xx"))
+                "1hy4qm9d3r69n5199i7qjji1v7718n7cxbj8ggi0njify99m37pm"))
               (modules '((guix build utils)))
               (snippet
                '(begin
@@ -2625,7 +3054,8 @@ library.")
                      "-k" (string-append "not test_cookielib_compatibility"))
              #t)))))
     (native-inputs
-     `(("python-pytest" ,python-pytest)))
+     `(("python-dpkt" ,python-dpkt)
+       ("python-pytest" ,python-pytest)))
     (propagated-inputs
      `(("python-certifi" ,python-certifi)
        ("python-gevent" ,python-gevent)
@@ -2635,9 +3065,6 @@ library.")
     (description "@code{python-geventhttpclient} is a high performance,
 concurrent HTTP client library for python using @code{gevent}.")
     (license license:expat)))
-
-(define-public python2-geventhttpclient
-  (package-with-python2 python-geventhttpclient))
 
 (define-public python-requests-oauthlib
   (package
@@ -2674,9 +3101,6 @@ concurrent HTTP client library for python using @code{gevent}.")
      "Requests-OAuthlib uses the Python Requests and OAuthlib libraries to
 provide an easy-to-use Python interface for building OAuth1 and OAuth2 clients.")
     (license license:isc)))
-
-(define-public python2-requests-oauthlib
-  (package-with-python2 python-requests-oauthlib))
 
 (define-public python-url
   (package
@@ -2738,8 +3162,18 @@ provide an easy-to-use Python interface for building OAuth1 and OAuth2 clients."
 @code{httplib2} for use with @code{requests} session objects.")
     (license license:asl2.0)))
 
-(define-public python2-cachecontrol
-  (package-with-python2 python-cachecontrol))
+(define-public python-cachecontrol-0.11
+  (package
+    (inherit python-cachecontrol)
+    (name "python-cachecontrol")
+    (version "0.11.7")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "CacheControl" version))
+        (sha256
+         (base32
+          "07jsfhlbcwgqg6ayz8nznzaqg5rmxqblbzxz1qvg5wc44pcjjy4g"))))))
 
 (define-public python-betamax
   (package
@@ -2794,13 +3228,13 @@ Betamax.")
 (define-public python-s3transfer
   (package
     (name "python-s3transfer")
-    (version "0.2.0")
+    (version "0.3.3")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "s3transfer" version))
               (sha256
                (base32
-                "08fhj73b1ai52hrs2q3nggshq3pswn1gq8ch3m009cb2v2vmqggj"))))
+                "1nzp5kwmy9669334shcz9ipg89jgpdqhrmbkgdg18r7wmvi3f6lj"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -3032,9 +3466,6 @@ documentation builder.")
     (description "This package lets you extract Swagger API documentation
 specs from your Flask-Restful projects.")
     (license license:expat)))
-
-(define-public python2-flask-restful-swagger
-  (package-with-python2 python-flask-restful-swagger))
 
 (define-public python-htmlmin
   (package
@@ -3320,9 +3751,6 @@ and other command-line tasks that belong outside the web application
 itself.")
   (license license:bsd-3)))
 
-(define-public python2-flask-script
-  (package-with-python2 python-flask-script))
-
 (define-public python-flask-migrate
   (package
   (name "python-flask-migrate")
@@ -3396,9 +3824,6 @@ Flask.  It supports managing both authentication and authorization data in a
 thread-local variable.")
     (license license:expat)))
 
-(define-public python2-flask-principal
-  (package-with-python2 python-flask-principal))
-
 (define-public python-flask-httpauth
   (package
     (name "python-flask-httpauth")
@@ -3418,9 +3843,6 @@ thread-local variable.")
     (description "@code{flask_httpauth} provides Basic and Digest HTTP
 authentication for Flask routes.")
     (license license:expat)))
-
-(define-public python2-flask-httpauth
-  (package-with-python2 python-flask-httpauth))
 
 (define-public python-uritemplate
   (package
@@ -3500,14 +3922,14 @@ List.  Forked from and using the same API as the publicsuffix package.")
 (define-public python-werkzeug
   (package
     (name "python-werkzeug")
-    (version "1.0.0")
+    (version "1.0.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "Werkzeug" version))
        (sha256
         (base32
-         "15kh0z61klp62mrc1prka13xsshxn0rsp1j1s2964iw86yisi6qn"))))
+         "0z74sa1xw5h20yin9faj0vvdbq713cgbj84klc72jr9nmpjv303c"))))
     (build-system python-build-system)
     (arguments
      '(#:phases
@@ -3522,7 +3944,7 @@ List.  Forked from and using the same API as the publicsuffix package.")
     (native-inputs
      `(("python-pytest" ,python-pytest)
        ("python-pytest-timeout" ,python-pytest-timeout)))
-    (home-page "https://www.palletsprojects.org/p/werkzeug/")
+    (home-page "https://palletsprojects.com/p/werkzeug/")
     (synopsis "Utilities for WSGI applications")
     (description "One of the most advanced WSGI utility modules.  It includes a
 powerful debugger, full-featured request and response objects, HTTP utilities to
@@ -3530,9 +3952,6 @@ handle entity tags, cache control headers, HTTP dates, cookie handling, file
 uploads, a powerful URL routing system and a bunch of community-contributed
 addon modules.")
     (license license:x11)))
-
-(define-public python2-werkzeug
-  (package-with-python2 python-werkzeug))
 
 (define-public python-bottle
   (package
@@ -3993,26 +4412,21 @@ library to create slugs from unicode strings while keeping it DRY.")
 (define-public python-tinycss2
   (package
     (name "python-tinycss2")
-    (version "1.0.2")
+    (version "1.1.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "tinycss2" version))
-       (patches (search-patches "python-tinycss2-flake8-compat.patch"))
        (sha256
-        (base32 "1kw84y09lggji4krkc58jyhsfj31w8npwhznr7lf19d0zbix09v4"))))
+        (base32 "12p16k8x8ig51gpfcwz3k3kxpxrwwkn41a1avdgvh3nn8hqarp7v"))))
     (build-system python-build-system)
     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda _ (invoke "pytest"))))))
+     ;; Test data is missing from the PyPI archive, and the build system is
+     ;; based on Flit, which wants an unmaintained and unpackaged
+     ;; python-pytoml dependency.
+     `(#:tests? #f))
     (propagated-inputs
      `(("python-webencodings" ,python-webencodings)))
-    (native-inputs
-     `(("python-pytest-flake8" ,python-pytest-flake8)
-       ("python-pytest-isort" ,python-pytest-isort)
-       ("python-pytest-runner" ,python-pytest-runner)))
     (home-page "https://tinycss2.readthedocs.io/")
     (synopsis "Low-level CSS parser for Python")
     (description "@code{tinycss2} can parse strings, return Python objects
@@ -4027,13 +4441,13 @@ in various CSS modules.")
 (define-public python-cssselect2
   (package
     (name "python-cssselect2")
-    (version "0.2.2")
+    (version "0.4.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "cssselect2" version))
        (sha256
-        (base32 "0skymzb4ncrm2zdsy80f53vi0arf776lvbp51hzh4ayp1il5lj3h"))))
+        (base32 "1j2fcr217rsvkipsg6zjq03rl64rxnvb5hqqpx0dv58fhspvkywk"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -4479,7 +4893,7 @@ and serve updated contents upon changes to the directory.")
 (define-public python-httpcore
   (package
     (name "python-httpcore")
-    (version "0.11.0")
+    (version "0.12.2")
     (source
      (origin
        ;; PyPI tarball does not contain tests.
@@ -4489,33 +4903,21 @@ and serve updated contents upon changes to the directory.")
              (commit  version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "01bhajcxqgkdzg7b7x0fqs2lwcfsajlgqwi1nlxx58jss7g2kxn9"))))
+        (base32 "1nrwwfdqjfc2a1k3j41cdwkprwvplf95fwmypdl2aq2qgp3209q0"))))
     (build-system python-build-system)
     (arguments
-     `(#:phases
+     `(#:tests? #f ; Tests hang at 98%
+       #:phases
        (modify-phases %standard-phases
-         (add-after 'unpack 'remove-unavailable-tests
-           (lambda _
-             ;; These tests require 'mitmproxy' which is not packaged.
-             (for-each (lambda (f)
-                         (delete-file f))
-                       '("tests/conftest.py"
-                         "tests/sync_tests/test_interfaces.py"
-                         "tests/async_tests/test_interfaces.py"))
-             #t))
-         (add-after 'remove-unavailable-tests 'force-h11-version
-           ;; Allow build with h11 >= 0.10.
-           (lambda _
-             (substitute* "setup.py" (("h11>=0.8,<0.10") "h11"))
-             #t))
          (replace 'check
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (add-installed-pythonpath inputs outputs)
-             (invoke "pytest" "-vv" "--cov=httpcore"
-                     "--cov=tests" "tests"))))))
+           (lambda* (#:key inputs outputs tests? #:allow-other-keys)
+             (when tests?
+               (add-installed-pythonpath inputs outputs)
+               (invoke "pytest" "-vv" "--cov=httpcore"
+                       "--cov=tests" "tests"))
+             #t)))))
     (native-inputs
-     `(;; ("mitmproxy" ,mitmproxy) ;; TODO: Package this.
-       ("python-autoflake" ,python-autoflake)
+     `(("python-autoflake" ,python-autoflake)
        ("python-flake8" ,python-flake8)
        ("python-flake8-bugbear" ,python-flake8-bugbear)
        ("python-flake8-pie" ,python-flake8-pie)
@@ -4554,7 +4956,7 @@ Some things HTTP Core does do:
 (define-public python-httpx
   (package
     (name "python-httpx")
-    (version "0.15.4")
+    (version "0.16.1")
     (source
      (origin
        ;; PyPI tarball does not contain tests.
@@ -4564,7 +4966,7 @@ Some things HTTP Core does do:
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1qr91xw6jxynvihmw953bi5446ssm9ffmb2c4nhfa77v7883sp21"))))
+        (base32 "00gmq45fckcqkj910bvd7pyqz1mvgsdvz4s0k7dzbnc5czzq1f4a"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -5170,15 +5572,25 @@ Encoding for HTTP.")
                      '("captcha/2captcha.py"
                        "captcha/9kw.py"
                        "captcha/anticaptcha.py"
-                       "captcha/deathbycaptcha.py"
-                       "interpreters/js2py.py"
-                       "interpreters/v8.py"))
+                       "captcha/deathbycaptcha.py"))
            (substitute* "__init__.py"
              ;; Perhaps it's a joke, but don't promote proprietary software.
              (("([Th]is feature is not available) in the .*'" _ prefix)
               (string-append prefix ".'")))
            #t))))
     (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         ;; XXX: Dependencies, that have not yet been packaged
+         ;;      and cause an import error when included.
+         (add-after 'unpack 'drop-unsupported-sources
+           (lambda _
+             (with-directory-excursion "cloudscraper"
+               (for-each delete-file
+                         '("interpreters/js2py.py"
+                           "interpreters/v8.py")))
+             #t)))))
     (propagated-inputs
      `(("python-requests" ,python-requests)
        ("python-requests-toolbelt" ,python-requests-toolbelt-0.9.1)
@@ -5217,4 +5629,120 @@ over IMAP:
 @item Work with emails in folders (copy, delete, flag, move, seen)
 @item Work with mailbox folders (list, set, get, create, exists, rename, delete, status)
 @end itemize")
+    (license license:asl2.0)))
+
+(define-public python-hstspreload
+  (package
+    (name "python-hstspreload")
+    (version "2020.10.20")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "hstspreload" version))
+       (sha256
+        (base32
+         "1qah80p2xlib1rhivvdj9v5y3girxrj7dwp1mnh8mwaj5wy32y8a"))))
+    (build-system python-build-system)
+    (home-page
+     "https://github.com/sethmlarson/hstspreload")
+    (synopsis
+     "Chromium HSTS Preload list as a Python package")
+    (description
+     "@code{python-hstspreload} contains Chromium HSTS Preload list
+as a Python package.")
+    (license license:bsd-3)))
+
+(define-public python-sanic
+  (package
+    (name "python-sanic")
+    (version "20.9.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "sanic" version))
+       (sha256
+        (base32
+         "06p0lsxqbfbka2yaqlpp0bg5pf7ma44zi6kq7qbb6hhry48dp1w6"))))
+    (build-system python-build-system)
+    (arguments
+     '(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'use-recent-pytest
+           ;; Allow using recent dependencies.
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "setup.py"
+               (("httpcore==0.3.0") "httpcore")
+               (("pytest==5.2.1") "pytest")
+               (("multidict==5.0.0") "multidict")
+               (("httpx==0\\.15\\.4") "httpx"))
+             #t))
+         (replace 'check
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (add-installed-pythonpath inputs outputs)
+             (invoke "pytest" "-vv" "./tests" "-k"
+                     "not test_zero_downtime and not test_gunicorn_worker"))))))
+    (propagated-inputs
+     `(("python-aiofiles" ,python-aiofiles)
+       ("python-httptools" ,python-httptools)
+       ("python-httpx" ,python-httpx)
+       ("python-multidict" ,python-multidict)
+       ("python-ujson" ,python-ujson)
+       ("python-uvloop" ,python-uvloop)
+       ("python-websockets" ,python-websockets)))
+    (native-inputs
+     `(("gunicorn" ,gunicorn)
+       ("python-beautifulsoup4" ,python-beautifulsoup4)
+       ("python-hstspreload" ,python-hstspreload)
+       ("python-httpcore" ,python-httpcore)
+       ("python-pytest" ,python-pytest)
+       ("python-pytest-cov" ,python-pytest-cov)
+       ("python-pytest-benchmark" ,python-pytest-benchmark)
+       ("python-pytest-sanic" ,python-pytest-sanic)
+       ("python-pytest-sugar" ,python-pytest-sugar)
+       ("python-urllib3" ,python-urllib3)
+       ("python-uvicorn" ,python-uvicorn)))
+    (home-page
+     "https://github.com/huge-success/sanic/")
+    (synopsis
+     "Async Python 3.6+ web server/framework")
+    (description
+     "Sanic is a Python 3.6+ web server and web framework
+that's written to go fast.  It allows the usage of the
+@code{async/await} syntax added in Python 3.5, which makes
+your code non-blocking and speedy.")
+    (license license:expat)))
+
+(define-public python-socks
+  (package
+    (name "python-socks")
+    (version "1.1.2")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "python-socks" version))
+        (sha256
+         (base32
+          "06mgv3icsyglv50w3sb71x6cpbskza20pqd93l5xk59x574i6xgs"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f  ; tests not included
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? #:allow-other-keys)
+             (when tests?
+               (invoke "pytest" "tests/" "-s"))
+             #t)))))
+    (propagated-inputs
+     `(("python-async-timeout" ,python-async-timeout)
+       ("python-curio" ,python-curio)
+       ("python-trio" ,python-trio)))
+    (native-inputs
+     `(("python-pytest" ,python-pytest)))
+    (home-page "https://github.com/romis2012/python-socks")
+    (synopsis
+     "Core proxy (SOCKS4, SOCKS5, HTTP tunneling) functionality for Python")
+    (description
+     "Socks is a library providing core proxy (SOCKS4, SOCKS5, HTTP tunneling)
+ functionality.")
     (license license:asl2.0)))

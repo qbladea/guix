@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015, 2016 Alex Kost <alezost@gmail.com>
 ;;; Copyright © 2015, 2016, 2020 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2015 Sou Bunnbu <iyzsong@gmail.com>
@@ -279,7 +279,9 @@ system objects.")))
 
 (define root-file-system-service-type
   (shepherd-service-type 'root-file-system
-                         (const %root-file-system-shepherd-service)))
+                         (const %root-file-system-shepherd-service)
+                         (description "Take care of syncing the root file
+system and of remounting it read-only when the system shuts down.")))
 
 (define (root-file-system-service)
   "Return a service whose sole purpose is to re-mount read-only the root file
@@ -298,7 +300,8 @@ FILE-SYSTEM."
 (define (mapped-device->shepherd-service-name md)
   "Return the symbol that denotes the shepherd service of MD, a <mapped-device>."
   (symbol-append 'device-mapping-
-                 (string->symbol (mapped-device-target md))))
+                 (string->symbol (string-join
+                                  (mapped-device-targets md) "-"))))
 
 (define dependency->shepherd-service-name
   (match-lambda
@@ -569,7 +572,9 @@ down.")))
         (requirement '(udev))
         (provision '(trng))
         (start #~(make-forkexec-constructor '#$rngd-command))
-        (stop #~(make-kill-destructor))))))
+        (stop #~(make-kill-destructor))))
+    (description "Run the @command{rngd} random number generation daemon to
+supply entropy to the kernel's pool.")))
 
 (define* (rngd-service #:key
                        (rng-tools rng-tools)
@@ -596,7 +601,8 @@ to add @var{device} to the kernel's entropy pool.  The service will fail if
       (provision '(host-name))
       (start #~(lambda _
                  (sethostname #$name)))
-      (one-shot? #t)))))
+      (one-shot? #t)))
+   (description "Initialize the machine's host name.")))
 
 (define (host-name-service name)
   "Return a service that sets the host name to @var{name}."
@@ -625,7 +631,8 @@ to add @var{device} to the kernel's entropy pool.  The service will fail if
                          (display 1 port))))
                    #t))
         (stop #~(const #f)))))
-   #t))                                           ;default to UTF-8
+   #t                                             ;default to UTF-8
+   (description "Ensure the Linux virtual terminals run in UTF-8 mode.")))
 
 (define console-keymap-service-type
   (shepherd-service-type
@@ -637,7 +644,10 @@ to add @var{device} to the kernel's entropy pool.  The service will fail if
       (start #~(lambda _
                  (zero? (system* #$(file-append kbd "/bin/loadkeys")
                                  #$@files))))
-      (respawn? #f)))))
+      (respawn? #f)))
+   (description "@emph{This service is deprecated in favor of the
+@code{keyboard-layout} field of @code{operating-system}.}  Load the given list
+of console keymaps with @command{loadkeys}.")))
 
 (define-deprecated (console-keymap-service #:rest files)
   #f
@@ -1340,7 +1350,9 @@ Service Switch}, for an example."
                          (pid  (spawn)))
                      (umask mask)
                      pid))))
-      (stop #~(make-kill-destructor))))))
+      (stop #~(make-kill-destructor))))
+   (description "Run the syslog daemon, @command{syslogd}, which is
+responsible for logging system messages.")))
 
 ;; Snippet adapted from the GNU inetutils manual.
 (define %default-syslog.conf
@@ -1529,6 +1541,8 @@ archive' public keys, with GUIX."
                     (default 0))
   (log-compression  guix-configuration-log-compression
                     (default 'bzip2))
+  (discover?        guix-configuration-discover?
+                    (default #f))
   (extra-options    guix-configuration-extra-options ;list of strings
                     (default '()))
   (log-file         guix-configuration-log-file   ;string
@@ -1565,18 +1579,40 @@ proxy of 'guix-daemon'...~%")
                     (environ environment)
                     #t)))))
 
+(define shepherd-discover-action
+  ;; Shepherd action to enable or disable substitute servers discovery.
+  (shepherd-action
+   (name 'discover)
+   (documentation
+    "Enable or disable substitute servers discovery and restart the
+'guix-daemon'.")
+   (procedure #~(lambda* (_ status)
+                  (let ((environment (environ)))
+                    (if (and status
+                             (string=? status "on"))
+                        (begin
+                          (format #t "enable substitute servers discovery~%")
+                          (setenv "discover" "on"))
+                        (begin
+                          (format #t "disable substitute servers discovery~%")
+                          (unsetenv "discover")))
+                    (action 'guix-daemon 'restart)
+                    (environ environment)
+                    #t)))))
+
 (define (guix-shepherd-service config)
   "Return a <shepherd-service> for the Guix daemon service with CONFIG."
   (match-record config <guix-configuration>
     (guix build-group build-accounts authorize-key? authorized-keys
           use-substitutes? substitute-urls max-silent-time timeout
-          log-compression extra-options log-file http-proxy tmpdir
-          chroot-directories)
+          log-compression discover? extra-options log-file
+          http-proxy tmpdir chroot-directories)
     (list (shepherd-service
            (documentation "Run the Guix daemon.")
            (provision '(guix-daemon))
            (requirement '(user-processes))
-           (actions (list shepherd-set-http-proxy-action))
+           (actions (list shepherd-set-http-proxy-action
+                          shepherd-discover-action))
            (modules '((srfi srfi-1)
                       (ice-9 match)
                       (gnu build shepherd)))
@@ -1590,6 +1626,9 @@ proxy of 'guix-daemon'...~%")
                     ;; HTTP/HTTPS proxy.  The 'http_proxy' variable is set by
                     ;; the 'set-http-proxy' action.
                     (or (getenv "http_proxy") #$http-proxy))
+
+                  (define discover?
+                    (or (getenv "discover") #$discover?))
 
                   ;; Start the guix-daemon from a container, when supported,
                   ;; to solve an installation issue. See the comment below for
@@ -1605,6 +1644,8 @@ proxy of 'guix-daemon'...~%")
                           #$@(if use-substitutes?
                                  '()
                                  '("--no-substitutes"))
+                          (string-append "--discover="
+                                         (if discover? "yes" "no"))
                           "--substitute-urls" #$(string-join substitute-urls)
                           #$@extra-options
 
@@ -1688,17 +1729,18 @@ proxy of 'guix-daemon'...~%")
   "Return a file that contains the list of references of ITEM."
   (if (struct? item)                              ;lowerable object
       (computed-file name
-                     (with-imported-modules (source-module-closure
-                                             '((guix build store-copy)))
-                       #~(begin
-                           (use-modules (guix build store-copy))
+                     (with-extensions (list guile-gcrypt) ;for store-copy
+                       (with-imported-modules (source-module-closure
+                                               '((guix build store-copy)))
+                         #~(begin
+                             (use-modules (guix build store-copy))
 
-                           (call-with-output-file #$output
-                             (lambda (port)
-                               (write (map store-info-item
-                                           (call-with-input-file "graph"
-                                             read-reference-graph))
-                                      port)))))
+                             (call-with-output-file #$output
+                               (lambda (port)
+                                 (write (map store-info-item
+                                             (call-with-input-file "graph"
+                                               read-reference-graph))
+                                        port))))))
                      #:options `(#:local-build? #f
                                  #:references-graphs (("graph" ,item))))
       (plain-file name "()")))
@@ -1743,6 +1785,8 @@ proxy of 'guix-daemon'...~%")
            (default 80))
   (host    guix-publish-configuration-host        ;string
            (default "localhost"))
+  (advertise? guix-publish-advertise?       ;boolean
+              (default #f))
   (compression       guix-publish-configuration-compression
                      (thunked)
                      (default (default-compression this-record
@@ -1789,10 +1833,13 @@ raise a deprecation warning if the 'compression-level' field was used."
                    lst))))
 
   (match-record config <guix-publish-configuration>
-    (guix port host nar-path cache workers ttl cache-bypass-threshold)
+    (guix port host nar-path cache workers ttl cache-bypass-threshold
+          advertise?)
     (list (shepherd-service
            (provision '(guix-publish))
-           (requirement '(guix-daemon))
+           (requirement `(user-processes
+                          guix-daemon
+                          ,@(if advertise? '(avahi-daemon) '())))
            (start #~(make-forkexec-constructor
                      (list #$(file-append guix "/bin/guix")
                            "publish" "-u" "guix-publish"
@@ -1800,6 +1847,9 @@ raise a deprecation warning if the 'compression-level' field was used."
                            #$@(config->compression-options config)
                            (string-append "--nar-path=" #$nar-path)
                            (string-append "--listen=" #$host)
+                           #$@(if advertise?
+                                  #~("--advertise")
+                                  #~())
                            #$@(if workers
                                   #~((string-append "--workers="
                                                     #$(number->string
@@ -2168,7 +2218,8 @@ instance."
                     (when device
                       (restart-on-EINTR (swapoff device)))
                     #f)))
-        (respawn? #f))))))
+        (respawn? #f))))
+   (description "Turn on the virtual memory swap area.")))
 
 (define (swap-service device)
   "Return a service that uses @var{device} as a swap device."
@@ -2282,7 +2333,9 @@ This service is not part of @var{%base-services}."
         (requirement '(user-processes udev dbus-system))
         (provision (list (symbol-append 'term- (string->symbol virtual-terminal))))
         (start #~(make-forkexec-constructor #$kmscon-command))
-        (stop #~(make-kill-destructor)))))))
+        (stop #~(make-kill-destructor)))))
+   (description "Start the @command{kmscon} virtual terminal emulator for the
+Linux @dfn{kernel mode setting} (KMS).")))
 
 (define-record-type* <static-networking>
   static-networking make-static-networking

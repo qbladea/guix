@@ -187,7 +187,7 @@ selected keymap."
                (lambda (models layouts)
                  ((installer-keymap-page current-installer)
                   layouts '#$context)))))
-        (#$apply-keymap result)
+        (and result (#$apply-keymap result))
         result)))
 
 (define (installer-steps)
@@ -265,6 +265,13 @@ selected keymap."
           (description (G_ "Network selection"))
           (compute (lambda _
                      ((installer-network-page current-installer)))))
+
+         ;; Ask whether to enable substitute server discovery.
+         (installer-step
+          (id 'substitutes)
+          (description (G_ "Substitute server discovery"))
+          (compute (lambda _
+                     ((installer-substitutes-page current-installer)))))
 
          ;; Prompt for users (name, group and home directory).
          (installer-step

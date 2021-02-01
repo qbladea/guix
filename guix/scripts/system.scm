@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2014, 2015, 2016, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016 Alex Kost <alezost@gmail.com>
 ;;; Copyright © 2016, 2017, 2018 Chris Marusich <cmmarusich@gmail.com>
 ;;; Copyright © 2017, 2019 Mathieu Othacehe <m.othacehe@gmail.com>
@@ -29,7 +29,10 @@
   #:use-module (guix ui)
   #:use-module ((guix status) #:select (with-status-verbosity))
   #:use-module (guix store)
-  #:autoload   (guix store database) (register-path)
+  #:autoload   (guix base16) (bytevector->base16-string)
+  #:autoload   (guix store database)
+               (sqlite-register store-database-file call-with-database)
+  #:autoload   (guix build store-copy) (copy-store-item)
   #:use-module (guix describe)
   #:use-module (guix grafts)
   #:use-module (guix gexp)
@@ -45,7 +48,8 @@
   #:autoload   (guix scripts package) (delete-generations
                                        delete-matching-generations)
   #:autoload   (guix scripts pull) (channel-commit-hyperlink)
-  #:use-module (guix graph)
+  #:autoload   (guix graph) (export-graph node-type
+                             graph-backend-name %graph-backends)
   #:use-module (guix scripts graph)
   #:use-module (guix scripts system reconfigure)
   #:use-module (guix build utils)
@@ -129,12 +133,11 @@ BODY..., and restore them."
   (store-lift topologically-sorted))
 
 
-(define* (copy-item item references target
+(define* (copy-item item info target db
                     #:key (log-port (current-error-port)))
-  "Copy ITEM to the store under root directory TARGET and register it with
-REFERENCES as its set of references."
-  (let ((dest  (string-append target item))
-        (state (string-append target "/var/guix")))
+  "Copy ITEM to the store under root directory TARGET and populate DB with the
+given INFO, a <path-info> record."
+  (let ((dest (string-append target item)))
     (format log-port "copying '~a'...~%" item)
 
     ;; Remove DEST if it exists to make sure that (1) we do not fail badly
@@ -147,44 +150,48 @@ REFERENCES as its set of references."
                             #:directories? #t))
       (delete-file-recursively dest))
 
-    (copy-recursively item dest
-                      #:log (%make-void-port "w"))
+    (copy-store-item item target
+                     #:deduplicate? #t)
 
-    ;; Register ITEM; as a side-effect, it resets timestamps, etc.
-    ;; Explicitly use "TARGET/var/guix" as the state directory, to avoid
-    ;; reproducing the user's current settings; see
-    ;; <http://bugs.gnu.org/18049>.
-    (unless (register-path item
-                           #:prefix target
-                           #:state-directory state
-                           #:references references)
-      (leave (G_ "failed to register '~a' under '~a'~%")
-             item target))))
+    (sqlite-register db
+                     #:path item
+                     #:references (path-info-references info)
+                     #:deriver (path-info-deriver info)
+                     #:hash (string-append
+                             "sha256:"
+                             (bytevector->base16-string (path-info-hash info)))
+                     #:nar-size (path-info-nar-size info))))
 
 (define* (copy-closure item target
                        #:key (log-port (current-error-port)))
   "Copy ITEM and all its dependencies to the store under root directory
 TARGET, and register them."
   (mlet* %store-monad ((to-copy (topologically-sorted* (list item)))
-                       (refs    (mapm %store-monad references* to-copy))
-                       (info    (mapm %store-monad query-path-info*
-                                      (delete-duplicates
-                                       (append to-copy (concatenate refs)))))
+                       (info    (mapm %store-monad query-path-info* to-copy))
                        (size -> (reduce + 0 (map path-info-nar-size info))))
     (define progress-bar
       (progress-reporter/bar (length to-copy)
                              (format #f (G_ "copying to '~a'...")
                                      target)))
 
+    (define state
+      (string-append target "/var/guix"))
+
     (check-available-space size target)
 
-    (call-with-progress-reporter progress-bar
-      (lambda (report)
-        (let ((void (%make-void-port "w")))
-          (for-each (lambda (item refs)
-                      (copy-item item refs target #:log-port void)
-                      (report))
-                    to-copy refs))))
+    ;; Explicitly use "TARGET/var/guix" as the state directory to avoid
+    ;; reproducing the user's current settings; see
+    ;; <http://bugs.gnu.org/18049>.
+    (call-with-database (store-database-file #:prefix target
+                                             #:state-directory state)
+      (lambda (db)
+        (call-with-progress-reporter progress-bar
+          (lambda (report)
+            (let ((void (%make-void-port "w")))
+              (for-each (lambda (item info)
+                          (copy-item item info target db #:log-port void)
+                          (report))
+                        to-copy info))))))
 
     (return *unspecified*)))
 
@@ -385,6 +392,7 @@ STORE is an open connection to the store."
          (params (first (profile-boot-parameters %system-profile
                                                  (list number))))
          (locale (boot-parameters-locale params))
+         (store-crypto-devices (boot-parameters-store-crypto-devices params))
          (store-directory-prefix
           (boot-parameters-store-directory-prefix params))
          (old-generations
@@ -400,6 +408,7 @@ STORE is an open connection to the store."
                      ((bootloader-configuration-file-generator bootloader)
                       bootloader-config entries
                       #:locale locale
+                      #:store-crypto-devices store-crypto-devices
                       #:store-directory-prefix store-directory-prefix
                       #:old-entries old-entries)))
            (drvs -> (list bootcfg)))
@@ -696,9 +705,11 @@ checking this by themselves in their 'check' procedure."
                                                   image-size
                                                   (* 70 (expt 2 20)))
                                               #:mappings mappings))
-      ((disk-image)
+      ((image disk-image)
        (let* ((base-image (os->image os #:type image-type))
               (base-target (image-target base-image)))
+         (when (eq? action 'disk-image)
+           (warning (G_ "'disk-image' is deprecated: use 'image' instead~%")))
          (lower-object
           (system-image
            (image
@@ -770,7 +781,7 @@ and TARGET arguments."
   "Perform ACTION for OS.  INSTALL-BOOTLOADER? specifies whether to install
 bootloader; BOOTLOADER-TAGET is the target for the bootloader; TARGET is the
 target root directory; IMAGE-SIZE is the size of the image to be built, for
-the 'vm-image' and 'disk-image' actions.  IMAGE-TYPE is the type of image to
+the 'vm-image' and 'image' actions.  IMAGE-TYPE is the type of image to
 be built.  When VOLATILE-ROOT? is #t, the root file system is mounted
 volatile.
 
@@ -879,26 +890,38 @@ Run 'herd status' to view the list of services on your system.\n"))))))
                    (register-root* (list output) gc-root))
                  (return output)))))))))
 
-(define (export-extension-graph os port)
-  "Export the service extension graph of OS to PORT."
+(define (lookup-backend name)                     ;TODO: factorize
+  "Return the graph backend called NAME.  Raise an error if it is not found."
+  (or (find (lambda (backend)
+              (string=? (graph-backend-name backend) name))
+            %graph-backends)
+      (leave (G_ "~a: unknown backend~%") name)))
+
+(define* (export-extension-graph os port
+                                 #:key (backend (lookup-backend "graphviz")))
+  "Export the service extension graph of OS to PORT using BACKEND."
   (let* ((services (operating-system-services os))
          (system   (find (lambda (service)
                            (eq? (service-kind service) system-service-type))
                          services)))
     (export-graph (list system) (current-output-port)
+                  #:backend backend
                   #:node-type (service-node-type services)
                   #:reverse-edges? #t)))
 
-(define (export-shepherd-graph os port)
-  "Export the graph of shepherd services of OS to PORT."
+(define* (export-shepherd-graph os port
+                                #:key (backend (lookup-backend "graphviz")))
+  "Export the graph of shepherd services of OS to PORT using BACKEND."
   (let* ((services  (operating-system-services os))
          (pid1      (fold-services services
                                    #:target-type shepherd-root-service-type))
-         (shepherds (service-value pid1))         ;list of <shepherd-service>
+         ;; Get the list of <shepherd-service>.
+         (shepherds (shepherd-configuration-services (service-value pid1)))
          (sinks     (filter (lambda (service)
                               (null? (shepherd-service-requirement service)))
                             shepherds)))
     (export-graph sinks (current-output-port)
+                  #:backend backend
                   #:node-type (shepherd-service-node-type shepherds)
                   #:reverse-edges? #t)))
 
@@ -948,7 +971,7 @@ Some ACTIONS support additional ARGS.\n"))
   (display (G_ "\
    vm-image         build a freestanding virtual machine image\n"))
   (display (G_ "\
-   disk-image       build a disk image, suitable for a USB stick\n"))
+   image            build a Guix System image\n"))
   (display (G_ "\
    docker-image     build a Docker image\n"))
   (display (G_ "\
@@ -974,15 +997,15 @@ Some ACTIONS support additional ARGS.\n"))
   (display (G_ "
       --list-image-types list available image types"))
   (display (G_ "
-  -t, --image-type=TYPE  for 'disk-image', produce an image of TYPE"))
+  -t, --image-type=TYPE  for 'image', produce an image of TYPE"))
   (display (G_ "
       --image-size=SIZE  for 'vm-image', produce an image of SIZE"))
   (display (G_ "
       --no-bootloader    for 'init', do not install a bootloader"))
   (display (G_ "
-      --volatile         for 'disk-image', make the root file system volatile"))
+      --volatile         for 'image', make the root file system volatile"))
   (display (G_ "
-      --label=LABEL      for 'disk-image', label disk image with LABEL"))
+      --label=LABEL      for 'image', label disk image with LABEL"))
   (display (G_ "
       --save-provenance  save provenance information"))
   (display (G_ "
@@ -994,7 +1017,7 @@ Some ACTIONS support additional ARGS.\n"))
   (display (G_ "
   -N, --network          for 'container', allow containers to access the network"))
   (display (G_ "
-  -r, --root=FILE        for 'vm', 'vm-image', 'disk-image', 'container',
+  -r, --root=FILE        for 'vm', 'vm-image', 'image', 'container',
                          and 'build', make FILE a symlink to the result, and
                          register it as a garbage collector root"))
   (display (G_ "
@@ -1005,6 +1028,10 @@ Some ACTIONS support additional ARGS.\n"))
       --target=TRIPLET   cross-build for TRIPLET--e.g., \"armel-linux-gnu\""))
   (display (G_ "
   -v, --verbosity=LEVEL  use the given verbosity LEVEL"))
+  (newline)
+  (display (G_ "
+      --graph-backend=BACKEND
+                         use BACKEND for 'extension-graphs' and 'shepherd-graph'"))
   (newline)
   (display (G_ "
   -h, --help             display this help and exit"))
@@ -1101,6 +1128,9 @@ Some ACTIONS support additional ARGS.\n"))
          (option '(#\r "root") #t #f
                  (lambda (opt name arg result)
                    (alist-cons 'gc-root arg result)))
+         (option '("graph-backend") #t #f
+                 (lambda (opt name arg result)
+                   (alist-cons 'graph-backend arg result)))
          %standard-build-options))
 
 (define %default-options
@@ -1116,11 +1146,12 @@ Some ACTIONS support additional ARGS.\n"))
     (debug . 0)
     (verbosity . #f)                              ;default
     (validate-reconfigure . ,ensure-forward-reconfigure)
-    (image-type . raw)
+    (image-type . efi-raw)
     (image-size . guess)
     (install-bootloader? . #t)
     (label . #f)
-    (volatile-root? . #f)))
+    (volatile-root? . #f)
+    (graph-backend . "graphviz")))
 
 (define (verbosity-level opts)
   "Return the verbosity level based on OPTS, the alist of parsed options."
@@ -1183,6 +1214,9 @@ resulting from command-line parsing."
                            (bootloader-configuration-target
                             (operating-system-bootloader os)))))
 
+    (define (graph-backend)
+      (lookup-backend (assoc-ref opts 'graph-backend)))
+
     (with-store store
       (set-build-options-from-command-line store opts)
 
@@ -1197,9 +1231,11 @@ resulting from command-line parsing."
             (set-guile-for-build (default-guile))
             (case action
               ((extension-graph)
-               (export-extension-graph os (current-output-port)))
+               (export-extension-graph os (current-output-port)
+                                       #:backend (graph-backend)))
               ((shepherd-graph)
-               (export-shepherd-graph os (current-output-port)))
+               (export-shepherd-graph os (current-output-port)
+                                      #:backend (graph-backend)))
               (else
                (unless (memq action '(build init))
                  (warn-about-old-distro #:suggested-command
@@ -1302,7 +1338,7 @@ argument list and OPTS is the option alist."
         (alist-cons 'argument arg result)
         (let ((action (string->symbol arg)))
           (case action
-            ((build container vm vm-image disk-image reconfigure init
+            ((build container vm vm-image image disk-image reconfigure init
               extension-graph shepherd-graph
               list-generations describe
               delete-generations roll-back
@@ -1335,7 +1371,8 @@ argument list and OPTS is the option alist."
         (exit 1))
 
       (case action
-        ((build container vm vm-image disk-image docker-image reconfigure)
+        ((build container vm vm-image image disk-image docker-image
+                reconfigure)
          (unless (or (= count 1)
                      (and expr (= count 0)))
            (fail)))

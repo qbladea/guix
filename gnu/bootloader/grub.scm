@@ -4,7 +4,7 @@
 ;;; Copyright © 2017 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2017, 2020 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2019, 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
-;;; Copyright © 2019 Miguel Ángel Arruga Vivas <rosen644835@gmail.com>
+;;; Copyright © 2019, 2020 Miguel Ángel Arruga Vivas <rosen644835@gmail.com>
 ;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2020 Stefan <stefan-guix@vodafonemail.de>
 ;;;
@@ -168,15 +168,14 @@ STORE-DEVICE designates the device holding the store, and STORE-MOUNT-POINT is
 its mount point; these are used to determine where the background image and
 fonts must be searched for.  STORE-DIRECTORY-PREFIX is a directory prefix to
 prepend to any store file name."
-  (define (setup-gfxterm config font-file)
+  (define (setup-gfxterm config)
     (if (memq 'gfxterm (bootloader-configuration-terminal-outputs config))
         #~(format #f "
-if loadfont ~a; then
+if loadfont unicode; then
   set gfxmode=~a
   insmod all_video
   insmod gfxterm
 fi~%"
-                  #+font-file
                   #$(string-join
                      (grub-theme-gfxmode (bootloader-theme config))
                      ";"))
@@ -187,13 +186,6 @@ fi~%"
            (colors (type theme)))
       (string-append (symbol->string (assoc-ref colors 'fg)) "/"
                      (symbol->string (assoc-ref colors 'bg)))))
-
-  (define font-file
-    (let* ((bootloader (bootloader-configuration-bootloader config))
-           (grub (bootloader-package bootloader)))
-      (normalize-file (file-append grub "/share/grub/unicode.pf2")
-                      store-mount-point
-                      store-directory-prefix)))
 
   (define image
     (normalize-file (grub-background-image config)
@@ -216,8 +208,8 @@ else
   set menu_color_normal=cyan/blue
   set menu_color_highlight=white/blue
 fi~%"
-                 #$(grub-root-search store-device font-file)
-                 #$(setup-gfxterm config font-file)
+                 #$(grub-root-search store-device image)
+                 #$(setup-gfxterm config)
                  #$(grub-setup-io config)
 
                  #$image
@@ -359,11 +351,14 @@ code."
                                   (locale #f)
                                   (system (%current-system))
                                   (old-entries '())
+                                  (store-crypto-devices '())
                                   store-directory-prefix)
   "Return the GRUB configuration file corresponding to CONFIG, a
 <bootloader-configuration> object, and where the store is available at
 STORE-FS, a <file-system> object.  OLD-ENTRIES is taken to be a list of menu
 entries corresponding to old generations of the system.
+STORE-CRYPTO-DEVICES contain the UUIDs of the encrypted units that must
+be unlocked to access the store contents.
 STORE-DIRECTORY-PREFIX may be used to specify a store prefix, as is required
 when booting a root file system on a Btrfs subvolume."
   (define all-entries
@@ -410,6 +405,21 @@ menuentry ~s {
                   #$root-index (string-join (list #$@arguments) " " 'prefix)
                   (string-join (map string-join '#$modules)
                                "\n  module " 'prefix))))))
+
+  (define (crypto-devices)
+    (define (crypto-device->cryptomount dev)
+      (if (uuid? dev)
+          #~(format port "cryptomount -u ~a~%"
+                    ;; cryptomount only accepts UUID without the hypen.
+                    #$(string-delete #\- (uuid->string dev)))
+          ;; Other type of devices aren't implemented.
+          #~()))
+    (let ((devices (map crypto-device->cryptomount store-crypto-devices))
+          ;; XXX: Add luks2 when grub 2.06 is packaged.
+          (modules #~(format port "insmod luks~%")))
+      (if (null? devices)
+          devices
+          (cons modules devices))))
 
   (define (sugar)
     (let* ((entry (first all-entries))
@@ -474,6 +484,7 @@ keymap ~a~%" #$keymap))))
                   "# This file was generated from your Guix configuration.  Any changes
 # will be lost upon reconfiguration.
 ")
+          #$@(crypto-devices)
           #$(sugar)
           #$locale-config
           #$keyboard-layout-config
@@ -526,9 +537,13 @@ fi~%"))))
               (invoke/quiet grub "--no-floppy" "--target=i386-pc"
                             "--boot-directory" install-dir
                             device))
-            ;; When creating a disk-image, only install GRUB modules.
-            (copy-recursively (string-append bootloader "/lib/")
-                              install-dir)))))
+            ;; When creating a disk-image, only install a font and GRUB modules.
+            (let* ((fonts (string-append install-dir "/grub/fonts")))
+              (mkdir-p fonts)
+              (copy-file (string-append bootloader "/share/grub/unicode.pf2")
+                         (string-append fonts "/unicode.pf2"))
+              (copy-recursively (string-append bootloader "/lib/")
+                                install-dir))))))
 
 (define install-grub-disk-image
   #~(lambda (bootloader root-index image)

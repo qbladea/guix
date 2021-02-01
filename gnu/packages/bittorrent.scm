@@ -55,6 +55,7 @@
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-build)
   #:use-module (gnu packages python-crypto)
   #:use-module (gnu packages python-web)
   #:use-module (gnu packages python-xyz)
@@ -75,12 +76,17 @@
                                   version ".tar.xz"))
               (sha256
                (base32
-                "1wjmn96zrvmk8j1yz2ysmqd7a2x6ilvnwwapcvfzgxs2wwpnai4i"))))
+                "1wjmn96zrvmk8j1yz2ysmqd7a2x6ilvnwwapcvfzgxs2wwpnai4i"))
+              (patches (search-patches "transmission-honor-localedir.patch"))))
     (build-system glib-or-gtk-build-system)
     (outputs '("out"                      ; library and command-line interface
                "gui"))                    ; graphical user interface
     (arguments
-     '(#:glib-or-gtk-wrap-excluded-outputs '("out")
+     '(#:configure-flags
+       (list (string-append "--localedir="
+                            (assoc-ref %outputs "gui")
+                            "/share/locale"))
+       #:glib-or-gtk-wrap-excluded-outputs '("out")
        #:phases
        (modify-phases %standard-phases
          (add-after 'install 'move-gui
@@ -93,12 +99,11 @@
                (rename-file (string-append out "/bin/transmission-gtk")
                             (string-append gui "/bin/transmission-gtk"))
 
-               (mkdir (string-append gui "/share"))
                (for-each
                 (lambda (dir)
                   (rename-file (string-append out "/share/" dir)
                                (string-append gui "/share/" dir)))
-                '("appdata" "applications" "icons" "locale" "pixmaps"))
+                '("appdata" "applications" "icons" "pixmaps"))
 
                (mkdir-p (string-append gui "/share/man/man1"))
                (rename-file
@@ -312,7 +317,7 @@ Aria2 can be manipulated via built-in JSON-RPC and XML-RPC interfaces.")
 (define-public uget
   (package
     (name "uget")
-    (version "2.2.0")
+    (version "2.2.1")
     (source
      (origin
        (method url-fetch)
@@ -320,7 +325,7 @@ Aria2 can be manipulated via built-in JSON-RPC and XML-RPC interfaces.")
                            "uget%20%28stable%29/" version "/uget-"
                            version ".tar.gz"))
        (sha256
-        (base32 "0rg2mr2cndxvnjib8zm5dp7y2hgbvnqkz2j2jmg0xlzfh9d34b2m"))))
+        (base32 "0dlrjhnm1pg2vwmp7nl2xv1aia5hyirb3021rl46x859k63zap24"))))
     (build-system gnu-build-system)
     (inputs
      `(("curl" ,curl)

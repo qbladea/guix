@@ -1,11 +1,11 @@
 ;; GNU Guix news, for use by 'guix pull'.
 ;;
-;; Copyright © 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;; Copyright © 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;; Copyright © 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;; Copyright © 2019, 2020 Miguel Ángel Arruga Vivas <rosen644835@gmail.com>
 ;; Copyright © 2019, 2020 Konrad Hinsen <konrad.hinsen@fastmail.net>
 ;; Copyright © 2019, 2020 Julien Lepiller <julien@lepiller.eu>
-;; Copyright © 2019, 2020 Florian Pelz <pelzflorian@pelzflorian.de>
+;; Copyright © 2019, 2020, 2021 Florian Pelz <pelzflorian@pelzflorian.de>
 ;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
 ;; Copyright © 2020 Mathieu Othacehe <m.othacehe@gmail.com>
 ;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
@@ -17,6 +17,218 @@
 
 (channel-news
  (version 0)
+
+ (entry (commit "9ab817b2a4601b4a6755983590ed7d93ebdc8d09")
+        (title (en "New @option{--with-latest} package transformation option")
+               (de "Neue Paketumwandlungsoption @option{--with-latest}")
+               (fr "Nouvelle option de transformation @option{--with-latest}"))
+        (body
+         (en "The new @option{--with-latest} package transformation option
+gets the latest release of a package, as would be identified by @command{guix
+refresh}, and uses it instead of the currently-packaged version.  For example,
+to install the latest release of GNOME Weather linked against the latest
+version of libgweather, run:
+
+@example
+guix install gnome-weather \\
+  --with-latest=gnome-weather --with-latest=libgweather
+@end example
+
+Run @command{info \"(guix) Package Transformation Options\"} for more info.")
+         (de "Mit der neuen Paketumwandlungsoption @option{--with-latest} wird
+die neueste Veröffentlichung für ein Paket verwendet.  Diese wird wie bei
+@command{guix refresh} bestimmt und anstelle der zurzeit im Paket festgelegten
+Version verwendet.  Um zum Beispiel die neuste Veröffentlichung von GNOME
+Weather gebunden an die neuste Version von libgweather zu installieren, führen
+Sie dies aus:
+
+@example
+guix install gnome-weather \\
+  --with-latest=gnome-weather --with-latest=libgweather
+@end example
+
+Führen Sie für mehr Informationen @command{info \"(guix.de)
+Paketumwandlungsoptionen\"} aus.")
+         (fr "La nouvelle option de transformation de paquets
+@option{--with-latest} récupère la dernière version d'un logiciel telle
+qu'elle serait trouvée par @command{guix refresh} et l'utilise à la place la
+version actuellement fournie par le paquet.  Par exemple, pour installer la
+dernière version de GNOME Weather, elle-même compilée avec la dernière version
+de libgweather, on lancera :
+
+@example
+guix install gnome-weather \\
+  --with-latest=gnome-weather --with-latest=libgweather
+@end example
+
+Voir @command{info \"(guix.fr) Options de transformation de paquets\"} pour
+plus de détails.")))
+
+ (entry (commit "a879e35116043d5daf3d9d175b697d10b9177fd5")
+        (title (en "Substitutes can now be compressed with zstd")
+               (de "Substitute können nun mit zstd komprimiert werden")
+               (fr "Les substituts peuvent maintenant être compressés avec zstd"))
+        (body
+         (en "The @command{guix publish} command now supports substitute
+compression with zstd and @command{guix-daemon} can now fetch and decompress
+them.
+
+The advantage of zstd over the other options is its high compression and
+decompression throughput, with good compression ratios (not as good as lzip,
+but slightly better than gzip).  Its high decompression throughput makes it a
+good choice in situations where substitute downloads would otherwise be
+CPU-bound, typically when having a high-speed connection to the substitute
+server.  Run @command{info \"(guix) Invoking guix publish\"} for more info.
+
+To be able to fetch zstd-compressed substitutes (if the substitute servers you
+chose provide them), you need to upgrade your daemon.  Run @command{info
+\"(guix) Upgrading Guix\"} to learn how to do it.")
+         (de "Mit dem Befehl @command{guix publish} können Sie jetzt auch
+Substitute mit zstd komprimieren und @command{guix-daemon} kann sie laden und
+dekomprimieren.
+
+zstd bietet gegenüber den anderen Optionen einen hohen Durchsatz bei
+Kompression und Dekompression mit guten Kompressionsverhältnissen (nicht so
+gut wie lzip, aber etwas besser als gzip).  Wegen des hohen Durchsatzes bei
+der Dekompression ist zstd eine gute Wahl, wenn beim Herunterladen von
+Substituten ansonsten der Engpass bei der Prozessorleistung läge, etwa weil
+eine schnelle Netzwerkverbindung zum Substitutserver besteht.  Führen Sie für
+mehr Informationen @command{info \"(guix.de) Aufruf von guix publish\"} aus.
+
+Um zstd-komprimierte Substitute benutzen zu können (wenn der Substitutserver
+sie anbietet), müssen Sie Ihren Daemon aktualisieren.  Führen Sie
+@command{info \"(guix.de) Aktualisieren von Guix\"} aus, um zu erfahren, wie
+Sie ihn aktualisieren.")
+         (fr "La commande @command{guix publish} peut maintenant compresser
+les substituts avec zstd et @command{guix-daemon} est capable de les récupérer
+et de les décompresser.
+
+L'avantage de zstd par rapport aux autres méthodes est son haut débit en
+compression et décompression, avec un taux de compression correct (pas aussi
+bon que lzip, mais légèrement meilleur que gzip).  Sa vitesse de décompression
+en fait un bon choix dans les situations où le temps de téléchargement des
+substituts se retrouve sinon limité par le temps de calcul comme c'est le cas
+lorsqu'on bénéficie d'une connexion rapide au serveur de substitut.  Lancer
+@command{info \"(guix.fr) Invoquer guix publish\"} pour plus d'informations.
+
+Pour pouvoir télécharger des substituts compressés avec zstd (si les serveurs
+de substituts choisis les fournissent), il faudra d'abord mettre à jour le
+démon.  Lancer @command{info \"(guix.fr) Mettre à niveau Guix\"} pour voir
+comment faire.")))
+
+ (entry (commit "e38d90d497e19e00263fa28961c688a433154386")
+        (title (en "New @option{--with-patch} package transformation option")
+               (de "Neue Paketumwandlungsoption @option{--with-patch}")
+               (fr "Nouvelle option de transformation @option{--with-patch}"))
+        (body
+         (en "The new @option{--with-patch} package transformation option
+applies patches to the specified packages before building them.  The example
+below builds the GNU Core Utilities against a patched C library (glibc):
+
+@example
+guix build coreutils --with-patch=glibc=./glibc-frob.patch
+@end example
+
+Run @command{info \"(guix) Package Transformation Options\"} for more info.")
+         (de "Die neue Paketumwandlungsoption @option{--with-patch} wendet
+Patches auf die angegebenen Pakete an, bevor sie erstellt werden. Das folgende
+Beispiel lässt die GNU Core Utilities mit einer gepatchten
+C-Bibliothek (glibc) erstellen:
+
+@example
+guix build coreutils --with-patch=glibc=./glibc-frob.patch
+@end example
+
+Führen Sie für mehr Informationen @command{info \"(guix.de)
+Paketumwandlungsoptionen\"} aus.")
+         (fr "La nouvelle option de transformation de paquets
+@option{--with-patch} applique des modifications (@i{patches}) aux paquets
+spécifiés avant de les compiler.  L'exemple suivant compile les utilitaires de
+base GNU avec une bibliothèque C (glibc) modifiée :
+
+@example
+guix build coreutils --with-patch=glibc=./glibc-frob.patch
+@end example
+
+Voir @command{info \"(guix.fr) Options de transformation de paquets\"} pour
+plus de détails.")))
+
+ (entry (commit "79f9dee3c4c0e6d21066f142116a537207ae7ba4")
+        (title (en "Local substitute servers discovery is now supported")
+               (de "Substitutserver können jetzt im lokalen Netz erkannt werden")
+               (es "Los servidores de sustituciones se pueden descubrir localmente")
+               (fr "La découverte des serveurs de substituts locaux est désormais supportée"))
+        (body
+         (en "The @command{guix-daemon} can now discover local substitute
+servers when the @option{--discover} option is passed.  Only the substitute
+servers started with the @option{--advertise} option will be discovered.  The
+network discovery is based on mDNS and DNS-SD protocols, using Guile-Avahi
+library for now.")
+         (de "Mit dem @command{guix-daemon} können jetzt lokal laufende
+Substitutserver erkannt werden, wenn die Befehlszeilenoption
+@option{--discover} übergeben wurde.  Nur solche Substitutserver werden
+gefunden, die mit der Befehlszeilenoption @option{--advertise} gestartet
+wurden.  Die Ermittlung im Netzwerk verfügbarer Substitutserver baut auf den
+Protokollen mDNS und DNS-SD auf.  Derzeit wird dazu die Bibliothek Guile-Avahi
+benutzt.")
+         (es "El daemon @command{guix-daemon} ahora puede descubrir servidores
+de sustituciones locales cuando se le proporciona la opción
+@option{--discover}.  Únicamente se descubrirán los servidores de
+sustituciones que se hayan arrancado con la opción @option{--advertise}. La
+búsqueda en la red se basa en los protocolos mDNS y DNS-SD, actualmente
+mediante el uso de la biblioteca Guile-Avahi.")
+         (fr "Le @command{guix-daemon} peut désormais découvrir les serveurs
+de substituts locaux lorsque l'option @option{--discover} est passée.  Seuls
+les serveurs de substituts démarrés avec l'option @option{--advertise} seront
+découverts.  La découverte réseau utilise les protocoles mDNS et DNS-SD, pour
+l'instant grâce à la librairie Guile-Avahi.")))
+
+ (entry (commit "a9a2fdaabcc78e7a54d9a6bcfa4ee3de308e9a90")
+        (title (en "Logical Volume Manager (LVM) now supported on Guix System")
+               (de "Logical Volume Manager (LVM) wird jetzt auf Guix System unterstützt")
+               (es "El sistema Guix ahora implementa también volúmenes lógicos LVM"))
+        (body
+         (en "On Guix System, the new @code{lvm-device-mapping} variable
+allows you to declare ``mapped devices'' for LVM, the Linux Logical Volume
+Manager.  For example, LVM logical volumes ``alpha'' and ``beta'' from volume
+group ``vg0'' can be declared as follows:
+
+@lisp
+(mapped-device
+  (source \"vg0\")
+  (target (list \"vg0-alpha\" \"vg0-beta\"))
+  (type lvm-device-mapping))
+@end lisp
+
+See @command{info \"(guix) Mapped Devices\"} for more information.")
+         (de "Auf Guix System erlaubt Ihnen die neue Variable
+@code{lvm-device-mapping}, „zugeordnete Geräte“ (Mapped Devices) für LVM, den
+Linux Logical Volume Manager, zu deklarieren. Zum Beispiel können logische
+Datenträger von LVM namens „alpha“ und „beta“ aus der
+Datenträgergruppe (Volume Group) „vg0“ wie folgt deklariert werden:
+
+@lisp
+(mapped-device
+  (source \"vg0\")
+  (target (list \"vg0-alpha\" \"vg0-beta\"))
+  (type lvm-device-mapping))
+@end lisp
+
+Siehe @command{info \"(guix.de) Zugeordnete Geräte\"} für nähere Informationen.")
+         (es "En el sistema Guix, la nueva variable @code{lvm-device-mapping}
+le permite declarar «dispositivos traducidos» para LVM, el gestor de volúmenes
+lógicos de Linux. A continuación se muestra un ejemplo con la declaración de
+los volúmenes lógicos «alfa» y «beta» del grupo de volúmenes «vg0»:
+
+@lisp
+(mapped-device
+  (source \"vg0\")
+  (target (list \"vg0-alfa\" \"vg0-beta\"))
+  (type lvm-device-mapping))
+@end lisp
+
+Véase @command{info \"(guix.es) Dispositivos traducidos\"} para obtener más
+información.")))
 
  (entry (commit "3b6e4e5fd05e72b8a32ff1a2d5e21464260e21e6")
         (title (en "List of substitute keys is now declarative on Guix System")

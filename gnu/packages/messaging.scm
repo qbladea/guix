@@ -10,7 +10,7 @@
 ;;; Copyright © 2016, 2017, 2018, 2019 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2017 Mekeor Melire <mekeor.melire@gmail.com>
 ;;; Copyright © 2017, 2018, 2020 Arun Isaac <arunisaac@systemreboot.net>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017 Theodoros Foradis <theodoros@foradis.org>
 ;;; Copyright © 2017, 2018, 2019 Rutger Helling <rhelling@mykolab.com>
 ;;; Copyright © 2018 Leo Famulari <leo@famulari.name>
@@ -24,8 +24,9 @@
 ;;; Copyright © 2020 Reza Alizadeh Majd <r.majd@pantherx.org>
 ;;; Copyright © 2020 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;;; Copyright © 2020 Mason Hock <chaosmonk@riseup.net>
-;;; Copyright © 2020 Michael Rohleder <mike@rohleder.de>
+;;; Copyright © 2020, 2021 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Raghav Gururajan <raghavgururajan@disroot.org>
+;;; Copyright © 2020, 2021 Robert Karszniewicz <avoidr@posteo.de>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -61,6 +62,7 @@
   #:use-module (gnu packages curl)
   #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages databases)
+  #:use-module (gnu packages docbook)
   #:use-module (gnu packages documentation)
   #:use-module (gnu packages enchant)
   #:use-module (gnu packages fontutils)
@@ -70,6 +72,7 @@
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gnupg)
   #:use-module (gnu packages gperf)
+  #:use-module (gnu packages graphviz)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages guile)
@@ -83,9 +86,11 @@
   #:use-module (gnu packages lua)
   #:use-module (gnu packages man)
   #:use-module (gnu packages markup)
+  #:use-module (gnu packages mono)
   #:use-module (gnu packages mpd)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages networking)
+  #:use-module (gnu packages nss)
   #:use-module (gnu packages pcre)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages photo)
@@ -124,6 +129,197 @@
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix utils))
+
+(define-public libgnt
+  (package
+    (name "libgnt")
+    (version "2.14.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://sourceforge/pidgin/libgnt/"
+                       version "/libgnt-" version ".tar.xz"))
+       (sha256
+        (base32 "1grs9fxl404rscscxk1ff55fzjnwjqrisjxbasbssmcp1h1s4zkb"))))
+    (build-system meson-build-system)
+    (outputs '("out" "doc"))
+    (arguments
+     `(#:glib-or-gtk? #t     ; To wrap binaries and/or compile schemas
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-ncurses-path
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "meson.build"
+               (("'/usr'")
+                (string-append "'"
+                               (assoc-ref inputs "ncurses")
+                               "'")))
+             #t))
+         (add-before 'configure 'patch-docbook-xml
+           (lambda* (#:key inputs #:allow-other-keys)
+             (with-directory-excursion "doc"
+               (substitute* "libgnt-docs.xml"
+                 (("http://www.oasis-open.org/docbook/xml/4.1.2/")
+                  (string-append (assoc-ref inputs "docbook-xml")
+                                 "/xml/dtd/docbook/"))))
+             #t))
+         (add-after 'install 'move-doc
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (doc (assoc-ref outputs "doc")))
+               (mkdir-p (string-append doc "/share"))
+               (rename-file
+                (string-append out "/share/gtk-doc")
+                (string-append doc "/share/gtk-doc"))
+               #t))))))
+    (native-inputs
+     `(("docbook-xml" ,docbook-xml-4.1.2)
+       ("glib:bin" ,glib "bin")
+       ("gobject-introspection" ,gobject-introspection)
+       ("gtk-doc" ,gtk-doc)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("ncurses" ,ncurses)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("libxml" ,libxml2)
+       ("python" ,python-2)))
+    (synopsis "GLib Ncurses Toolkit")
+    (description "GNT is an ncurses toolkit for creating text-mode graphical
+user interfaces in a fast and easy way.  It is based on GLib and ncurses.")
+    (home-page "https://keep.imfreedom.org/libgnt/libgnt")
+    (license license:gpl2+)))
+
+(define-public libgadu
+  (package
+    (name "libgadu")
+    (version "1.12.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/wojtekka/libgadu.git")
+         (commit version)))
+       (file-name
+        (git-file-name name version))
+       (sha256
+        (base32 "1s16cripy5w9k12534qb012iwc5m9qcjyrywgsziyn3kl3i0aa8h"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-shebangs
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "protobufgen.sh"
+               (("/bin/sh")
+                (string-append (assoc-ref inputs "bash")
+                               "/bin/sh")))
+             #t)))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("bash" ,bash)
+       ("doxygen" ,doxygen)
+       ("libtool" ,libtool)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("curl" ,curl)
+       ("expat" ,expat)
+       ("libprotobuf-c" ,protobuf-c)
+       ("libxml" ,libxml2)
+       ("openssl" ,openssl)
+       ("zlib" ,zlib)))
+    (propagated-inputs
+     `(("gnutls" ,gnutls)))
+    (synopsis "Library for handling the protocol of Gadu-Gadu")
+    (description "LibGadu is library for handling Gadu-Gadu instant messenger
+protocol.  The library is written in C and aims to be operating system and
+environment independent.")
+    (home-page "https://libgadu.net/index.en.html")
+    (license license:lgpl2.1+)))
+
+(define-public silc-toolkit
+  (package
+    (name "silc-toolkit")
+    (version "1.1.12")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://sourceforge/silc/silc/toolkit/sources/silc-toolkit-"
+                       version ".tar.gz"))
+       (sha256
+        (base32 "0mnvf9n7qriadg0p7a8qmvcayhnns2g9fhmcymavlm0v8xrky33y"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags
+       (list
+        "--disable-static"
+        "--enable-ipv6"
+        "--enable-stack-trace")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'trigger-bootstrap
+           (lambda _
+             (delete-file "configure")
+             (delete-file "Makefile.in")
+             #t)))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)))
+    (synopsis "SILC ToolKit")
+    (description "SILC (Secure Internet Live Conferencing) is a modern and secure
+conferencing protocol.  It provides all the common conferencing services like
+private messages, instant messages, channels and groups, and video and audio
+conferencing.")
+    (home-page "https://silc.github.io/info")
+    (license
+     ;; Dual-licensed
+     (list
+      license:gpl2+
+      license:bsd-2))))
+
+(define-public meanwhile
+  (package
+    (name "meanwhile")
+    (version "1.1.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/obriencj/meanwhile.git")
+         (commit
+          (string-append "v" version))))
+       (file-name
+        (git-file-name name version))
+       (sha256
+        (base32 "1k1gvmx1ikm0y1mdmm495rzkb00pl170jfaf2dy0n5aiiknkk7q3"))))
+    (build-system glib-or-gtk-build-system)
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("doxygen" ,doxygen)
+       ("libtool" ,libtool)
+       ("pkg-config" ,pkg-config)))
+    (propagated-inputs
+     `(("glib" ,glib)))
+    (synopsis "Library for Lotus Instant Messaging")
+    (description "Meanwhile is a library for connecting to a LIM (Lotus Instant
+Messaging, formerly Lotus Sametime, formerly VPBuddy) community.  It uses a
+protocol based in part off of the IMPP draft(*1), and in part off of traces of
+TCP sessions from existing clients.")
+    (home-page "https://github.com/obriencj/meanwhile")
+    (license license:lgpl3)))
 
 (define-public poezio
   (package
@@ -182,32 +378,39 @@ powerful, standard and open protocol.")
   (package
     (name "libotr")
     (version "4.1.1")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://otr.cypherpunks.ca/libotr-"
-                                  version ".tar.gz"))
-              (sha256
-               (base32
-                "1x8rliydhbibmzwdbyr7pd7n87m2jmxnqkpvaalnf4154hj1hfwb"))
-              (patches (search-patches "libotr-test-auth-fix.patch"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://otr.cypherpunks.ca/libotr-"
+                           version ".tar.gz"))
+       (sha256
+        (base32 "1x8rliydhbibmzwdbyr7pd7n87m2jmxnqkpvaalnf4154hj1hfwb"))
+       (patches
+        (search-patches "libotr-test-auth-fix.patch"))))
     (build-system gnu-build-system)
+    (native-inputs
+     `(("perl" ,perl)))                 ; for the test suite
+    (inputs
+     `(("libgpg-error" ,libgpg-error)))
     (propagated-inputs
-     `(("libgcrypt" ,libgcrypt)))  ; libotr headers include gcrypt.h
-    (inputs `(("libgpg-error" ,libgpg-error)))
-    (native-inputs `(("perl" ,perl))) ; for the test suite
+     `(("libgcrypt" ,libgcrypt)))    ; libotr headers include gcrypt.h
     (synopsis "Off-the-Record (OTR) Messaging Library and Toolkit")
-    (description
-     "OTR allows you to have private conversations over instant messaging by
-providing: (1) Encryption: No one else can read your instant messages.  (2)
-Authentication: You are assured the correspondent is who you think it is.  (3)
-Deniability: The messages you send do not have digital signatures that are
-checkable by a third party.  Anyone can forge messages after a conversation to
-make them look like they came from you.  However, during a conversation, your
-correspondent is assured the messages he sees are authentic and
-unmodified.  (4) Perfect forward secrecy: If you lose control of your private
-keys, no previous conversation is compromised.")
+    (description "OTR allows you to have private conversations over instant
+messaging by providing: (1) Encryption: No one else can read your instant
+messages.  (2) Authentication: You are assured the correspondent is who you
+think it is.  (3) Deniability: The messages you send do not have digital
+signatures that are checkable by a third party.  Anyone can forge messages
+after a conversation to make them look like they came from you.  However,
+during a conversation, your correspondent is assured the messages he sees are
+authentic and unmodified.  (4) Perfect forward secrecy: If you lose control of
+your private keys, no previous conversation is compromised.")
     (home-page "https://otr.cypherpunks.ca/")
-    (license (list license:lgpl2.1 license:gpl2))))
+    (license
+     (list
+      ;; Library
+      license:lgpl2.1+
+      ;; Others
+      license:gpl2+))))
 
 (define-public libsignal-protocol-c
   (package
@@ -456,14 +659,14 @@ dictionaries.  HexChat can be extended with multiple addons.")
 (define-public ngircd
   (package
     (name "ngircd")
-    (version "26")
+    (version "26.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://arthur.barton.de/pub/ngircd/ngircd-"
                                   version ".tar.xz"))
               (sha256
                (base32
-                "1ijmv18fa648y7apxb9vp4j9iq6fxq850kz5v36rysaq614cdp2n"))
+                "0m32v0c7mq96rshws4h6d0pi4bm0hynfzx3x01mgrxh9c396zham"))
               (patches (search-patches "ngircd-handle-zombies.patch"))))
     (build-system gnu-build-system)
     ;; Needed for the test suite.
@@ -522,89 +725,113 @@ authentication.")
 (define-public pidgin
   (package
     (name "pidgin")
-    (version "2.13.0")
+    (version "2.14.1")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "mirror://sourceforge/pidgin/Pidgin/"
-                           version "/pidgin-" version ".tar.bz2"))
+       (uri
+        (string-append "mirror://sourceforge/pidgin/Pidgin/"
+                       version "/pidgin-" version ".tar.gz"))
        (sha256
-        (base32 "13vdqj70315p9rzgnbxjp9c51mdzf1l4jg1kvnylc4bidw61air7"))
-       (patches (search-patches "pidgin-add-search-path.patch"
-                                ;; Remove the snippet and bootstrapping
-                                ;; native-inputs together with this patch.
-                                "pidgin-libnm.patch"))
+        (base32 "1c4dzxg9c3d9zfqqa7jwijj9rv9fm6w95igmpljwy88lxq7v5w11"))
+       (patches
+        (search-patches
+         "pidgin-add-search-path.patch"
+         "pidgin-vv-gst.patch"))
        (modules '((guix build utils)))
        (snippet
         '(begin
-           ;; Remove stale generated file after applying pidgin-libnm.patch.
+           ;; Remove stale generated file after applying patches.
            (delete-file "configure")
            #t))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
-     `(("pkg-config" ,pkg-config)
+     `(("autoconf" ,autoconf) ;; For bootstrap
+       ("automake" ,automake) ;; For bootstrap
        ("check" ,check)
-       ("intltool" ,intltool)
+       ("dot" ,graphviz)
        ("gconf" ,gconf)
-       ("python" ,python-2)
-       ("doxygen" ,doxygen)
-
-       ;; For bootstrapping after applying pidgin-libnm.patch.
-       ("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("libtool" ,libtool)))
+       ("intltool" ,intltool)
+       ("libtool" ,libtool) ;; For bootstrap
+       ("pkg-config" ,pkg-config)))
     (inputs
-     `(("gtk+" ,gtk+-2)
-       ("libgcrypt" ,libgcrypt)
-       ("gnutls" ,gnutls)
+     `(("avahi" ,avahi)
        ("cyrus-sasl" ,cyrus-sasl)
        ("dbus" ,dbus)
        ("dbus-glib" ,dbus-glib)
-       ("python2-dbus" ,python2-dbus)
+       ;; ("evolution-data-server" ,evolution-data-server)
+       ("farstream" ,farstream)
+       ("gnutls" ,gnutls)
+       ("gstreamer" ,gstreamer)
+       ;; ("gtkspell2" ,gtkspell2)
+       ("libgadu" ,libgadu)
+       ("libgcrypt" ,libgcrypt)
+       ("libgnt" ,libgnt)
+       ("libice" ,libice)
        ("libidn" ,libidn)
        ("libltdl" ,libltdl)
+       ("libsm" ,libsm)
+       ("libx11" ,libx11)
+       ("libxext" ,libxext)
        ("libxml2" ,libxml2)
-       ;; TODO: gstreamer: patches needed to support gstreamer-1.0 or later
-       ;; TODO: farstream
-       ;; TODO: meanwhile
-       ;; TODO: gtkspell
-       ;; TODO: libxephyr
-       ;; TODO: libgadu
+       ("libxscrnsaver" ,libxscrnsaver)
        ("libxslt" ,libxslt)
-       ("avahi" ,avahi)
+       ;; ("libzephyr" ,libzephyr)
+       ("meanwhile" ,meanwhile)
+       ("mono" ,mono)
        ("ncurses" ,ncurses)
        ("network-manager" ,network-manager)
+       ("nspr" ,nspr)
+       ("nss" ,nss)
+       ("pango" ,pango)
+       ("perl" ,perl)
+       ("python" ,python-2)
+       ("python2-dbus" ,python2-dbus)
+       ("silc" ,silc-toolkit)
        ("sqlite" ,sqlite)
-       ("libice" ,libice)
-       ("libsm" ,libsm)
-       ("libxscrnsaver" ,libxscrnsaver)
-       ("startup-notification" ,startup-notification)))
+       ("startup-notification" ,startup-notification)
+       ("tcl" ,tcl)
+       ("tk" ,tk)))
+    (propagated-inputs
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+-2)))
     (arguments
      `(#:configure-flags
-       (list "--disable-gtkspell"
-             "--disable-tcl"
-             "--disable-meanwhile"
-             "--disable-vv"  ; XXX remove when we have farstream and gstreamer
-             "--disable-gstreamer" ; XXX patches needed to support gstreamer-1.0
-             "--enable-cyrus-sasl"
-             (string-append "--with-ncurses-headers="
-                            (assoc-ref %build-inputs "ncurses")
-                            "/include"))))
+       (list
+        (string-append "CFLAGS=-I"
+                       (assoc-ref %build-inputs "gst-plugins-base")
+                       "/include/gstreamer-1.0")
+        "--disable-gtkspell"
+        ;; "--enable-gevolution"
+        "--enable-cap"
+        "--enable-mono"
+        "--enable-cyrus-sasl"
+        (string-append "--with-ncurses-headers="
+                       (assoc-ref %build-inputs "ncurses")
+                       "/include")
+        (string-append "--with-tclconfig="
+                       (assoc-ref %build-inputs "tcl")
+                       "/lib")
+        (string-append "--with-tkconfig="
+                       (assoc-ref %build-inputs "tk")
+                       "/lib"))))
     (native-search-paths
-     (list (search-path-specification
-            (variable "PURPLE_PLUGIN_PATH")
-            (files (list (string-append "lib/purple-"
-                                        (version-major version))
-                         "lib/pidgin")))))
+     (list
+      (search-path-specification
+       (variable "PURPLE_PLUGIN_PATH")
+       (files
+        (list
+         (string-append "lib/purple-"
+                        (version-major version))
+         "lib/pidgin")))))
     (home-page "https://www.pidgin.im/")
     (synopsis "Graphical multi-protocol instant messaging client")
-    (description
-     "Pidgin is a modular instant messaging client that supports many popular
-chat protocols.")
+    (description "Pidgin is a modular instant messaging client that supports
+many popular chat protocols.")
     (license
      (list
-      license:gpl2+    ; Most of the code
-      license:lgpl2.1  ; GG protocol plugin (libpurple/protocols/gg/lib)
+      license:gpl2+   ; Most of the code
+      license:lgpl2.1 ; GG protocol plugin (libpurple/protocols/gg/lib)
       license:lgpl2.0+ ; OSCAR protocol plugin (libpurple/protocols/oscar)
       ;; The following licenses cover the zephyr protocol plugin:
       (license:non-copyleft
@@ -618,39 +845,40 @@ chat protocols.")
   (package
     (name "pidgin-otr")
     (version "4.0.2")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://otr.cypherpunks.ca/"
-                                  name "-" version ".tar.gz"))
-              (sha256
-               (base32
-                "1i5s9rrgbyss9rszq6c6y53hwqyw1k86s40cpsfx5ccl9bprxdgl"))))
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "https://otr.cypherpunks.ca/"
+                       name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1i5s9rrgbyss9rszq6c6y53hwqyw1k86s40cpsfx5ccl9bprxdgl"))))
     (build-system gnu-build-system)
     (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("intltool" ,intltool)))
+     `(("gettext" ,gettext-minimal)
+       ("intltool" ,intltool)
+       ("pkg-config" ,pkg-config)))
     (inputs
-     `(("pidgin" ,pidgin)
-       ("libotr" ,libotr)
-       ("libgpg-error" ,libgpg-error)
+     `(("glib" ,glib)
+       ("gtk+" ,gtk+-2)
        ("libgcrypt" ,libgcrypt)
-       ("glib" ,glib)
-       ("gtk+" ,gtk+-2)))
+       ("libgpg-error" ,libgpg-error)
+       ("libotr" ,libotr)
+       ("perl" ,perl)
+       ("pidgin" ,pidgin)))
     (home-page "https://otr.cypherpunks.ca/")
     (synopsis "Off-the-Record Messaging plugin for Pidgin")
-    (description
-     "Pidgin-OTR is a plugin that adds support for OTR to the Pidgin instant
-messaging client.  OTR (Off-the-Record) Messaging allows you to have private
-conversations over instant messaging by providing: (1) Encryption: No one else
-can read your instant messages.  (2) Authentication: You are assured the
-correspondent is who you think it is.  (3) Deniability: The messages you send
-do not have digital signatures that are checkable by a third party.  Anyone
+    (description "Pidgin-OTR is a plugin that adds support for OTR to the Pidgin
+instant messaging client.  OTR (Off-the-Record) Messaging allows you to have
+private conversations over instant messaging by providing: (1) Encryption: No
+one else can read your instant messages.  (2) Authentication: You are assured
+the correspondent is who you think it is.  (3) Deniability: The messages you
+send do not have digital signatures that are checkable by a third party.  Anyone
 can forge messages after a conversation to make them look like they came from
-you.  However, during a conversation, your correspondent is assured the
-messages he sees are authentic and unmodified.  (4) Perfect forward secrecy:
-If you lose control of your private keys, no previous conversation is
-compromised.")
-    (license license:gpl2)))
+you.  However, during a conversation, your correspondent is assured the messages
+he sees are authentic and unmodified.  (4) Perfect forward secrecy: If you lose
+control of your private keys, no previous conversation is compromised.")
+    (license license:gpl2+)))
 
 (define-public znc
   (package
@@ -923,19 +1151,19 @@ Encryption to Gajim.")
   (package
     (name "dino")
     (version "0.2.0")
-    (outputs '("out" "debug"))
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "https://github.com/dino/dino/releases/download/v"
-                           version "/dino-" version ".tar.gz"))
+       (uri
+        (string-append "https://github.com/dino/dino/releases/download/v"
+                       version "/dino-" version ".tar.gz"))
        (sha256
-        (base32
-         "0iigh7bkil6prf02dqcl6lmd89jxz685h8lqr3ni4x39zkcransn"))))
+        (base32 "0iigh7bkil6prf02dqcl6lmd89jxz685h8lqr3ni4x39zkcransn"))))
     (build-system cmake-build-system)
+    (outputs '("out" "debug"))
     (arguments
      `(#:tests? #f
-       #:parallel-build? #f ; not supported
+       #:parallel-build? #f             ; not supported
        #:modules ((guix build cmake-build-system)
                   ((guix build glib-or-gtk-build-system) #:prefix glib-or-gtk:)
                   (guix build utils))
@@ -946,10 +1174,21 @@ Encryption to Gajim.")
        (modify-phases %standard-phases
          (add-after 'install 'glib-or-gtk-wrap
            (assoc-ref glib-or-gtk:%standard-phases 'glib-or-gtk-wrap)))))
+    (native-inputs
+     `(("gettext" ,gettext-minimal)
+       ("glib:bin" ,glib "bin")
+       ("gtk+:bin" ,gtk+ "bin")
+       ("pkg-config" ,pkg-config)
+       ("vala" ,vala)))
     (inputs
-     `(("libgee" ,libgee)
-       ("libsignal-protocol-c" ,libsignal-protocol-c)
+     `(("glib" ,glib)
+       ("glib-networking" ,glib-networking)
+       ("gpgme" ,gpgme)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("gtk+" ,gtk+)
        ("libgcrypt" ,libgcrypt)
+       ("libgee" ,libgee)
+       ("libsignal-protocol-c" ,libsignal-protocol-c)
        ("libsoup" ,libsoup)
        ("qrencode" ,qrencode)
        ("sqlite" ,sqlite)
@@ -957,15 +1196,11 @@ Encryption to Gajim.")
        ("gtk+" ,gtk+)
        ("glib-networking" ,glib-networking)
        ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)))
-    (native-inputs
-     `(("pkg-config" ,pkg-config)
-       ("glib" ,glib "bin")
-       ("vala" ,vala)
-       ("gettext" ,gettext-minimal)))
+    (synopsis "Graphical Jabber/XMPP Client using GTK+/Vala")
+    (description "Dino is a chat client for the desktop.  It focuses on providing
+a minimal yet reliable Jabber/XMPP experience and having encryption enabled by
+default.")
     (home-page "https://dino.im")
-    (synopsis "Graphical Jabber (XMPP) client")
-    (description "Dino is a Jabber (XMPP) client which aims to fit well into
-a graphical desktop environment like GNOME.")
     (license license:gpl3+)))
 
 (define-public prosody
@@ -1195,7 +1430,7 @@ messenger protocol.")
 (define-public utox
   (package
    (name "utox")
-   (version "0.17.1")
+   (version "0.18.1")
    (source
     (origin
      (method git-fetch)
@@ -1206,7 +1441,7 @@ messenger protocol.")
      (file-name (string-append name "-" version "-checkout"))
      (sha256
       (base32
-       "17kwqw24iqljp2icih9k6ikx12gzr8zzqr8y5h35bg8m5s8pasq5"))))
+       "01rvlf94d4rkrygnnjak3cg16hrrqyi1rn9nx65y17qk2nbyh68g"))))
    (build-system cmake-build-system)
    (arguments
     `(#:configure-flags '("-DENABLE_TESTS=on")
@@ -1231,7 +1466,6 @@ messenger protocol.")
       ("filteraudio" ,filteraudio)
       ("fontconfig" ,fontconfig)
       ("freetype" ,freetype)
-      ("libsodium" ,libsodium)
       ("c-toxcore" ,c-toxcore)
       ("gtk+" ,gtk+)
       ("libvpx" ,libvpx)
@@ -1245,23 +1479,23 @@ messenger protocol.")
       ("pkg-config" ,pkg-config)))
    (synopsis "Lightweight Tox client")
    (description
-    "Utox is a lightweight Tox client.  Tox is a distributed and secure
+    "uTox is a lightweight Tox client.  Tox is a distributed and secure
 instant messenger with audio and video chat capabilities.")
-   (home-page "http://utox.org/")
+   (home-page "https://github.com/uTox/uTox")
    (license license:gpl3)))
 
 (define-public qtox
   (package
     (name "qtox")
-    (version "1.17.2")
+    (version "1.17.3")
     (source (origin
-              (method url-fetch/tarbomb)
+              (method url-fetch)
               (uri (string-append "https://github.com/qTox/qTox/releases"
                                   "/download/v" version
                                   "/v" version ".tar.gz"))
               (sha256
                (base32
-                "0fmr3a0apil3rl32247qv2pqslp3knpbj5vhprdq0ixsvifrlhmh"))
+                "11n7si9wdpf80iwkvbspp14dh5jrwm7hxkj8vqhn5pkc48c5bh9j"))
               (file-name (string-append name "-" version ".tar.gz"))))
     (build-system cmake-build-system)
     (arguments
@@ -1763,7 +1997,7 @@ is also scriptable and extensible via Guile.")
 (define-public libmesode
   (package
     (name "libmesode")
-    (version "0.9.3")
+    (version "0.10.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1772,7 +2006,7 @@ is also scriptable and extensible via Guile.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0xzfg1xx88cn36352nnjlb1p7xyw32yqkhjzq10px88iaaqz1vv0"))))
+                "1bxnkhrypgv41qyy1n545kcggmlw1hvxnhwihijhhcf2pxd2s654"))))
     (build-system gnu-build-system)
     (inputs
      `(("expat" ,expat)
@@ -1823,7 +2057,7 @@ are both supported).")
 (define-public profanity
   (package
     (name "profanity")
-    (version "0.9.5")
+    (version "0.10.0")
     (source
      (origin
        (method url-fetch)
@@ -1832,7 +2066,7 @@ are both supported).")
                        version ".tar.gz"))
        (sha256
         (base32
-         "00j9l9v62rz9hprgiy1vrz8v3v59ph18h8kskqxr31fgqvjv5xr3"))))
+         "137z77514fgj2dk13d12g4jrn6gs5k85nwrk1r1kiv7rj0jy61aa"))))
     (build-system glib-or-gtk-build-system)
     (arguments
      `(#:configure-flags
@@ -2119,7 +2353,7 @@ There is support for:
 (define-public quaternion
   (package
     (name "quaternion")
-    (version "0.0.9.4e")
+    (version "0.0.9.4f")
     (outputs '("out" "debug"))
     (source
      (origin
@@ -2129,7 +2363,7 @@ There is support for:
               (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0hqhg7l6wpkdbzrdjvrbqymmahziri07ba0hvbii7dd2p0h248fv"))))
+        (base32 "1q9ddz4rs02a0w3lwrsjnh59khv38cq9f0kv09vnwvazvayn87ck"))))
     (build-system qt-build-system)
     (inputs
      `(("libqmatrixclient" ,libqmatrixclient)
@@ -2139,7 +2373,8 @@ There is support for:
        ("qtquickcontrols" ,qtquickcontrols)
        ("qtquickcontrols2" ,qtquickcontrols2)
        ("qtsvg" ,qtsvg)
-       ("qttools" ,qttools)))
+       ("qttools" ,qttools)
+       ("xdg-utils" ,xdg-utils)))
     (arguments
      `(#:tests? #f))                    ; no tests
     (home-page "https://matrix.org/docs/projects/client/quaternion.html")
@@ -2279,51 +2514,48 @@ Telegram messenger.")
     (license license:gpl2+)))
 
 (define-public tdlib
-  (let ((commit "f45d80fe16f99d112d545b7cd74ce46342fe3437")
-        (revision "0")
-        (version "1.6.6"))
-    (package
-      (name "tdlib")
-      (version (git-version version revision commit))
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/tdlib/td")
-                      (commit commit)))
-                (sha256
-                 (base32
-                  "1q8zw26mqhpdzvqbgc7fmn8rzwm5amb8m7s6impin4342wj7h6nr"))
-                (file-name (git-file-name name version))))
-      (build-system cmake-build-system)
-      (arguments
-       `(#:tests? #t
-         #:configure-flags
-         (list "-DCMAKE_BUILD_TYPE=Release"
-               "-DTD_ENABLE_LTO=OFF") ; FIXME: Get LTO to work.
-         #:phases
-         (modify-phases %standard-phases
-           (add-after 'unpack 'remove-failing-tests
-             (lambda _
-               (substitute* "test/CMakeLists.txt"
-                 ;; The test cases are compiled into a distinct binary
-                 ;; which uses mtproto.cpp to attempt to connect to
-                 ;; a remote server. Removing this file from the sources
-                 ;; list disables those specific test cases.
-                 (("\\$\\{CMAKE_CURRENT_SOURCE_DIR\\}/mtproto.cpp") ""))
-               #t)))))
-      (native-inputs
-       `(("gperf" ,gperf)
-         ("openssl" ,openssl)
-         ("zlib" ,zlib)
-         ("php" ,php)
-         ("doxygen" ,doxygen)))
-      (synopsis "Cross-platform library for building Telegram clients")
-      (description "Tdlib is a cross-platform library for creating custom
+  (package
+    (name "tdlib")
+    (version "1.7.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/tdlib/td")
+                    (commit (string-append "v" version))))
+              (sha256
+               (base32
+                "0dfir57ljcn98mkg061c5642qb93wh2lm1n4nngpl3na9vvfk75i"))
+              (file-name (git-file-name name version))))
+    (build-system cmake-build-system)
+    (arguments
+     `(#:tests? #t
+       #:configure-flags
+       (list "-DCMAKE_BUILD_TYPE=Release"
+             "-DTD_ENABLE_LTO=OFF") ; FIXME: Get LTO to work.
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'remove-failing-tests
+           (lambda _
+             (substitute* "test/CMakeLists.txt"
+               ;; The test cases are compiled into a distinct binary
+               ;; which uses mtproto.cpp to attempt to connect to
+               ;; a remote server. Removing this file from the sources
+               ;; list disables those specific test cases.
+               (("\\$\\{CMAKE_CURRENT_SOURCE_DIR\\}/mtproto.cpp") ""))
+             #t)))))
+    (native-inputs
+     `(("gperf" ,gperf)
+       ("openssl" ,openssl)
+       ("zlib" ,zlib)
+       ("php" ,php)
+       ("doxygen" ,doxygen)))
+    (synopsis "Cross-platform library for building Telegram clients")
+    (description "Tdlib is a cross-platform library for creating custom
 Telegram clients following the official Telegram API.  It can be easily used
 from almost any programming language with a C-FFI and features first-class
 support for high performance Telegram Bot creation.")
-      (home-page "https://core.telegram.org/tdlib")
-      (license license:boost1.0))))
+    (home-page "https://core.telegram.org/tdlib")
+    (license license:boost1.0)))
 
 (define-public purple-mm-sms
   (package

@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2013, 2014, 2015 Andreas Enge <andreas@enge.fr>
 ;;; Copyright © 2015 Sou Bunnbu <iyzsong@gmail.com>
-;;; Copyright © 2015, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2015, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2015, 2016, 2017, 2018, 2019 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016, 2017 Nikita <nikita@n0.is>
 ;;; Copyright © 2016 Thomas Danckaert <post@thomasdanckaert.be>
@@ -45,6 +45,7 @@
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system trivial)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system qt)
   #:use-module (guix packages)
   #:use-module (guix deprecation)
   #:use-module (guix utils)
@@ -67,10 +68,12 @@
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnupg)
   #:use-module (gnu packages gperf)
+  #:use-module (gnu packages graphics)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
+  #:use-module (gnu packages kde-frameworks)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages llvm)
@@ -101,6 +104,91 @@
   #:use-module (gnu packages xorg)
   #:use-module (gnu packages xml)
   #:use-module (srfi srfi-1))
+
+(define-public qt5ct
+  (package
+    (name "qt5ct")
+    (version "1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://sourceforge/qt5ct/qt5ct-" version ".tar.bz2"))
+       (sha256
+        (base32 "1lnx4wqk87lbr6lqc64w5g5ppjjv75kq2r0q0bz9gfpryzdw8xxg"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f                      ; No target
+       #:imported-modules
+       (,@%gnu-build-system-modules
+        (guix build cmake-build-system)
+        (guix build qt-build-system))
+       #:modules
+       ((guix build gnu-build-system)
+        ((guix build qt-build-system)
+         #:prefix qt:)
+        (guix build utils))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* "qt5ct.pro"
+               (("\\$\\$\\[QT_INSTALL_BINS\\]/lrelease")
+                (string-append (assoc-ref inputs "qttools")
+                               "/bin/lrelease")))
+             #t))
+         (replace 'configure
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out")))
+               (invoke "qmake"
+                       (string-append "PREFIX=" out)
+                       (string-append "BINDIR=" out "/bin")
+                       (string-append "DATADIR=" out "/share")
+                       (string-append "PLUGINDIR=" out "/lib/qt5/plugins")))
+             #t))
+         (add-after 'install 'qt-wrap
+           (assoc-ref qt:%standard-phases 'qt-wrap)))))
+    (native-inputs
+     `(("qttools" ,qttools)))
+    (inputs
+     `(("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)))
+    (synopsis "Qt5 Configuration Tool")
+    (description "Qt5CT is a program that allows users to configure Qt5
+settings (such as icons, themes, and fonts) in desktop environments or
+window managers, that don't provide Qt integration by themselves.")
+    (home-page "https://qt5ct.sourceforge.io/")
+    (license license:bsd-2)))
+
+(define-public materialdecoration
+  (package
+    (name "materialdecoration")
+    (version "1.1.0")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/lirios/materialdecoration.git")
+         (commit "2079487116c6c794af3a15452342a69293039b46")))
+       (file-name
+        (git-file-name name version))
+       (sha256
+        (base32 "1pczmxbmnsgj9s1g6ap55qq2q4ccibcnhsw9b6cl5rzgc48izy06"))))
+    (build-system qt-build-system)
+    (native-inputs
+     `(("cmake-shared" ,cmake-shared)
+       ("extra-cmake-modules" ,extra-cmake-modules)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("qtbase" ,qtbase)
+       ("qtwayland" ,qtwayland)
+       ("wayland" ,wayland)))
+    (synopsis "Material Decoration for Qt")
+    (description "MaterialDecoration is a client-side decoration for Qt
+applications on Wayland.")
+    (home-page "https://github.com/lirios/materialdecoration")
+    (license license:lgpl3+)))
 
 (define-public grantlee
   (package
@@ -195,7 +283,6 @@ system, and the core design of Django is reused in Grantlee.")
        ("libxslt" ,libxslt)
        ("libxtst" ,libxtst)
        ("mtdev" ,mtdev)
-       ("mariadb" ,mariadb "lib")
        ("mariadb-dev" ,mariadb "dev")
        ("nss" ,nss)
        ("postgresql" ,postgresql)
@@ -343,23 +430,39 @@ developers using C++ or QML, a CSS & JavaScript like language.")
     ;; Qt 5: assembler error; see <http://hydra.gnu.org/build/112526>.
     (supported-systems (delete "mips64el-linux" %supported-systems))))
 
+(define (qt5-urls component version)
+  "Return a list of URLs for VERSION of the Qt5 COMPONENT."
+  ;; We can't use a mirror:// scheme because these URLs are not exact copies:
+  ;; the layout differs between them.
+  (list (string-append "https://download.qt.io/official_releases/qt/"
+                       (version-major+minor version) "/" version
+                       "/submodules/" component "-everywhere-src-"
+                       version ".tar.xz")
+        (string-append "https://download.qt.io/archive/qt/"
+                       (version-major+minor version) "/" version
+                       "/submodules/" component "-everywhere-src-"
+                       version ".tar.xz")
+        (let ((directory (string-append "qt5" (string-drop component 2))))
+          (string-append "http://sources.buildroot.net/" directory "/"
+                         component "-everywhere-src-" version ".tar.xz"))
+        (string-append "https://distfiles.macports.org/qt5/"
+                       component "-everywhere-src-" version ".tar.xz")))
+
 (define-public qtbase
   (package
     (name "qtbase")
-    ;; TODO Remove ((gnu packages kde) qtbase-for-krita) when upgrading qtbase.
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "12mjsahlma9rw3vz9a6b5h2s6ylg8b34hxc2vnlna5ll429fgfa8"))
              ;; Use TZDIR to avoid depending on package "tzdata".
              (patches (search-patches "qtbase-use-TZDIR.patch"
-                                      "qtbase-moc-ignore-gcc-macro.patch"))
+                                      "qtbase-moc-ignore-gcc-macro.patch"
+                                      "qtbase-absolute-runpath.patch"
+                                      "qtbase-fix-krita-deadlock.patch"))
              (modules '((guix build utils)))
              (snippet
                ;; corelib uses bundled harfbuzz, md4, md5, sha3
@@ -371,6 +474,7 @@ developers using C++ or QML, a CSS & JavaScript like language.")
                                   "zlib"))
                   #t)))))
     (build-system gnu-build-system)
+    (outputs '("out" "debug"))
     (propagated-inputs
      `(("mesa" ,mesa)
        ;; Use which the package, not the function
@@ -404,7 +508,6 @@ developers using C++ or QML, a CSS & JavaScript like language.")
        ("libxslt" ,libxslt)
        ("libxtst" ,libxtst)
        ("mtdev" ,mtdev)
-       ("mariadb" ,mariadb "lib")
        ("mariadb-dev" ,mariadb "dev")
        ("nss" ,nss)
        ("openssl" ,openssl)
@@ -476,6 +579,9 @@ developers using C++ or QML, a CSS & JavaScript like language.")
                                   out "/share/doc/qt5/examples")
                  "-opensource"
                  "-confirm-license"
+
+                 ;; Later stripped into the :debug output.
+                 "-force-debug-info"
 
                  ;; These features require higher versions of Linux than the
                  ;; minimum version of the glibc.  See
@@ -601,37 +707,13 @@ developers using C++ or QML, a CSS & JavaScript like language.")
 ;; qt used to refer to the monolithic Qt 5.x package
 (define-deprecated qt qtbase)
 
-;; This variable is required by 'python-pyside-2-tools', which copies some
-;; qtbase executables that fail to run because RUNPATH refers to the
-;; wrong $ORIGIN.  TODO: Merge with qtbase in the next rebuild cycle.
-(define qtbase/next
-  (package
-    (inherit qtbase)
-    (source
-     (origin
-       (inherit (package-source qtbase))
-       (patches (append (origin-patches (package-source qtbase))
-                        (search-patches "qtbase-absolute-runpath.patch")))))))
-
-(define-public qtbase-for-krita
-  (hidden-package
-    (package
-      (inherit qtbase)
-      (source (origin
-                (inherit (package-source qtbase))
-                (patches (append (origin-patches (package-source qtbase))
-                                 (search-patches "qtbase-fix-krita-deadlock.patch"))))))))
-
 (define-public qtsvg
   (package (inherit qtbase)
     (name "qtsvg")
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "18dmfc8s428fzbk7k5vl3212b25455ayrz7s716nwyiy3ahgmmy7"))))
@@ -703,10 +785,7 @@ HostData=lib/qt5
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "132g4rlm61pdcpcrclr1rwpbrxn7va4wjfb021mh8pn1cl0wlgkk"))
@@ -744,10 +823,7 @@ support for MNG, TGA, TIFF and WBMP image formats.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0njlh6d327nll7d8qaqrwr5x15m9yzgyar2j45qigs1f7ah896my"))))
@@ -768,10 +844,7 @@ from within Qt 5.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "1dyg1z4349k04yyzn8xbp4f5qjgm60gz6wgzp80khpilcmk8g6i1"))))
@@ -799,10 +872,7 @@ xmlpatternsvalidator.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0l0nhc2si6dl9r4s1bs45z90qqigs8jnrsyjjdy38q4pvix63i53"))))
@@ -843,10 +913,7 @@ with JavaScript and C++.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0a5wzin635b926b8prdwfazgy1vhyf8m6an64wp2lpkp78z7prmb"))))
@@ -867,10 +934,7 @@ with Bluetooth and NFC.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "116amx4mnv50k0fpswgpr5x8wjny8nbffrjmld01pzhkhfqn4vph"))))
@@ -894,10 +958,7 @@ consume data received from the server, or both.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0qccpgbhyg9k4x5nni7xm0pyvaqia3zrcd42cn7ksf5h21lwmkxw"))))
@@ -927,10 +988,7 @@ recognition API for devices.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "1sczzcvk3c5gczz53yvp8ma6gp8aixk5pcq7wh344c9md3g8xkbs"))
@@ -978,10 +1036,7 @@ set of plugins for interacting with pulseaudio and GStreamer.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0al3yypy3fin62n8d1859jh0mn0fbpa161l7f37hgd4gf75365nk"))
@@ -1038,10 +1093,7 @@ compositor libraries.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "08ga9a1lwj83872nxablk602z1dq0la6jqsiicvd7m1sfbfpgnd6"))))
@@ -1072,10 +1124,7 @@ interacting with serial ports from within Qt.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "14bahg82jciciqkl74q9hvf3a8kp3pk5v731vp2416k4b8bn4xqb"))))
@@ -1107,10 +1156,7 @@ and others.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0x7q66994pw6cd0f505bmirw1sssqs740zaw8lyqqqr32m2ch7bx"))))
@@ -1131,10 +1177,7 @@ popular web engines, Qt WebKit 2 and Qt WebEngine.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "05rl657848fsprsnabdqb5z363c6drjc32k59223vl351f8ihhgb"))))
@@ -1167,10 +1210,7 @@ OpenGL ES 2.0 and can be used in HTML5 canvas elements")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0jzzcm7z5njkddzfhmyjz4dbbzq8h93980cci4479zc4xq9r47y6"))))
@@ -1220,10 +1260,7 @@ positioning and geolocation plugins.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "1iakl3hlyg51ri1czmis8mmb257b0y1zk2a2knybd3mq69wczc2v"))))
@@ -1248,10 +1285,7 @@ that helps in Qt development.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "1zlvg3hc6h70d789g3kv6dxbwswzkskkm00bdgl01grwrdy4izg9"))
@@ -1272,10 +1306,7 @@ ECMAScript and Qt.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0qa4dlhn3iv9yvaic8hw86v6h8rn9sgq8xjfdaym04pfshfyypfm"))))
@@ -1296,10 +1327,7 @@ can be used to build complete interfaces in Qt Quick.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0q0mk2mjlf9ll0gdrdzxy8096s6g9draaqiwrlvdpa7lv14x7xzs"))))
@@ -1321,10 +1349,7 @@ not available.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "03xmwhapv0b2qj661iaqqrvhxc7qiid0acrp6rj85824ha2pyyj8"))))
@@ -1348,10 +1373,7 @@ coloring, and many more.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "00wd3h465waxdghg2vdhs5pkj0xikwjn88l12477dksm8zdslzgp"))))
@@ -1378,10 +1400,7 @@ and mobile applications targeting TV-like form factors.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "141pfschv6zmcvvn3pi7f5vb4nf96zpngy80f9bly1sn58syl303"))
@@ -1409,10 +1428,7 @@ also contains functionality to support data models and executable content.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0lg8x7g7dkf95xwxq8b4yw4ypdz68igkscya96xwbklg3q08gc39"))))
@@ -1429,10 +1445,7 @@ purchasing goods and services.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "1drvm15i6n10b6a1acgarig120ppvqh3r6fqqdn8i3blx81m5cmd"))))
@@ -1456,10 +1469,7 @@ selecting one of the charts themes.")
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "080fkpxg70m3c697wfnkjhca58b7r1xsqd559jzb21985pdh6g3j"))))
@@ -1483,10 +1493,7 @@ customized by using themes or by adding custom items and labels to them.")
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "0pi6p7bq54kzij2p69cgib7n55k69jsq0yqq09yli645s4ym202g"))))
@@ -1512,10 +1519,7 @@ implementation of OAuth and OAuth2 authenticathon methods for Qt.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "1mhlws5w0igf5hw0l90p6dz6k7w16dqfbnk2li0zxdmayk2039m6"))))
@@ -1549,10 +1553,7 @@ processes or computers.")))
     (version "5.14.2")
     (source (origin
              (method url-fetch)
-             (uri (string-append "https://download.qt.io/official_releases/qt/"
-                                 (version-major+minor version) "/" version
-                                 "/submodules/" name "-everywhere-src-"
-                                 version ".tar.xz"))
+             (uri (qt5-urls name version))
              (sha256
               (base32
                "1nn6kspbp8hfkz1jhzc1qx1m9z7r1bgkdqgi9n4vl1q25yk8x7jy"))))
@@ -1614,10 +1615,7 @@ using the Enchant spell-checking library.")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append "https://download.qt.io/official_releases/qt/"
-                           (version-major+minor version) "/" version
-                           "/submodules/" name "-everywhere-src-"
-                           version ".tar.xz"))
+       (uri (qt5-urls name version))
        (sha256
         (base32
          "0iy9lsl6zxlkca6x2p1506hbj3wmhnaipg23z027wfccbnkxcsg1"))
@@ -2243,7 +2241,7 @@ itself.")
 (define-public python2-pyqt-4
   (package (inherit python-pyqt)
     (name "python2-pyqt")
-    (version "4.12")
+    (version "4.12.3")
     (source
       (origin
         (method url-fetch)
@@ -2253,11 +2251,12 @@ itself.")
                          version ".tar.gz"))
         (sha256
          (base32
-          "1nw8r88a5g2d550yvklawlvns8gd5slw53yy688kxnsa65aln79w"))))
+          "0wnlasg62rm5d39nq1yw4namcx2ivxgzl93r5f2vb9s0yaz5l3x0"))))
     (native-inputs
-     `(("python-sip" ,python2-sip)
-       ("qt" ,qt-4)))
+     `(("qt" ,qt-4)))
     (inputs `(("python" ,python-2)))
+    (propagated-inputs
+     `(("python-sip" ,python2-sip)))
     (arguments
      `(#:tests? #f ; no check target
        #:modules ((srfi srfi-1)
@@ -2285,6 +2284,31 @@ itself.")
                        "--destdir" lib
                        "--sipdir" sip)))))))
     (license (list license:gpl2 license:gpl3)))) ; choice of either license
+
+(define-public python-qtpy
+  (package
+    (name "python-qtpy")
+    (version "1.9.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "QtPy" version))
+       (sha256
+          (base32
+           "13cw8l7zrhbdi03k1wl1pg9xdl4ahdfa7yz8gd0f23sxnm22rdrd"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-pyside2" ,python-pyside-2)))
+    (arguments
+     `(;; Not all supported bindings are packaged. Especially PyQt4.
+       #:tests? #f))
+    (home-page "https://github.com/spyder-ide/qtpy")
+    (synopsis
+     "Qt bindings (PyQt5, PyQt4 and PySide) and additional custom QWidgets")
+    (description
+     "Provides an abstraction layer on top of the various Qt bindings
+(PyQt5, PyQt4 and PySide) and additional custom QWidgets.")
+    (license license:expat)))
 
 (define-public qscintilla
   (package
@@ -2779,7 +2803,7 @@ generate Python bindings for your C or C++ code.")
     (inputs
      `(("python-pyside-2" ,python-pyside-2)
        ("python-shiboken-2" ,python-shiboken-2)
-       ("qtbase" ,qtbase/next)))
+       ("qtbase" ,qtbase)))
     (native-inputs
      `(("python" ,python-wrapper)))
     (arguments
@@ -2842,3 +2866,35 @@ being fully customizable and easy to extend.")
     ;; According to LICENSE, either version 2 or version 3 of the GNU GPL may
     ;; be used.
     (license (list license:gpl2 license:gpl3))))
+
+
+(define-public soqt
+  (let ((commit-ref "fb8f655632bb9c9c60e0ff9fa69a5ba22d3ff99d")
+        (revision "1"))
+    (package
+    (name "soqt")
+    (version (git-version "1.6.0" revision commit-ref))
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/coin3d/soqt")
+               (commit commit-ref)
+               (recursive? #t)))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32 "16vikb3fy8rmk10sg5g0gy2c343hi3x7zccsga90ssnkzpq6m032"))))
+    (build-system cmake-build-system)
+    (arguments '(#:tests? #f)) ; There are no tests
+    (native-inputs
+      `(("pkg-config" ,pkg-config)
+        ("cmake" ,cmake)))
+    (inputs
+      `(("qtbase" ,qtbase)
+        ("coin3D" ,coin3D-4)))
+    (home-page "https://github.com/coin3d/soqt")
+    (synopsis "Qt GUI component toolkit library for Coin")
+    (description "SoQt is a Qt GUI component toolkit library for Coin.  It is
+also compatible with SGI and TGS Open Inventor, and the API is based on the API
+of the InventorXt GUI component toolkit.")
+    (license license:bsd-3))))

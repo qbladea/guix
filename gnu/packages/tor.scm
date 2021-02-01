@@ -3,7 +3,7 @@
 ;;; Copyright © 2014, 2015 Mark H Weaver <mhw@netris.org>
 ;;; Copyright © 2016, 2017, 2018, 2020 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016, 2017 Nikita <nikita@n0.is>
-;;; Copyright © 2017, 2018, 2019, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
+;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017, 2018, 2019 Eric Bavier <bavier@member.fsf.org>
 ;;; Copyright © 2017 Rutger Helling <rhelling@mykolab.com>
 ;;; Copyright © 2018 Ricardo Wurmus <rekado@elephly.net>
@@ -155,7 +155,7 @@ rejects UDP traffic from the application you're using.")
 (define-public privoxy
   (package
     (name "privoxy")
-    (version "3.0.28")
+    (version "3.0.31")
     (source (origin
              (method url-fetch)
              (uri (string-append "mirror://sourceforge/ijbswa/Sources/"
@@ -163,7 +163,7 @@ rejects UDP traffic from the application you're using.")
                                  version "-stable-src.tar.gz"))
              (sha256
               (base32
-               "0jl2yav1qzqnaqnnx8i6i53ayckkimcrs3l6ryvv7bda6v08rmxm"))))
+               "1sq4s0h73r7mynl8s0ynn3a6zl98j06nb2nqx2j254n7maijjxq7"))))
     (build-system gnu-build-system)
     (arguments
      '(;; The default 'sysconfdir' is $out/etc; change that to
@@ -171,7 +171,9 @@ rejects UDP traffic from the application you're using.")
        #:configure-flags (list (string-append "--sysconfdir="
                                               (assoc-ref %outputs "out")
                                               "/etc/privoxy")
-                               "--localstatedir=/var")
+                               "--localstatedir=/var"
+                               "--with-brotli"
+                               "--with-openssl")
        #:tests? #f                      ; no test suite
        #:phases
        (modify-phases %standard-phases
@@ -193,8 +195,10 @@ rejects UDP traffic from the application you're using.")
                  (("^logfile") "#logfile")))
              #t)))))
     (inputs
-     `(("w3m" ,w3m)
+     `(("brotli" ,brotli)
+       ("openssl" ,openssl)
        ("pcre" ,pcre)
+       ("w3m" ,w3m)
        ("zlib" ,zlib)))
     (native-inputs
      `(("autoconf" ,autoconf)
@@ -249,7 +253,7 @@ networks.")
     (native-inputs
      `(("python-pytest" ,python-pytest)))
     (inputs
-     `(("python-pycrypto" ,python-pycrypto)
+     `(("python-pycryptodome" ,python-pycryptodome)
        ("python-flask" ,python-flask)
        ("python-flask-httpauth" ,python-flask-httpauth)
        ("python-nautilus" ,python-nautilus)
