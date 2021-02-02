@@ -8,6 +8,7 @@
 ;;; Copyright © 2017 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2018, 2020 Marius Bakke <marius@gnu.org>
 ;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2021 Chris Marusich <cmmarusich@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -76,6 +77,7 @@
             target-arm32?
             target-aarch64?
             target-arm?
+            target-powerpc?
             target-64bit?
             cc-for-target
             cxx-for-target
@@ -531,6 +533,10 @@ a character other than '@'."
 (define* (target-arm? #:optional (target (or (%current-target-system)
                                              (%current-system))))
   (or (target-arm32? target) (target-aarch64? target)))
+
+(define* (target-powerpc? #:optional (target (or (%current-target-system)
+                                                 (%current-system))))
+  (string-prefix? "powerpc" target))
 
 (define* (target-64bit? #:optional (system (or (%current-target-system)
                                                (%current-system))))
