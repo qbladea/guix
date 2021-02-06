@@ -16,6 +16,7 @@
 ;;; Copyright © 2018, 2019 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2020 Vitaliy Shatrov <D0dyBo0D0dyBo0@protonmail.com>
 ;;; Copyright © 2020 Chris Marusich <cmmarusich@gmail.com>
+;;; Copyright © 2021 Leo Le Bouter <lle-bout@zaclys.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -718,6 +719,7 @@ the store.")
                 #t))
             (modules '((guix build utils)))
             (patches (search-patches "glibc-ldd-x86_64.patch"
+                                     "glibc-ldd-powerpc.patch"
                                      "glibc-hidden-visibility-ldconfig.patch"
                                      "glibc-versioned-locpath.patch"
                                      "glibc-allow-kernel-2.6.32.patch"
@@ -963,6 +965,7 @@ with the Linux kernel.")
                (base32
                 "1bxqpg91d02qnaz837a5kamm0f43pr1il4r9pknygywsar713i72"))
               (patches (search-patches "glibc-ldd-x86_64.patch"
+                                       "glibc-ldd-powerpc.patch"
                                        "glibc-CVE-2019-19126.patch"
                                        "glibc-hidden-visibility-ldconfig.patch"
                                        "glibc-versioned-locpath.patch"
@@ -981,6 +984,7 @@ with the Linux kernel.")
                (base32
                 "0jzh58728flfh939a8k9pi1zdyalfzlxmwra7k0rzji5gvavivpk"))
               (patches (search-patches "glibc-ldd-x86_64.patch"
+                                       "glibc-ldd-powerpc.patch"
                                        "glibc-CVE-2019-7309.patch"
                                        "glibc-CVE-2019-9169.patch"
                                        "glibc-2.29-git-updates.patch"
@@ -1001,6 +1005,7 @@ with the Linux kernel.")
                (base32
                 "10iha5ynvdj5m62vgpgqbq4cwvc2yhyl2w9yyyjgfxmdmx8h145i"))
               (patches (search-patches "glibc-ldd-x86_64.patch"
+                                       "glibc-ldd-powerpc.patch"
                                        "glibc-2.28-git-fixes.patch"
                                        "glibc-hidden-visibility-ldconfig.patch"
                                        "glibc-versioned-locpath.patch"
@@ -1020,6 +1025,7 @@ with the Linux kernel.")
                (base32
                 "0wpwq7gsm7sd6ysidv0z575ckqdg13cr2njyfgrbgh4f65adwwji"))
               (patches (search-patches "glibc-ldd-x86_64.patch"
+                                       "glibc-ldd-powerpc.patch"
                                        "glibc-2.27-git-fixes.patch"
                                        "glibc-hidden-visibility-ldconfig.patch"
                                        "glibc-versioned-locpath.patch"
