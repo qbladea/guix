@@ -3598,12 +3598,7 @@ exec ~a/bin/~a-~a -B~a/lib -Wl,-dynamic-linker -Wl,~a/~a \"$@\"~%"
                       (if (string-prefix? "LDFLAGS=" flag)
                           (string-append flag " -L"
                                          (assoc-ref %build-inputs "libstdc++")
-                                         ;; On powerpc64 and powerpc64le,
-                                         ;; libstdc++ installs to /lib64.
-                                         ,(if (string-prefix? "powerpc64" (%current-system))
-                                              "/lib64"
-                                              "/lib")
-					 " -L" zlib "/lib -Wl,-rpath="
+                                         "/lib -L" zlib "/lib -Wl,-rpath="
                                          zlib "/lib")
                           flag))
                     ,flags)))
