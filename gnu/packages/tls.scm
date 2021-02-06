@@ -15,6 +15,7 @@
 ;;; Copyright © 2018 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2019 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright © 2021 Leo Le Bouter <lle-bout@zaclys.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -175,7 +176,9 @@ living in the same process.")
               (string-append "mirror://gnupg/gnutls/v"
                              (version-major+minor version)
                              "/gnutls-" version ".tar.xz"))
-             (patches (search-patches "gnutls-skip-trust-store-test.patch"))
+             (patches
+              (search-patches "gnutls-skip-trust-store-test.patch"
+                              "gnutls-fix-status-request-revoked.patch"))
              (sha256
               (base32
                "0jvca1qahn9lrwv6f5kfs95icirc15b2a8x9fzczyj996ipg3b5z"))))

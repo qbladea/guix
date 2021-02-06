@@ -40,6 +40,7 @@
 # Copyright © 2020 Malte Frank Gerdes <mate.f.gerdes@gmail.com>
 # Copyright © 2020 Vinicius Monego <monego@posteo.net>
 # Copyright © 2021 Björn Höfling <bjoern.hoefling@bjoernhoefling.de>
+# Copyright © 2021 Leo Le Bouter <lle-bout@zaclys.net>
 #
 # This file is part of GNU Guix.
 #
@@ -1108,6 +1109,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/gnome-todo-delete-esource-duplicate.patch \
   %D%/packages/patches/gnome-tweaks-search-paths.patch		\
   %D%/packages/patches/gnupg-default-pinentry.patch		\
+  %D%/packages/patches/gnutls-fix-status-request-revoked.patch	\
   %D%/packages/patches/gnutls-skip-trust-store-test.patch	\
   %D%/packages/patches/gnutls-cross.patch			\
   %D%/packages/patches/gobject-introspection-absolute-shlib-path.patch \
