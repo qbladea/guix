@@ -29,7 +29,7 @@
 ;;; Copyright © 2020 Arun Isaac <arunisaac@systemreboot.net>
 ;;; Copyright © 2020 Lars-Dominik Braun <lars@6xq.net>
 ;;; Copyright © 2020 Guillaume Le Vaillant <glv@posteo.net>
-;;; Copyright © 2020 Léo Le Bouter <lle-bout@zaclys.net>
+;;; Copyright © 2020, 2021 Léo Le Bouter <lle-bout@zaclys.net>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -808,7 +808,10 @@ decompression of some loosely related file formats used by Microsoft.")
        ("python" ,python)
        ("valgrind" ,valgrind)))
     (arguments
-     `(#:test-target "test"
+     `(;; Not designed for parallel testing.
+       ;; See https://github.com/lz4/lz4/issues/957#issuecomment-737419821
+       #:parallel-tests? #f
+       #:test-target "test"
        #:make-flags (list (string-append "CC=" ,(cc-for-target))
                           (string-append "prefix=" (assoc-ref %outputs "out")))
        #:phases
