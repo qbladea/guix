@@ -273,6 +273,11 @@ where the OS part is overloaded to denote a specific ABI---into GCC
 ~a"
                                libc line))))
 
+                  (when (file-exists? "gcc/config/rs6000")
+                    ;; Force powerpc libdir to be /lib and not /lib64
+                    (substitute* (find-files "gcc/config/rs6000")
+                      (("/lib64") "/lib")))
+
                   ;; Don't retain a dependency on the build-time sed.
                   (substitute* "fixincludes/fixincl.x"
                     (("static char const sed_cmd_z\\[\\] =.*;")
@@ -598,12 +603,19 @@ using compilers other than GCC."
     (name "libstdc++")
     (arguments
      `(#:out-of-source? #t
-       #:phases (alist-cons-before
-                 'configure 'chdir
-                 (lambda _
-                   (chdir "libstdc++-v3")
-                   #t)
-                 %standard-phases)
+       #:phases
+       (modify-phases %standard-phases
+         ;; Force rs6000 (i.e., powerpc) libdir to be /lib and not /lib64.
+         (add-before 'configure 'fix-rs6000-libdir
+           (lambda _
+             (when (file-exists? "gcc/config/rs6000")
+               (substitute* (find-files "gcc/config/rs6000")
+                 (("/lib64") "/lib")))
+             #t))
+         (add-before 'configure 'chdir
+           (lambda _
+             (chdir "libstdc++-v3")
+             #t)))
        #:configure-flags `("--disable-libstdcxx-pch"
                            ,(string-append "--with-gxx-include-dir="
                                            (assoc-ref %outputs "out")
