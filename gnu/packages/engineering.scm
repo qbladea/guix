@@ -21,6 +21,7 @@
 ;;; Copyright © 2020 B. Wilson <elaexuotee@wilsonb.com>
 ;;; Copyright © 2020, 2021 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020, 2021 Morgan Smith <Morgan.J.Smith@outlook.com>
+;;; Copyright © 2021 qblade <qblade@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -106,6 +107,7 @@
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages pretty-print)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-crypto)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages readline)
@@ -2996,3 +2998,32 @@ and drilling of PCBs.  It takes Gerber files as input and outputs G-code files
 for the milling of PCBs.  It also includes an autoleveller for the automatic
 dynamic calibration of the milling depth.")
      (license license:gpl3+)))
+
+(define-public python-esptool-3.0
+  (package
+    (name "python-esptool")
+    (version "3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "esptool" version))
+       (sha256
+        (base32
+         "0d69rd9h8wrzjvfrc66vmz4qd5hly2fpdcwj2bdrlb7dbwikv5c7"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f))
+    (propagated-inputs
+     `(("python-ecdsa" ,python-ecdsa)
+       ("python-pyaes" ,python-pyaes)
+       ("python-pyserial" ,python-pyserial)))
+    (home-page
+     "https://github.com/espressif/esptool")
+    (synopsis
+     "Serial utility to communicate & flash code to
+Espressif ESP8266 & ESP32 chips")
+    (description
+     "Python-based, open source, platform independent,
+utility to communicate with the ROM bootloader
+in Espressif ESP8266 & ESP32 series chips.")
+    (license license:gpl2+)))
