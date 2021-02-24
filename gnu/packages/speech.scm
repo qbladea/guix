@@ -7,6 +7,7 @@
 ;;; Copyright © 2019 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2021 qblade <qblade@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -616,3 +617,38 @@ manipulating acoustic feature and audio files.")
 large vocabulary, speaker-independent continuous speech recognition
 engine.")
     (license license:bsd-2)))
+
+(define-public ekho
+  (package
+    (name "ekho")
+    (version "8.4")
+    (source (origin
+              (method url-fetch)
+              (uri
+               (string-append
+                "http://sourceforge.net/projects/e-guidedog/files/Ekho/"
+                version "/ekho-" version ".tar.xz"))
+              (sha256
+               (base32
+                "1v476kpw09ljj8mavasj4hya2w11jwlx7q22rh1lsn9jkkam5i2a"))))
+    (native-inputs
+     `(("pkg-config" ,pkg-config)))
+    (inputs
+     `(("libsndfile" ,libsndfile)
+       ("espeak-ng" ,espeak-ng)
+       ("pulseaudio" ,pulseaudio)
+       ("alsa-lib" ,alsa-lib)))
+    (build-system gnu-build-system)
+    (native-search-paths
+     (list (search-path-specification
+            (variable "EKHO_DATA_PATH")
+            (files '("share/ekho-data")))))
+    (home-page "https://eguidedog.net/ekho.php")
+    (synopsis "Chinese text-to-speech software")
+    (description "it can speak Cantonese
+Mandarin, Hakka, Tibetan, Ngangien and English (through Festival),
+Korean is in trial.")
+    (license (list
+              license:gpl2+
+              ;; libmusicxml
+              license:mpl2.0))))
