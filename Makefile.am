@@ -360,6 +360,10 @@ AUX_FILES =						\
   gnu/packages/aux-files/chromium/master-preferences.json		\
   gnu/packages/aux-files/emacs/guix-emacs.el		\
   gnu/packages/aux-files/guix.vim			\
+  gnu/packages/aux-files/linux-libre/5.11-arm.conf	\
+  gnu/packages/aux-files/linux-libre/5.11-arm64.conf	\
+  gnu/packages/aux-files/linux-libre/5.11-i686.conf	\
+  gnu/packages/aux-files/linux-libre/5.11-x86_64.conf	\
   gnu/packages/aux-files/linux-libre/5.10-arm.conf	\
   gnu/packages/aux-files/linux-libre/5.10-arm64.conf	\
   gnu/packages/aux-files/linux-libre/5.10-i686.conf	\
@@ -475,6 +479,7 @@ SCM_TESTS =					\
   tests/scripts.scm				\
   tests/search-paths.scm			\
   tests/services.scm				\
+  tests/services/file-sharing.scm		\
   tests/services/linux.scm			\
   tests/sets.scm				\
   tests/size.scm				\

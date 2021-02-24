@@ -30,7 +30,7 @@
 ;;; Copyright © 2016, 2017 Stefan Reichör <stefan@xsteve.at>
 ;;; Copyright © 2016, 2017, 2019 Alex Vong <alexvong1995@gmail.com>
 ;;; Copyright © 2016, 2017, 2018 Arun Isaac <arunisaac@systemreboot.net>
-;;; Copyright © 2016, 2017, 2018, 2020 Julien Lepiller <julien@lepiller.eu>
+;;; Copyright © 2016, 2017, 2018, 2020, 2021 Julien Lepiller <julien@lepiller.eu>
 ;;; Copyright © 2016–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2016, 2017 Thomas Danckaert <post@thomasdanckaert.be>
 ;;; Copyright © 2017 Carlo Zancanaro <carlo@zancanaro.id.au>
@@ -74,7 +74,7 @@
 ;;; Copyright © 2020 Sebastian Schott <sschott@mailbox.org>
 ;;; Copyright © 2020 Alexandros Theodotou <alex@zrythm.org>
 ;;; Copyright © 2020 Josh Marshall <joshua.r.marshall.1991@gmail.com>
-;;; Copyright © 2020 Alexandros Theodotou <alex@zrythm.org>
+;;; Copyright © 2020, 2021 Alexandros Theodotou <alex@zrythm.org>
 ;;; Copyright © 2020 Lars-Dominik Braun <ldb@leibniz-psychology.org>
 ;;; Copyright © 2020 Alex ter Weele <alex.ter.weele@gmail.com>
 ;;; Copyright © 2020 Matthew Kraai <kraai@ftbfs.org>
@@ -82,7 +82,7 @@
 ;;; Copyright © 2020 Josh Holland <josh@inv.alid.pw>
 ;;; Copyright © 2020 Yuval Kogman <nothingmuch@woobling.org>
 ;;; Copyright © 2020 Michael Rohleder <mike@rohleder.de>
-;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
+;;; Copyright © 2020, 2021 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Guy Fleury Iteriteka <gfleury@disroot.org>
 ;;; Copyright © 2020 Hendursaga <hendursaga@yahoo.com>
 ;;; Copyright © 2020 Malte Frank Gerdes <malte.f.gerdes@gmail.com>
@@ -96,6 +96,7 @@
 ;;; Copyright © 2020, 2021 Zheng Junjie <873216071@qq.com>
 ;;; Copyright © 2021 Morgan Smith <Morgan.J.Smith@outlook.com>
 ;;; Copyright © 2020 EuAndreh <eu@euandre.org>
+;;; Copyright © 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -179,6 +180,7 @@
   #:use-module (gnu packages readline)
   #:use-module (gnu packages sdl)
   #:use-module (gnu packages search)
+  #:use-module (gnu packages scanner)
   #:use-module (gnu packages shells)
   #:use-module (gnu packages sphinx)
   #:use-module (gnu packages ssh)
@@ -549,28 +551,28 @@ data for video and audio files.")
 (define-public python-psutil
   (package
     (name "python-psutil")
-    (version "5.7.2")
+    (version "5.8.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "psutil" version))
        (sha256
-        (base32 "1svv985vmqsls35kmvp3vhh26nsgz229324s9k29awf6qgqhm6ch"))))
+        (base32 "1immnj532bnnrh1qmk5q3lsw3san8qfk9kxy1cpmy0knmfcwp70c"))))
     (build-system python-build-system)
     (arguments
      ;; FIXME: some tests do not return and time out.  Some tests fail because
      ;; some processes survive kill().
      '(#:tests? #f))
-    (home-page "https://www.github.com/giampaolo/psutil")
+    (home-page "https://github.com/giampaolo/psutil")
     (synopsis "Library for retrieving information on running processes")
     (description
-     "psutil (Python system and process utilities) is a library for retrieving
-information on running processes and system utilization (CPU, memory, disks,
-network) in Python.  It is useful mainly for system monitoring, profiling and
-limiting process resources and management of running processes.  It implements
-many functionalities offered by command line tools such as: ps, top, lsof,
-netstat, ifconfig, who, df, kill, free, nice, ionice, iostat, iotop, uptime,
-pidof, tty, taskset, pmap.")
+     "@code{psutil} (Python system and process utilities) is a library for
+retrieving information on running processes and system utilization (CPU,
+memory, disks, network) in Python.  It is useful mainly for system monitoring,
+profiling and limiting process resources and management of running processes.
+It implements many functionalities offered by command line tools such as: ps,
+top, lsof, netstat, ifconfig, who, df, kill, free, nice, ionice, iostat,
+iotop, uptime, pidof, tty, taskset, pmap.")
     (properties `((python2-variant . ,(delay python2-psutil))))
     (license license:bsd-3)))
 
@@ -2381,6 +2383,30 @@ software.")
   (package
     (inherit (package-with-python2 scons))
     (name "scons-python2")))
+
+(define-public python-extension-helpers
+(package
+  (name "python-extension-helpers")
+  (version "0.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (pypi-uri "extension-helpers" version))
+      (sha256
+        (base32 "10iqjzmya2h4sk765dlm1pbqypwlqyh8rw59a5m9i63d3klnz2mc"))))
+  (build-system python-build-system)
+  (native-inputs
+    `(("coverage" ,python-coverage)
+      ("pytest" ,python-pytest-astropy)
+      ("pytest-cov" ,python-pytest-cov)
+      ("setuptools-scm" ,python-setuptools-scm)))
+  (home-page "https://github.com/astropy/astropy-helpers")
+  (synopsis
+   "Utilities for building and installing packages in the Astropy ecosystem")
+  (description
+    "The extension-helpers package includes many build, installation, and
+documentation-related tools used by the Astropy project.")
+  (license license:bsd-3)))
 
 (define-public python-extras
   (package
@@ -5893,6 +5919,39 @@ a general image processing tool.")
      (substitute-keyword-arguments (package-arguments python-pillow)
        ((#:tests? _ #f) #f)))
     (properties '((hidden? #t)))))
+
+(define-public python-pillow-simd
+  (package
+    (inherit python-pillow)
+    (name "python-pillow-simd")
+    (version "7.1.2")
+    ;; The PyPI tarball does not include test files.
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/uploadcare/pillow-simd")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0w11np4cybamry3jsg70x747c79zwjzfq0xiprfp6c186rd6nzp9"))))
+    (arguments
+     (substitute-keyword-arguments
+         (package-arguments python-pillow)
+       ((#:phases phases)
+        `(modify-phases ,phases
+           (add-after 'unpack 'make-tests-writable
+             (lambda _
+               (for-each make-file-writable (find-files "Tests"))
+               #t))))))
+    (inputs
+     `(("libraqm" ,libraqm)
+       ("libimagequant" ,libimagequant)
+       ,@(package-inputs python-pillow)))
+    (home-page "https://github.com/uploadcare/pillow-simd")
+    (synopsis "Fork of the Python Imaging Library (Pillow)")
+    (description "This package is a fork of Pillow which adds support for SIMD
+parallelism.")))
 
 (define-public python-roifile
   (package
@@ -10785,6 +10844,41 @@ applications.")
     (home-page "https://github.com/click-contrib/click-log")
     (license license:expat)))
 
+(define-public python-structlog
+  (package
+    (name "python-structlog")
+    (version "20.2.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "structlog" version))
+        (sha256
+         (base32
+          "0x1i21vn3xjfa3j9ijbblia5z0jlzc9aqvpqc26sy16i8yjxyydg"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda* (#:key tests? inputs outputs #:allow-other-keys)
+             (when tests?
+               (add-installed-pythonpath inputs outputs)
+               (invoke "pytest"))
+             #t)))))
+    (native-inputs
+     `(("python-coverage" ,python-coverage)
+       ("python-freezegun" ,python-freezegun)
+       ("python-pretend" ,python-pretend)
+       ("python-pytest" ,python-pytest)
+       ("python-pytest-asyncio" ,python-pytest-asyncio)
+       ("python-simplejson" ,python-simplejson)
+       ("python-twisted" ,python-twisted)))
+    (home-page "https://www.structlog.org/")
+    (synopsis "Structured Logging for Python")
+    (description "@code{structlog} changes logging in Python by adding structure
+to your log entries.")
+    (license (list license:asl2.0 license:expat))))
+
 (define-public python-apipkg
   (package
     (name "python-apipkg")
@@ -12216,6 +12310,54 @@ encoding algorithms to do fuzzy string matching.")
 module, adding support for Unicode strings.")
     (license license:bsd-2)))
 
+(define-public python-pdfminer-six
+  (package
+    (name "python-pdfminer-six")
+    (version "20201018")
+    ;; There are no tests in the PyPI tarball.
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pdfminer/pdfminer.six")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1a2fxxnnjqbx344znpvx7cnv1881dk6585ibw01inhfq3w6yj2lr"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         ;; Tests write to the source tree.
+         (add-after 'unpack 'make-git-checkout-writable
+           (lambda _
+             (for-each make-file-writable (find-files "."))
+             #t))
+         (replace 'check
+           (lambda _
+             (invoke "make" "test")))
+         (add-before 'reset-gzip-timestamps 'make-files-writable
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((out (assoc-ref outputs "out")))
+               (for-each make-file-writable
+                         (find-files out "\\.gz$"))
+               #t))))))
+    (propagated-inputs
+     `(("python-chardet" ,python-chardet)
+       ("python-cryptography" ,python-cryptography)
+       ("python-sortedcontainers" ,python-sortedcontainers)))
+    (native-inputs
+     `(("python-nose" ,python-nose)
+       ("python-tox" ,python-tox)))
+    (home-page "https://github.com/pdfminer/pdfminer.six")
+    (synopsis "PDF parser and analyzer")
+    (description "@code{pdfminer.six} is a community maintained fork of
+the original PDFMiner.  It is a tool for extracting information from PDF
+documents.  It focuses on getting and analyzing text data.  Pdfminer.six
+extracts the text from a page directly from the sourcecode of the PDF.  It
+can also be used to get the exact location, font or color of the text.")
+    (license license:expat)))
+
 (define-public python-rarfile
   (package
     (name "python-rarfile")
@@ -12663,13 +12805,13 @@ multiple processes (imagine multiprocessing, billiard, futures, celery etc).
 (define-public python-greenlet
   (package
     (name "python-greenlet")
-    (version "0.4.17")
+    (version "1.0.0")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "greenlet" version))
               (sha256
                (base32
-                "0swdhrcq13bdszv3yz5645gi4ijbzmmhxpb6whcfg3d7d5f87n21"))))
+                "1y6wbg9yhm9dw6m768n4yslp56h85pnxkk3drz6icn15g6f1d7ki"))))
     (build-system python-build-system)
     (home-page "https://greenlet.readthedocs.io/")
     (synopsis "Lightweight in-process concurrent programming")
@@ -12710,19 +12852,18 @@ graphviz.")
 (define-public python-gevent
   (package
     (name "python-gevent")
-    (version "20.9.0")
+    (version "21.1.2")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "gevent" version))
               (sha256
                (base32
-                "13aw9x6imsy3b369kfjblqiwfni69pp32m4r13n62r9k3l2lhvaz"))
+                "10f9y899y9nmq51pv4r1zb51b4w5yxx00sz5whvg9vm956hc432j"))
               (modules '((guix build utils)))
               (snippet
                '(begin
                   ;; unbunding libev and c-ares
-                  (delete-file-recursively "deps")
-                  #t))))
+                  (delete-file-recursively "deps")))))
     (build-system python-build-system)
     (arguments
      `(#:modules ((ice-9 ftw)
@@ -12739,8 +12880,7 @@ graphviz.")
                                   (substitute* file
                                     (("/bin/sh") (which "sh"))
                                     (("/bin/true") (which "true"))))
-                                (find-files "src/greentest" "\\.py$"))
-                      #t))
+                                (find-files "src/greentest" "\\.py$"))))
                   (add-before 'build 'do-not-use-bundled-sources
                     (lambda _
                       (setenv "GEVENTSETUP_EMBED" "0")
@@ -12748,8 +12888,7 @@ graphviz.")
                       ;; Prevent building bundled libev.
                       (substitute* "setup.py"
                         (("run_make=_BUILDING")
-                         "run_make=False"))
-                      #t))
+                         "run_make=False"))))
                   (add-before 'build 'add-greenlet-on-C_INCLUDE_PATH
                     (lambda* (#:key inputs #:allow-other-keys)
                       (let ((greenlet (string-append
@@ -12762,16 +12901,14 @@ graphviz.")
                            (setenv "C_INCLUDE_PATH"
                                    (string-append greenlet "/" python ":"
                                                   (or (getenv "C_INCLUDE_PATH")
-                                                      ""))))))
-                      #t))
+                                                      ""))))))))
                   (add-before 'check 'pretend-to-be-CI
                     (lambda _
                       ;; A few tests are skipped due to network constraints or
                       ;; get longer timeouts when running in a CI environment.
                       ;; Piggy-back on that, as we need the same adjustments.
                       (setenv "TRAVIS" "1")
-                      (setenv "APPVEYOR" "1")
-                      #t))
+                      (setenv "APPVEYOR" "1")))
                   (add-before 'check 'adjust-tests
                     (lambda _
                       (let ((disabled-tests
@@ -12803,8 +12940,7 @@ graphviz.")
                         (call-with-output-file "skipped_tests.txt"
                           (lambda (port)
                             (format port "~a~%"
-                                    (string-join disabled-tests "\n"))))
-                        #t)))
+                                    (string-join disabled-tests "\n")))))))
                   (replace 'check
                     (lambda _
                       ;; Make sure the build directory is on PYTHONPATH.
@@ -13344,9 +13480,8 @@ database, file, dict stores.  Cachy supports python versions 2.7+ and 3.2+.")
          (add-before 'build 'patch-setup-py
            (lambda _
              (substitute* "setup.py"
-               ;; Newer versions of keyring produce a package with version "0.0.0"
-               ;; Reported upstream: <https://github.com/jaraco/keyring/issues/469>
-               (("keyring>=21.2.0,<22.0.0") "keyring>=21.0.0,<22.0.0")
+               ;; Allow newer versions of python-keyring.
+               (("(keyring>=21.2.0),<22.0.0" _ keyring) keyring)
                ;; TODO: remove after the next release cycle,
                ;; when packaging has been updated.
                (("packaging>=20.4,<21.0") "packaging>=20.0,<21.0"))
@@ -15257,17 +15392,29 @@ projects.")
   (package
     (name "python-invoke")
     (home-page "https://www.pyinvoke.org/")
-    (version "1.4.1")
+    (version "1.5.0")
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "invoke" version))
               (sha256
                (base32
-                "0pg1lpl4583z83i12262v72y1a4cxdcxi7vqhl8dpqv9wszj6gyy"))))
+                "0l16v7zcbgi36z6pvmdrs5q4ks8lalcafi5d9nhrpcjzbc3n1igh"))))
     (build-system python-build-system)
     (arguments
      ;; XXX: Requires many dependencies that are not yet in Guix.
-     `(#:tests? #f))
+     `(#:tests? #f
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'fix-bash-path
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let ((bash (assoc-ref inputs "bash")))
+               (substitute* "invoke/config.py"
+                 (("shell = \"/bin/bash\"")
+                  (string-append "shell = \"" bash "/bin/bash\""))
+                 )
+               #t))))))
+    (inputs
+     `(("bash" ,bash-minimal)))
     (synopsis "Pythonic task execution")
     (description
      "Invoke is a Python task execution tool and library, drawing inspiration
@@ -17281,18 +17428,24 @@ design and layout.")
 (define-public python-pkginfo
   (package
     (name "python-pkginfo")
-    (version "1.4.2")
+    (version "1.7.0")
     (source
       (origin
         (method url-fetch)
         (uri (pypi-uri "pkginfo" version))
         (sha256
           (base32
-            "0x6lm17p1ks031mj6pajyp4rkq74vpqq8qwjb7ikgwmkli1day2q"))))
+            "1d1xn1xmfvz0jr3pj8irdwnwby3r13g0r2gwklr1q5y68p5p16h2"))))
     (build-system python-build-system)
     (arguments
-     ;; The tests are broken upstream.
-     '(#:tests? #f))
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'patch-tests
+           (lambda _
+             (substitute* "pkginfo/tests/test_installed.py"
+               (("test_ctor_w_package_no_PKG_INFO")
+                "_test_ctor_w_package_no_PKG_INFO"))
+             #t)))))
     (home-page
       "https://code.launchpad.net/~tseaver/pkginfo/trunk")
     (synopsis
@@ -23733,3 +23886,102 @@ implementations.")
       "Pivy provides python bindings for Coin, a 3D graphics library with an
 Application Programming Interface based on the Open Inventor 2.1 API.")
     (license license:isc)))
+
+(define-public python-crayons
+  (package
+    (name "python-crayons")
+    (version "0.4.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "crayons" version))
+        (sha256
+         (base32
+          "0gw106k4b6y8mw7pp52awxyplj2bwvwk315k4sywzwh0g1abfcxx"))))
+    (build-system python-build-system)
+    (propagated-inputs
+      `(("python-colorama" ,python-colorama)))
+    (home-page "https://github.com/MasterOdin/crayons")
+    (synopsis "TextUI colors for Python")
+    (description "This package gives you colored strings for the terminal.
+Crayons automatically wraps a given string in the foreground color and
+restores the original state after the string is printed.")
+    (license license:expat)))
+
+(define-public python-sane
+  (package
+    (name "python-sane")
+    (version "2.9.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri name version))
+       (sha256
+        (base32
+         "1pi597z94n2mkd821ln52fq0g727n2jxfskf280ip3kf7jw8w294"))))
+    (build-system python-build-system)
+    (native-inputs
+     `(("python-pytest" ,python-pytest)))
+    (inputs
+     `(("sane-backends" ,sane-backends)))
+    (home-page "https://github.com/python-pillow/Sane")
+    (synopsis "Python interface to the SANE scanner")
+    (description "This package provides Python interface to the SANE scanner
+and frame grabber interface.")
+    (license (license:non-copyleft
+               ;; Yet another variant of the X/MIT license.
+               "https://github.com/python-pillow/Sane/blob/master/COPYING"))))
+
+(define-public python-screenkey
+  (package
+    (name "python-screenkey")
+    (version "1.4")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://gitlab.com/screenkey/screenkey")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "1rfngmkh01g5192pi04r1fm7vsz6hg9k3qd313sn9rl9xkjgp11l"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'fix-dlopen-paths
+          (lambda* (#:key inputs outputs #:allow-other-keys)
+            (let* ((x11 (assoc-ref inputs "libx11"))
+                   (xtst (assoc-ref inputs "libxtst")))
+              (substitute* "Screenkey/xlib.py"
+                           (("libX11.so.6")
+                            (string-append x11 "/lib/libX11.so.6")))
+              (substitute* "Screenkey/xlib.py"
+                           (("libXtst.so.6")
+                            (string-append xtst "/lib/libXtst.so.6")))
+              #t)))
+          (add-after 'install 'wrap-screenkey
+            (lambda* (#:key outputs #:allow-other-keys)
+              (wrap-program
+                  (string-append (assoc-ref outputs "out") "/bin/screenkey")
+                `("PYTHONPATH" ":" prefix (,(getenv "PYTHONPATH")))
+                `("GI_TYPELIB_PATH"
+                  ":" prefix (,(getenv "GI_TYPELIB_PATH"))))
+              #t)))))
+    (inputs
+     `(("python-distutils-extra" ,python-distutils-extra)
+       ("python-tokenize-rt" ,python-tokenize-rt)
+       ("libx11" ,libx11)
+       ("libxtst" ,libxtst)
+       ("gtk+" ,gtk+)
+       ("python-pygobject" ,python-pygobject)
+       ("python-pycairo" ,python-pycairo)
+       ("python-setuptools-git" ,python-setuptools-git)
+       ("python-babel" ,python-babel)))
+    (home-page "https://www.thregr.org/~wavexx/software/screenkey/")
+    (synopsis
+      "Screencast tool to display pressed keys")
+    (description
+      "A screencast tool to display your keys inspired by Screenflick.")
+    (license license:gpl3+)))

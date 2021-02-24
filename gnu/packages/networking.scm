@@ -700,8 +700,16 @@ or, more generally, MAC addresses of the same category of hardware.")
                 "0j9ilig570snbmj48230hf7ms8kvcwi2wblycqrmhh85lksd49ps"))))
     (build-system gnu-build-system)
     (arguments
-     '(#:phases
+     '(#:configure-flags
+       (list "--localstatedir=/var")
+       #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'do-not-create-/run
+           (lambda _
+             (substitute* (find-files "src" "Makefile.*")
+               (("^.+install_sh.+/run.+$")
+                "\ttrue"))
+             #t))
          (add-after 'unpack 'patch-iproute2
            (lambda* (#:key inputs #:allow-other-keys)
              (let* ((iproute (assoc-ref inputs "iproute"))
@@ -1446,13 +1454,13 @@ round-robin fashion.")
 (define-public gandi.cli
   (package
     (name "gandi.cli")
-    (version "1.5")
+    (version "1.6")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri name version))
        (sha256
-        (base32 "110wc9zgxsrvw4yzp21p0ian5lcf7vhcpxhnmsc4fg9pzl2bwxd5"))))
+        (base32 "1h36jahbp7273wn3yd747kbiwjc0bm3sja67bcxdsd54ln0vyndg"))))
     (build-system python-build-system)
     (arguments
      `(#:phases
@@ -1476,8 +1484,11 @@ round-robin fashion.")
                #t))))))
     (native-inputs
      `(("python-docutils" ,python-docutils)   ; for rst2man.py
+       ("python-pytest" ,python-pytest)
        ("python-pytest-cov" ,python-pytest-cov)
        ("python-tox" ,python-tox)))
+    (propagated-inputs
+     `(("openssh" ,openssh)))           ; used by gandi/cli/modules/iass.py
     (inputs
      `(("openssl" ,openssl)
        ("python-click" ,python-click)
@@ -3425,7 +3436,7 @@ communication.")
 (define-public frrouting
   (package
     (name "frrouting")
-    (version "6.0.2")
+    (version "7.5")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/FRRouting/frr/releases/"
@@ -3433,11 +3444,13 @@ communication.")
                                   ".tar.xz"))
               (sha256
                (base32
-                "0xfrvi62w8qlh46f504ka0skb7pm0g0p8vmdng4w90gsbirlzpdd"))))
+                "1a27wvxmc51sr0kchy0hjfpv19imlgrr3s9k48lik9k01g71yrdr"))))
     (build-system gnu-build-system)
     (inputs
      `(("c-ares" ,c-ares)
        ("json-c" ,json-c)
+       ("libcap" ,libcap)
+       ("libyang" ,libyang)
        ("readline" ,readline)))
     (native-inputs
      `(("perl" ,perl)
@@ -3507,6 +3520,33 @@ Supplicant.  It optimizes resource utilization by not depending on any external
 libraries and instead utilizing features provided by the Linux kernel to the
 maximum extent possible.")
     (license license:lgpl2.1+)))
+
+(define-public libyang
+  (package
+    (name "libyang")
+    (version "1.0.215")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/CESNET/libyang")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0mrs2ppmq77z8sbqgm2w0rl9bfgybd6bcxanakfww4chih6cy0dw"))))
+    (build-system cmake-build-system)
+    (arguments
+     `(#:configure-flags
+       (list "-DENABLE_BUILD_TESTS=ON" "-DENABLE_LYD_PRIV=ON")))
+    (propagated-inputs `(("pcre" ,pcre)))
+    (native-inputs `(("cmocka" ,cmocka)
+                     ("pkg-config" ,pkg-config)))
+    (home-page "https://github.com/CESNET/libyang")
+    (synopsis "YANG data modelling language library")
+    (description "libyang is a YANG data modelling language parser and toolkit
+written (and providing API) in C.  Current implementation covers YANG 1.0 (RFC
+6020) as well as YANG 1.1 (RFC 7950).")
+    (license license:bsd-3)))
 
 (define-public batctl
   (package

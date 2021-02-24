@@ -317,7 +317,9 @@ and BOOTP/TFTP for network booting of diskless machines.")
   (package
     (name "bind")
     ;; When updating, check whether isc-dhcp's bundled copy should be as well.
-    (version "9.16.11")
+    ;; The BIND release notes are available here:
+    ;; https://www.isc.org/bind/
+    (version "9.16.12")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -325,7 +327,7 @@ and BOOTP/TFTP for network booting of diskless machines.")
                     "/bind-" version ".tar.xz"))
               (sha256
                (base32
-                "1hcr0q6i2mk83yi12zxjs5q21y3gx7683q99l77ibxfqsx6zc481"))))
+                "0zys8hk08zzrw57x0vmzv6zx0a7vjj6qk5qh8jmrqd7x269sy54r"))))
     (build-system gnu-build-system)
     (outputs `("out" "utils"))
     (inputs
@@ -536,14 +538,14 @@ asynchronous fashion.")
 (define-public nsd
   (package
     (name "nsd")
-    (version "4.3.4")
+    (version "4.3.5")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.nlnetlabs.nl/downloads/nsd/nsd-"
                            version ".tar.gz"))
        (sha256
-        (base32 "0l4ba80ihwg3s2ifhnkmk7rjabrcy5zw6sz4hn0vm9sif6lk9s1v"))))
+        (base32 "0wj490rxqs86z8s4lxjwk06ry5pvkdqqyq1cf83z7mxk60zb98kx"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -810,7 +812,7 @@ Extensions} (DNSSEC).")
 (define-public knot
   (package
     (name "knot")
-    (version "3.0.3")
+    (version "3.0.4")
     (source
      (origin
        (method git-fetch)
@@ -819,7 +821,7 @@ Extensions} (DNSSEC).")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0xzig9l91wj6x23mh75vw2r51ihrgx916c7wxvpcfnwrqsv4f3hy"))
+        (base32 "1mbjl18zi8yxs7pa3395lqjwdw0agjbfpl32x42i6d9zb8fsblzs"))
        (modules '((guix build utils)))
        (snippet
         '(begin

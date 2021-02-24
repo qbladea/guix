@@ -32,9 +32,11 @@
 ;;; Copyright © 2019, 2020 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2020 Oleg Pykhalov <go.wigust@gmail.com>
 ;;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
-;;; Copyright © 2020 Michael Rohleder <mike@rohleder.de>
+;;; Copyright © 2020, 2021 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Vincent Legoll <vincent.legoll@gmail.com>
 ;;; Copyright © 2020 Morgan Smith <Morgan.J.Smith@outlook.com>
+;;; Copyright © 2021 Zheng Junjie <873216071@qq.com>
+;;; Copyright © 2021 Stefan Reichör <stefan@xsteve.at>
 ;;; Copyright © 2021 qblade <qblade@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
@@ -459,7 +461,7 @@ graphs and can export its output to different formats.")
 (define-public facter
   (package
     (name "facter")
-    (version "4.0.49")
+    (version "4.0.51")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -468,7 +470,7 @@ graphs and can export its output to different formats.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0l7gic5ql5xiy5s6rb0j9ydyaal5bcxl10bx45khcgdr9zg16pb1"))))
+                "1s98rq2wjmh8bqdfdibvfp9j2ynd97k0c4hairryrzl9nna3j542"))))
     (build-system ruby-build-system)
     (arguments
      `(#:phases
@@ -527,6 +529,42 @@ or via the @code{facter} Ruby library.")
     (home-page "https://github.com/puppetlabs/facter-ng")
     (license license:expat)))
 
+(define-public ttyload
+  (let ((revision "1")
+        (commit "f9495372801ce4b4dad98ad854203e694c31c1eb"))
+    (package
+      (name "ttyload")
+      (version (git-version "0.5.3" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/lindes/ttyload")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0ldb7a13b9v876c6cbrs78pkizj64drnqx95z5shfbwgpwfhr4im"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:tests? #f      ; no tests
+         #:make-flags
+         (list (string-append "CC=" ,(cc-for-target)))
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin")))
+                 (install-file "ttyload" bin)))))))
+      (home-page "https://www.daveltd.com/src/util/ttyload/")
+      (synopsis "Console based color-coded graphs of CPU load average")
+      (description
+       "Show graphs for 1 minute, 5 minute, 15 minute load averages on the
+console.")
+      ;; This package uses a modified version of the "ISC License".
+      (license (license:non-copyleft "file://LICENSE")))))
+
 (define-public htop
   (package
     (name "htop")
@@ -575,6 +613,40 @@ application (for console or X terminals) and requires ncurses.")
     (synopsis "Linux/OSX/FreeBSD resource monitor")
     (description "Resource monitor that shows usage and stats for processor,
 memory, disks, network and processes.")
+    (license license:asl2.0)))
+
+(define-public bpytop
+  (package
+    (name "bpytop")
+    (version "1.0.62")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "bpytop" version))
+       (sha256
+        (base32
+         "02d9gdnnx45lnhx0bgg4wz9bdrkg40mm6pi1443f5i3mcpz8yh4s"))))
+    (build-system python-build-system)
+    (inputs
+     `(("python-psutil" ,python-psutil)))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'install-themes
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((themes (string-append (assoc-ref outputs "out")
+                                          "/lib/python"
+                                          ,(version-major+minor
+                                            (package-version python))
+                                          "/site-packages/bpytop-themes")))
+               (mkdir-p themes)
+               (copy-recursively "bpytop-themes" themes)))))))
+    (home-page
+     "https://github.com/aristocratos/bpytop")
+    (synopsis "Resource monitor")
+    (description "Resource monitor that shows usage and stats for processor,
+memory, disks, network and processes.  It's a Python port of
+@command{bashtop}.")
     (license license:asl2.0)))
 
 (define-public pies
@@ -971,7 +1043,7 @@ connection alive.")
 (define-public isc-dhcp
   (let* ((bind-major-version "9")
          (bind-minor-version "11")
-         (bind-patch-version "22")
+         (bind-patch-version "28")
          (bind-release-type "")         ; for patch release, use "-P"
          (bind-release-version "")      ; for patch release, e.g. "6"
          (bind-version (string-append bind-major-version
@@ -1108,7 +1180,7 @@ connection alive.")
                                         "/bind-" bind-version ".tar.gz"))
                     (sha256
                      (base32
-                      "1j9a4r83a77mp8k1y8z524c9rzdqgd8rzwczd6zwmw86a00xiimg"))))
+                      "0x2yjy0d8p7i5mr2s5y65fdax0jjgvd8fn07s42c8dxsrbkcp40h"))))
 
                 ("coreutils*" ,coreutils)
                 ("sed*" ,sed)))
@@ -3817,6 +3889,38 @@ support forum.  It runs with the @code{/exec} command in most IRC clients.")
     (description "This package provides @code{udev} bindings for Python.")
     (license license:lgpl2.1)))
 
+(define-public vmtouch
+  (package
+    (name "vmtouch")
+    (version "1.3.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/hoytech/vmtouch/")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "08da6apzfkfjwasn4dxrlfxqfx7arl28apdzac5nvm0fhvws0dxk"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     `(("perl" ,perl)))
+    (arguments
+     `(#:tests? #f                      ; no tests
+       #:make-flags
+       (list
+        (string-append "CC=" ,(cc-for-target))
+        (string-append "PREFIX=" (assoc-ref %outputs "out")))
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure))))
+    (home-page "https://github.com/hoytech/vmtouch/")
+    (synopsis "Portable file system cache diagnostics and control")
+    (description
+     "vmtouch is a tool for learning about and controlling the file system
+cache of unix and unix-like systems.")
+    (license license:bsd-3)))
+
 (define-public solaar
   (package
     (name "solaar")
@@ -3851,7 +3955,7 @@ Logitech Unifying Receiver.")
   (package
     (name "lynis")
     ;; Also update the ‘lynis-sdk’ input to the commit matching this release.
-    (version "2.7.5")
+    (version "3.0.3")
     (source
      (origin
        (method git-fetch)
@@ -3860,7 +3964,7 @@ Logitech Unifying Receiver.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1lkkbvxm0rgrrlx0szaxmf8ghc3d26wal96sgqk84m37mvs1f7p0"))
+        (base32 "0sdjh2f1563qalp740vkaaxdxl56ny98h168cggpm10h2yq366gr"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -3877,10 +3981,10 @@ Logitech Unifying Receiver.")
            (method git-fetch)
            (uri (git-reference
                  (url "https://github.com/CISOfy/lynis-sdk")
-                 (commit "bf1c1d95121da9ca79a9eac5a15ed8d81e34094d")))
+                 (commit "ea7a39774fbd71113a1955cf1a4937b489935174")))
            (file-name (git-file-name "lynis-sdk" version))
            (sha256
-            (base32 "1ndz5v0039dqa87cva2dk55a8hkw0fibsw8hh2ddmny9qkr4l3dp"))))))
+            (base32 "0q5j2myshjkz9qwvcg8n7c33yw2cp80yvzhckd60qmzabv4g4qb5"))))))
     (arguments
      `(#:phases
        (modify-phases %standard-phases

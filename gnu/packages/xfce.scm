@@ -765,7 +765,7 @@ like appearance, display, keyboard and mouse settings.")
 (define-public thunar
   (package
     (name "thunar")
-    (version "4.16.2")
+    (version "4.16.3")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://archive.xfce.org/src/xfce/"
@@ -773,7 +773,7 @@ like appearance, display, keyboard and mouse settings.")
                                   "thunar-" version ".tar.bz2"))
               (sha256
                (base32
-                "1pbspa31q4kgydjzmssahq3k0wcy10ma466dlsd2y69nqjc0pab7"))))
+                "0wpzs7r79aayg4zbxy514fbkabac1hhvw522cjjr453gva4xq92m"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("pkg-config" ,pkg-config)
@@ -1069,7 +1069,7 @@ the desktop wallpaper.")
 (define-public xfce4-taskmanager
   (package
     (name "xfce4-taskmanager")
-    (version "1.4.1")
+    (version "1.4.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://archive.xfce.org/src/apps/"
@@ -1077,7 +1077,7 @@ the desktop wallpaper.")
                                   "xfce4-taskmanager-" version ".tar.bz2"))
               (sha256
                (base32
-                "0nsvjrsg8bc4wbqqq9y9r4nvdsz3443q0qz05k68qjdxwzyx4h8i"))))
+                "1ya81si7xhqqbbc9lfcjg2i1pi1qdfw1pnjry7kf95f1w50244nd"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("intltool" ,intltool)
@@ -1357,7 +1357,7 @@ A plugin for the Xfce panel is also available.")
 (define-public xfce4-cpugraph-plugin
   (package
    (name "xfce4-cpugraph-plugin")
-   (version "1.2.1")
+   (version "1.2.2")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://archive.xfce.org/src/panel-plugins/"
@@ -1366,7 +1366,7 @@ A plugin for the Xfce panel is also available.")
                                   "/xfce4-cpugraph-plugin-" version ".tar.bz2"))
               (sha256
                (base32
-                "0jljxyvxq4kmf5wz7wkq6wma4bq1qsnlv3lx6527lhcipnddynk1"))))
+                "0pnm2lqcc9snzpcd25c2yvzcnikk5chc5bn1jh14r6726vx14z1l"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("intltool" ,intltool)
@@ -1646,34 +1646,6 @@ resulting string into the panel.
 
 The string can also contain markup to displayed an image, a bar, a
 button and a personalized tooltip.")
-    (license gpl2+)))
-
-(define-public xfce4-kbdleds-plugin
-  (package
-   (name "xfce4-kbdleds-plugin")
-   (version "0.0.6")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://archive.xfce.org/src/panel-plugins/"
-                                  "xfce4-kbdleds-plugin/"
-                                  (version-major+minor version)
-                                  "/xfce4-kbdleds-plugin-" version ".tar.bz2"))
-              (sha256
-               (base32
-                "1k810asjjxwix1c7ixl7bqr97zc4j2mw7797gk49rjvv43bhla3d"))))
-    (build-system gnu-build-system)
-    (native-inputs
-     `(("intltool" ,intltool)
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("gtk+-2" ,gtk+-2)
-       ("libxfce4ui" ,libxfce4ui)
-       ("xfce4-panel" ,xfce4-panel)))
-    (home-page
-     "https://goodies.xfce.org/projects/panel-plugins/xfce4-kbdleds-plugin")
-    (synopsis "Display keyboard LEDs in the Xfce panel")
-    (description "This plugin shows the state of your keyboard LEDs:
-Caps, Scroll and Num Lock in Xfce panel.")
     (license gpl2+)))
 
 (define-public xfce4-mailwatch-plugin
@@ -2091,7 +2063,7 @@ lan interface (signal state, signal quality, network name (SSID)).")
 (define-public xfce4-weather-plugin
   (package
    (name "xfce4-weather-plugin")
-   (version "0.10.2")
+   (version "0.11.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://archive.xfce.org/src/panel-plugins/"
@@ -2100,7 +2072,7 @@ lan interface (signal state, signal quality, network name (SSID)).")
                                   "/xfce4-weather-plugin-" version ".tar.bz2"))
               (sha256
                (base32
-                "1ik2qvmwylsz5vyz4np2y0mmd37s89xkayxi97490c4mj85pj5wh"))))
+                "1z2k24d599mxf5gqa35i3xmc3gk2yvqs80hxxpyw06yma6ljw973"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("intltool" ,intltool)

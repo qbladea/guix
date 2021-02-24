@@ -7,7 +7,7 @@
 ;; Copyright © 2019, 2020 Julien Lepiller <julien@lepiller.eu>
 ;; Copyright © 2019, 2020, 2021 Florian Pelz <pelzflorian@pelzflorian.de>
 ;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
-;; Copyright © 2020 Mathieu Othacehe <m.othacehe@gmail.com>
+;; Copyright © 2020, 2021 Mathieu Othacehe <m.othacehe@gmail.com>
 ;; Copyright © 2020 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;
@@ -18,10 +18,43 @@
 (channel-news
  (version 0)
 
+ (entry (commit "6e8cdf1d26092cb9654e179b04730fff7c15c94f")
+        (title
+         (en "The @command{guix system image} command can now operate on image records")
+         (de "Der Befehl @command{guix system image} kann jetzt auch mit @code{image}-Verbundsobjekten umgehen")
+         (fr "La commande @command{guix system image} peut désormais fonctionner sur des images"))
+        (body
+         (en "The @command{guix system image} command can now operate on
+@code{image} records.  This means that the file parameter or the expression
+passed to this command can return @code{image} or @code{operating-system}
+records.
+
+The @file{gnu/system/images} directory contains default images that can be
+built by running @command{guix system image gnu/system/images/pine64.scm} for
+instance.")
+         (de "Sie können den Befehl @command{guix system image} jetzt auch auf
+Verbundsobjekte vom Typ @code{image} anwenden.  Das heißt, wenn Sie eine Datei
+oder einen Ausdruck als Parameter übergeben, darf dieser ein Verbundsobjekt
+vom Typ @code{image} oder @code{operating-system} zurückliefern.
+
+Im Verzeichnis @file{gnu/system/images} finden Sie vorkonfigurierte Abbilder
+als @code{image}-Verbundsobjekte. Sie können zum Beispiel @command{guix system
+image gnu/system/images/pine64.scm} ausführen, um das Abbild zu erstellen.")
+         (fr "La commande @command{guix system image} peut désormais
+fonctionner sur des images.  Cela signifie que le fichier ou l'expression
+passé en paramètre de cette commande peuvent retourner une structure de type
+@code{image} ou @code{operating-system}.
+
+Le dossier @file{gnu/system/images} contient des images par défaut qui peuvent
+être construites en lançant la commande @command{guix system image
+gnu/system/images/pine64.scm} par exemple.")))
+
  (entry (commit "aa8de806252e3835d57fab351b02d13db762deac")
         (title
          (en "Risk of local privilege escalation @i{via} setuid programs")
-         (de "Risiko lokaler Rechteausweitung bei setuid-Programmen"))
+         (de "Risiko lokaler Rechteausweitung bei setuid-Programmen")
+         (fr "Risque de gain local de privilèges @i{via} les programmes setuid")
+         (zh "存在通过 setuid 程序进行本地提权的风险"))
         (body
          (en "On Guix System, setuid programs were, until now, installed as
 setuid-root @emph{and} setgid-root (in the @file{/run/setuid-programs}
@@ -53,7 +86,35 @@ guix system reconfigure /run/current-system/configuration.scm
 @end example
 
 Benutzer von Guix auf einer „Fremddistribution“ sind @emph{nicht} betroffen.
-Siehe @url{https://issues.guix.gnu.org/46395} für weitere Informationen.")))
+Siehe @url{https://issues.guix.gnu.org/46395} für weitere Informationen.")
+         (fr "Sur Guix System, les programmes setuid étaient jusqu'à présent
+installés setuid-root @emph{et} setgid-root (dans le répertoire
+@file{/run/setuid-programs}).  Ces programmes sont généralement conçus pour
+être setuid-root, mais pas setgid-root, et cette situation posait donc un
+risque de gain local de privilèges.
+
+Ce problème est corrigé et vous êtes encouragé·e à mettre à jour votre
+système, avec une commande de ce genre :
+
+@example
+guix system reconfigure /run/current-system/configuration.scm
+@end example
+
+Les usagers de Guix sur une distrib externe ne sont pas touché·es.  Plus
+d'informations sont disponibles à @url{https://issues.guix.gnu.org/46395} (en
+anglais).")
+         (zh "到目前为止，Guix 系统上的 setuid 程序（位于 @file{/run/setuid-programs}）
+同时具有 setuid-root @emph{和} setgid-root 权限。然而，此类程序大多被设计为在拥有
+setuid 权限而非 setgid 权限时运行。因此，这样的设置可能会使系统受到本地提权攻击。
+
+此漏洞已经被修复，同时建议用户使用下列命令升级他们的系统：
+
+@example
+guix system reconfigure /run/current-system/configuration.scm
+@end example
+
+在 ``第三方宿主系统'' 上使用 Guix 的用户不受此漏洞影响，详情请参阅
+@url{https://issues.guix.gnu.org/46395}。")))
 
  (entry (commit "aedbc5ff32a62f45aeed74c6833399a6cf2c22dc")
         (title

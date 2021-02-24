@@ -169,50 +169,6 @@ again."
         (sigaction SIGALRM SIG_DFL)
         (apply values result)))))
 
-(define* (fetch uri #:key (buffered? #t) (timeout? #t)
-                (keep-alive? #f) (port #f))
-  "Return a binary input port to URI and the number of bytes it's expected to
-provide.
-
-When PORT is true, use it as the underlying I/O port for HTTP transfers; when
-PORT is false, open a new connection for URI.  When KEEP-ALIVE? is true, the
-connection (typically PORT) is kept open once data has been fetched from URI."
-  (case (uri-scheme uri)
-    ((file)
-     (let ((port (open-file (uri-path uri)
-                            (if buffered? "rb" "r0b"))))
-       (values port (stat:size (stat port)))))
-    ((http https)
-     (guard (c ((http-get-error? c)
-                (leave (G_ "download from '~a' failed: ~a, ~s~%")
-                       (uri->string (http-get-error-uri c))
-                       (http-get-error-code c)
-                       (http-get-error-reason c))))
-       ;; Test this with:
-       ;;   sudo tc qdisc add dev eth0 root netem delay 1500ms
-       ;; and then cancel with:
-       ;;   sudo tc qdisc del dev eth0 root
-       (let ((port port))
-         (with-timeout (if timeout?
-                           %fetch-timeout
-                           0)
-           (begin
-             (warning (G_ "while fetching ~a: server is somewhat slow~%")
-                      (uri->string uri))
-             (warning (G_ "try `--no-substitutes' if the problem persists~%")))
-           (begin
-             (when (or (not port) (port-closed? port))
-               (set! port (guix:open-connection-for-uri
-                           uri #:verify-certificate? #f)))
-             (unless (or buffered? (not (file-port? port)))
-               (setvbuf port 'none))
-             (http-fetch uri #:text? #f #:port port
-                         #:keep-alive? keep-alive?
-                         #:verify-certificate? #f))))))
-    (else
-     (leave (G_ "unsupported substitute URI scheme: ~a~%")
-            (uri->string uri)))))
-
 (define (narinfo-cache-file cache-url path)
   "Return the name of the local file that contains an entry for PATH.  The
 entry is stored in a sub-directory specific to CACHE-URL."
@@ -305,76 +261,6 @@ return its MAX-LENGTH first elements and its tail."
            (values (reverse result) lst)
            (loop (+ 1 len) tail (cons head result)))))))
 
-(define* (http-multiple-get base-uri proc seed requests
-                            #:key port (verify-certificate? #t)
-                            (open-connection guix:open-connection-for-uri)
-                            (keep-alive? #t)
-                            (batch-size 1000))
-  "Send all of REQUESTS to the server at BASE-URI.  Call PROC for each
-response, passing it the request object, the response, a port from which to
-read the response body, and the previous result, starting with SEED, à la
-'fold'.  Return the final result.
-
-When PORT is specified, use it as the initial connection on which HTTP
-requests are sent; otherwise call OPEN-CONNECTION to open a new connection for
-a URI.  When KEEP-ALIVE? is false, close the connection port before
-returning."
-  (let connect ((port     port)
-                (requests requests)
-                (result   seed))
-    (define batch
-      (at-most batch-size requests))
-
-    ;; (format (current-error-port) "connecting (~a requests left)..."
-    ;;         (length requests))
-    (let ((p (or port (open-connection base-uri
-                                       #:verify-certificate?
-                                       verify-certificate?))))
-      ;; For HTTPS, P is not a file port and does not support 'setvbuf'.
-      (when (file-port? p)
-        (setvbuf p 'block (expt 2 16)))
-
-      ;; Send BATCH in a row.
-      ;; XXX: Do our own caching to work around inefficiencies when
-      ;; communicating over TLS: <http://bugs.gnu.org/22966>.
-      (let-values (((buffer get) (open-bytevector-output-port)))
-        ;; Inherit the HTTP proxying property from P.
-        (set-http-proxy-port?! buffer (http-proxy-port? p))
-
-        (for-each (cut write-request <> buffer)
-                  batch)
-        (put-bytevector p (get))
-        (force-output p))
-
-      ;; Now start processing responses.
-      (let loop ((sent      batch)
-                 (processed 0)
-                 (result    result))
-        (match sent
-          (()
-           (match (drop requests processed)
-             (()
-              (unless keep-alive?
-                (close-port p))
-              (reverse result))
-             (remainder
-              (connect p remainder result))))
-          ((head tail ...)
-           (let* ((resp   (read-response p))
-                  (body   (response-body-port resp))
-                  (result (proc head resp body result)))
-             ;; The server can choose to stop responding at any time, in which
-             ;; case we have to try again.  Check whether that is the case.
-             ;; Note that even upon "Connection: close", we can read from BODY.
-             (match (assq 'connection (response-headers resp))
-               (('connection 'close)
-                (close-port p)
-                (connect #f                       ;try again
-                         (drop requests (+ 1 processed))
-                         result))
-               (_
-                (loop tail (+ 1 processed) result)))))))))) ;keep going
-
 (define (read-to-eof port)
   "Read from PORT until EOF is reached.  The data are discarded."
   (dump-port port (%make-void-port "w")))
@@ -395,20 +281,13 @@ if file doesn't exist, and the narinfo otherwise."
   ;; Set of names of unreachable hosts.
   (make-hash-table))
 
-(define* (open-connection-for-uri/maybe uri
-                                        #:key
-                                        fresh?
-                                        (time %fetch-timeout))
-  "Open a connection to URI via 'open-connection-for-uri/cached' and return a
-port to it, or, if connection failed, print a warning and return #f.  Pass
-#:fresh? to 'open-connection-for-uri/cached'."
+(define* (call-with-connection-error-handling uri proc)
+  "Call PROC, and catch if a connection fails, print a warning and return #f."
   (define host
     (uri-host uri))
 
   (catch #t
-    (lambda ()
-      (open-connection-for-uri/cached uri #:timeout time
-                                      #:fresh? fresh?))
+    proc
     (match-lambda*
       (('getaddrinfo-error error)
        (unless (hash-ref %unreachable-hosts host)
@@ -426,7 +305,8 @@ port to it, or, if connection failed, print a warning and return #f.  Pass
       (args
        (apply throw args)))))
 
-(define (fetch-narinfos url paths)
+(define* (fetch-narinfos url paths
+                         #:key (open-connection guix:open-connection-for-uri))
   "Retrieve all the narinfos for PATHS from the cache at URL and return them."
   (define update-progress!
     (let ((done 0)
@@ -486,20 +366,16 @@ port to it, or, if connection failed, print a warning and return #f.  Pass
        ;; on the X.509 PKI.  We can do it because we authenticate
        ;; narinfos, which provides a much stronger guarantee.
        (let* ((requests (map (cut narinfo-request url <>) paths))
-              (result   (call-with-cached-connection uri
-                          (lambda (port)
-                            (if port
-                                (begin
-                                  (update-progress!)
-                                  (http-multiple-get uri
-                                                     handle-narinfo-response '()
-                                                     requests
-                                                     #:open-connection
-                                                     open-connection-for-uri/cached
-                                                     #:verify-certificate? #f
-                                                     #:port port))
-                                '()))
-                          open-connection-for-uri/maybe)))
+              (result   (begin
+                          (update-progress!)
+                          (call-with-connection-error-handling
+                           uri
+                           (lambda ()
+                             (http-multiple-get uri
+                                                handle-narinfo-response '()
+                                                requests
+                                                #:open-connection open-connection
+                                                #:verify-certificate? #f))))))
          (newline (current-error-port))
          result))
       ((file #f)
@@ -514,7 +390,8 @@ port to it, or, if connection failed, print a warning and return #f.  Pass
 
   (do-fetch (string->uri url)))
 
-(define (lookup-narinfos cache paths)
+(define* (lookup-narinfos cache paths
+                          #:key (open-connection guix:open-connection-for-uri))
   "Return the narinfos for PATHS, invoking the server at CACHE when no
 information is available locally."
   (let-values (((cached missing)
@@ -531,10 +408,13 @@ information is available locally."
                        paths)))
     (if (null? missing)
         cached
-        (let ((missing (fetch-narinfos cache missing)))
+        (let ((missing (fetch-narinfos cache missing
+                                       #:open-connection open-connection)))
           (append cached (or missing '()))))))
 
-(define (lookup-narinfos/diverse caches paths authorized?)
+(define* (lookup-narinfos/diverse caches paths authorized?
+                                  #:key (open-connection
+                                         guix:open-connection-for-uri))
   "Look up narinfos for PATHS on all of CACHES, a list of URLS, in that order.
 That is, when a cache lacks an AUTHORIZED? narinfo, look it up in the next
 cache, and so on.
@@ -566,7 +446,8 @@ AUTHORIZED? narinfo."
       (_
        (match caches
          ((cache rest ...)
-          (let* ((narinfos (lookup-narinfos cache paths))
+          (let* ((narinfos (lookup-narinfos cache paths
+                                            #:open-connection open-connection))
                  (definite (map narinfo-path (filter authorized? narinfos)))
                  (missing  (lset-difference string=? paths definite))) ;XXX: perf
             (loop rest missing
@@ -706,14 +587,18 @@ authorized substitutes."
   (match (string-tokenize command)
     (("have" paths ..1)
      ;; Return the subset of PATHS available in CACHE-URLS.
-     (let ((substitutable (lookup-narinfos/diverse cache-urls paths valid?)))
+     (let ((substitutable (lookup-narinfos/diverse
+                           cache-urls paths valid?
+                           #:open-connection open-connection-for-uri/cached)))
        (for-each (lambda (narinfo)
                    (format #t "~a~%" (narinfo-path narinfo)))
                  substitutable)
        (newline)))
     (("info" paths ..1)
      ;; Reply info about PATHS if it's in CACHE-URLS.
-     (let ((substitutable (lookup-narinfos/diverse cache-urls paths valid?)))
+     (let ((substitutable (lookup-narinfos/diverse
+                           cache-urls paths valid?
+                           #:open-connection open-connection-for-uri/cached)))
        (for-each display-narinfo-data substitutable)
        (newline)))
     (wtf
@@ -726,7 +611,7 @@ authorized substitutes."
 
 (define open-connection-for-uri/cached
   (let ((cache '()))
-    (lambda* (uri #:key fresh? timeout verify-certificate?)
+    (lambda* (uri #:key fresh? (timeout %fetch-timeout) verify-certificate?)
       "Return a connection for URI, possibly reusing a cached connection.
 When FRESH? is true, delete any cached connections for URI and open a new one.
 Return #f if URI's scheme is 'file' or #f.
@@ -769,32 +654,6 @@ server certificates."
                     (drain-input socket)
                     socket))))))))
 
-(define* (call-with-cached-connection uri proc
-                                      #:optional
-                                      (open-connection
-                                       open-connection-for-uri/cached))
-  (let ((port (open-connection uri)))
-    (catch #t
-      (lambda ()
-        (proc port))
-      (lambda (key . args)
-        ;; If PORT was cached and the server closed the connection in the
-        ;; meantime, we get EPIPE.  In that case, open a fresh connection and
-        ;; retry.  We might also get 'bad-response or a similar exception from
-        ;; (web response) later on, once we've sent the request, or a
-        ;; ERROR/INVALID-SESSION from GnuTLS.
-        (if (or (and (eq? key 'system-error)
-                     (= EPIPE (system-error-errno `(,key ,@args))))
-                (and (eq? key 'gnutls-error)
-                     (eq? (first args) error/invalid-session))
-                (memq key '(bad-response bad-header bad-header-component)))
-            (proc (open-connection uri #:fresh? #t))
-            (apply throw key args))))))
-
-(define-syntax-rule (with-cached-connection uri port exp ...)
-  "Bind PORT with EXP... to a socket connected to URI."
-  (call-with-cached-connection uri (lambda (port) exp ...)))
-
 (define* (process-substitution store-item destination
                                #:key cache-urls acl
                                deduplicate? print-build-trace?)
@@ -819,6 +678,38 @@ the current output port."
     (apply dump-file/deduplicate
            (append args (list #:store (%store-prefix)))))
 
+  (define (fetch uri)
+    (case (uri-scheme uri)
+      ((file)
+       (let ((port (open-file (uri-path uri) "r0b")))
+         (values port (stat:size (stat port)))))
+      ((http https)
+       (guard (c ((http-get-error? c)
+                  (leave (G_ "download from '~a' failed: ~a, ~s~%")
+                         (uri->string (http-get-error-uri c))
+                         (http-get-error-code c)
+                         (http-get-error-reason c))))
+         ;; Test this with:
+         ;;   sudo tc qdisc add dev eth0 root netem delay 1500ms
+         ;; and then cancel with:
+         ;;   sudo tc qdisc del dev eth0 root
+         (with-timeout %fetch-timeout
+           (begin
+             (warning (G_ "while fetching ~a: server is somewhat slow~%")
+                      (uri->string uri))
+             (warning (G_ "try `--no-substitutes' if the problem persists~%")))
+           (call-with-connection-error-handling
+            uri
+            (lambda ()
+              (http-fetch uri #:text? #f
+                          #:open-connection open-connection-for-uri/cached
+                          #:keep-alive? #t
+                          #:buffered? #f
+                          #:verify-certificate? #f))))))
+      (else
+       (leave (G_ "unsupported substitute URI scheme: ~a~%")
+              (uri->string uri)))))
+
   (unless narinfo
     (leave (G_ "no valid substitute for '~a'~%")
            store-item))
@@ -832,10 +723,7 @@ the current output port."
     (let*-values (((raw download-size)
                    ;; 'guix publish' without '--cache' doesn't specify a
                    ;; Content-Length, so DOWNLOAD-SIZE is #f in this case.
-                   (with-cached-connection uri port
-                     (fetch uri #:buffered? #f #:timeout? #f
-                            #:port port
-                            #:keep-alive? #t)))
+                   (fetch uri))
                   ((progress)
                    (let* ((dl-size  (or download-size
                                         (and (equal? compression "none")
@@ -1092,8 +980,6 @@ default value."
 
 ;;; Local Variables:
 ;;; eval: (put 'with-timeout 'scheme-indent-function 1)
-;;; eval: (put 'with-cached-connection 'scheme-indent-function 2)
-;;; eval: (put 'call-with-cached-connection 'scheme-indent-function 1)
 ;;; End:
 
 ;;; substitute.scm ends here

@@ -31,6 +31,7 @@
 ;;; Copyright © 2020 Guillaume Le Vaillant <glv@posteo.net>
 ;;; Copyright © 2020 Léo Le Bouter <lle-bout@zaclys.net>
 ;;; Copyright © 2021 Antoine Côté <antoine.cote@posteo.net>
+;;; Copyright © 2021 Vincent Legoll <vincent.legoll@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -809,7 +810,10 @@ decompression of some loosely related file formats used by Microsoft.")
        ("python" ,python)
        ("valgrind" ,valgrind)))
     (arguments
-     `(#:test-target "test"
+     `(;; Not designed for parallel testing.
+       ;; See https://github.com/lz4/lz4/issues/957#issuecomment-737419821
+       #:parallel-tests? #f
+       #:test-target "test"
        #:make-flags (list (string-append "CC=" ,(cc-for-target))
                           (string-append "prefix=" (assoc-ref %outputs "out")))
        #:phases
@@ -1034,7 +1038,7 @@ smaller than those produced by @code{Xdelta}.")
 (define-public libjcat
   (package
     (name "libjcat")
-    (version "0.1.5")
+    (version "0.1.6")
     (source
      (origin
        (method git-fetch)
@@ -1044,7 +1048,7 @@ smaller than those produced by @code{Xdelta}.")
          (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0rxyqikdhkh2nq1y0hy05df2kkxf3d2cp6lm5x1s5i717k6y3zy5"))))
+        (base32 "1a2z34m8611xvna9kwch8ralxx7c9mk4rm9vrxx7p9hr8sbqbsaz"))))
     (build-system meson-build-system)
     (native-inputs
      `(("gobject-introspection" ,gobject-introspection)
@@ -1106,16 +1110,15 @@ human-readable output.")
 (define-public lrzip
   (package
     (name "lrzip")
-    (version "0.631")
+    (version "0.640")
     (source
      (origin
        (method url-fetch)
        (uri (string-append
-             "http://ck.kolivas.org/apps/lrzip/lrzip-" version ".tar.bz2"))
+             "http://ck.kolivas.org/apps/lrzip/lrzip-" version ".tar.xz"))
        (sha256
         (base32
-         "0mb449vmmwpkalq732jdyginvql57nxyd31sszb108yps1lf448d"))
-       (patches (search-patches "lrzip-CVE-2017-8842.patch"))))
+         "175466drfpz8rsfr0pzfn5rqrj3wmcmcs3i2sfmw366w2kbjm4j9"))))
     (build-system gnu-build-system)
     (native-inputs
      `(;; nasm is only required when building for 32-bit x86 platforms
@@ -1126,6 +1129,7 @@ human-readable output.")
        ("perl" ,perl)))
     (inputs
      `(("bzip2" ,bzip2)
+       ("lz4" ,lz4)
        ("lzo" ,lzo)
        ("zlib" ,zlib)))
     (home-page "http://ck.kolivas.org/apps/lrzip/")
@@ -1804,14 +1808,14 @@ of archives.")
 (define-public lunzip
   (package
     (name "lunzip")
-    (version "1.11")
+    (version "1.12")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://savannah/lzip/lunzip/"
                            "lunzip-" version ".tar.gz"))
        (sha256
-        (base32 "19zq3gmlbia2krq4k4zs1j0xjdv7nsdzqvfb0pyca5n53h2mzb91"))))
+        (base32 "1liaynyy3qcs29hfk1pnb7i9r1mnmpw557j5v356qsv6qnm4lnz5"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -2243,7 +2247,7 @@ file compression algorithm.")
 (define-public xarchiver
   (package
     (name "xarchiver")
-    (version "0.5.4.16")
+    (version "0.5.4.17")
     (source
      (origin
        (method git-fetch)
@@ -2252,7 +2256,7 @@ file compression algorithm.")
              (commit version)))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0nblyk65w1in0zpfbyzy6dw4x0fzx3q7xs85dby5ap4w0gjz9s44"))))
+        (base32 "00adrjpxqlaccrwjf65w3vhxfswdj0as8aj263c6f9b85llypc5v"))))
     (build-system glib-or-gtk-build-system)
     (native-inputs
      `(("gettext" ,gettext-minimal)

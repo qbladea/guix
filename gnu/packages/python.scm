@@ -11,7 +11,7 @@
 ;;; Copyright © 2015, 2016 Christopher Allan Webber <cwebber@dustycloud.org>
 ;;; Copyright © 2015 Eric Dvorsak <eric@dvorsak.fr>
 ;;; Copyright © 2015, 2016 David Thompson <davet@gnu.org>
-;;; Copyright © 2015, 2016, 2017 Leo Famulari <leo@famulari.name>
+;;; Copyright © 2015, 2016, 2017, 2021 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2015, 2017 Ben Woodcroft <donttrustben@gmail.com>
 ;;; Copyright © 2015, 2016 Erik Edrosa <erik.edrosa@gmail.com>
 ;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020 Efraim Flashner <efraim@flashner.co.il>
@@ -364,6 +364,7 @@ data types.")
 (define-public python-3.8
   (package (inherit python-2)
     (name "python")
+    (replacement python-3.8/fixed)
     (version "3.8.2")
     (source (origin
               (method url-fetch)
@@ -521,6 +522,14 @@ data types.")
                                         (version-major+minor version)
                                         "/site-packages"))))))))
 
+(define python-3.8/fixed
+  (package
+    (inherit python-3.8)
+    (source (origin
+              (inherit (package-source python-3.8))
+              (patches (append (search-patches "python-3.8-CVE-2021-3177.patch")
+                               (origin-patches (package-source python-3.8))))))))
+
 (define-public python-3.9
   (package (inherit python-3.8)
     (name "python-next")
@@ -531,6 +540,7 @@ data types.")
                                   version "/Python-" version ".tar.xz"))
               (patches (search-patches
                         "python-3.9-fix-tests.patch"
+                        "python-3.9-CVE-2021-3177.patch"
                         "python-3-deterministic-build-info.patch"
                         "python-3-search-paths.patch"))
               (sha256

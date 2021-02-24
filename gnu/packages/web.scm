@@ -47,6 +47,7 @@
 ;;; Copyright © 2020 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020, 2021 Ryan Prior <rprior@protonmail.com>
 ;;; Copyright © 2020 Alexandru-Sergiu Marton <brown121407@posteo.ro>
+;;; Copyright © 2021 Stefan Reichör <stefan@xsteve.at>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1478,7 +1479,7 @@ used to validate and fix HTML data.")
 (define-public esbuild
   (package
     (name "esbuild")
-    (version "0.8.37")
+    (version "0.8.47")
     (source
      (origin
        (method git-fetch)
@@ -1487,7 +1488,7 @@ used to validate and fix HTML data.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "0c98w2y4y9jaj2wv0334xwdbsvsi5hfh9jdkqr7ffz8lxhmh610f"))
+        (base32 "1gq50sx40qr22w0iy09rdcy1y9nmqpc3impwmyk5zi4z0hl9id0h"))
        (modules '((guix build utils)))
        (snippet
         '(begin
@@ -4869,6 +4870,33 @@ little effort, and the program to do so is often shorter and simpler than
 you'd expect.")
     (license (list license:expat license:cc-by3.0))))
 
+(define-public pup
+  (let ((revision "1")
+        (commit "681d7bb639334bf485476f5872c5bdab10931f9a"))
+    (package
+      (name "pup")
+      (version (git-version "0.4.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/ericchiang/pup")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1hx1k0qlc1bq6gg5d4yprn4d7kvqzagg6mi5mvb39zdq6c4y17vr"))))
+      (build-system go-build-system)
+      (arguments
+       `(#:import-path "github.com/ericchiang/pup"))
+      (home-page "https://github.com/ericchiang/pup")
+      (synopsis "Parse HTML at the command line")
+      (description
+       "@command{pup} is a command line tool for processing HTML.  It reads
+from stdin, prints to stdout, and allows the user to filter parts of the page
+using CSS selectors.  Inspired by @command{jq}, @command{pup} aims to be a
+fast and flexible way of exploring HTML from the terminal.")
+      (license license:expat))))
+
 (define-public uhttpmock
   (package
     (name "uhttpmock")
@@ -6134,78 +6162,82 @@ into your tests.  It automatically starts up a HTTP server in a separate thread 
     (license license:expat)))
 
 (define-public http-parser
-  (package
-    (name "http-parser")
-    (version "2.9.4")
-    (home-page "https://github.com/nodejs/http-parser")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference (url home-page)
-                           (commit (string-append "v" version))))
-       (sha256
-        (base32 "1vda4dp75pjf5fcph73sy0ifm3xrssrmf927qd1x8g3q46z0cv6c"))
-       (file-name (git-file-name name version))
-       (patches
-        (list
-         (origin
-           ;; Treat an empty port (e.g. `http://hostname:/`) when parsing
-           ;; URLs as if no port were specified.  This patch is applied
-           ;; to Fedora's http-parser and to libgit2's bundled version.
-           (method url-fetch)
-           (uri (string-append
-                 "https://src.fedoraproject.org/rpms/http-parser/raw/"
-                 "e89b4c4e2874c19079a5a1a2d2ccc61b551aa289/"
-                 "f/0001-url-treat-empty-port-as-default.patch"))
-           (sha256
-            (base32
-             "0pbxf2nq9pcn299k2b2ls8ldghaqln9glnp79gi57mamx4iy0f6g")))))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:test-target "test"
-       #:make-flags
-       (list (string-append "PREFIX="
-                            (assoc-ref %outputs "out"))
-             "library"
-             ,@(if (%current-target-system)
-                   '()
-                   '("CC=gcc")))
-       #:phases
-       (modify-phases %standard-phases
-         ,@(match (%current-system)
+  (let ((commit "ec8b5ee63f0e51191ea43bb0c6eac7bfbff3141d")
+        (revision "1"))
+    (package
+      (name "http-parser")
+      (version (git-version "2.9.4" revision commit))
+      (home-page "https://github.com/nodejs/http-parser")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference (url home-page)
+                             (commit commit)))
+         (sha256
+          (base32 "0f297hrbx0kvy3qwgm9rhmbnjww6iljlcz9grsc9d4km1qj1071i"))
+         (file-name (git-file-name name version))
+         (patches
+          (append
+           (search-patches "http-parser-CVE-2020-8287.patch")
+           (list
+            (origin
+              ;; Treat an empty port (e.g. `http://hostname:/`) when parsing
+              ;; URLs as if no port were specified.  This patch is applied
+              ;; to Fedora's http-parser and to libgit2's bundled version.
+              (method url-fetch)
+              (uri (string-append
+                    "https://src.fedoraproject.org/rpms/http-parser/raw/"
+                    "e89b4c4e2874c19079a5a1a2d2ccc61b551aa289/"
+                    "f/0001-url-treat-empty-port-as-default.patch"))
+              (sha256
+               (base32
+                "0pbxf2nq9pcn299k2b2ls8ldghaqln9glnp79gi57mamx4iy0f6g"))))))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:test-target "test"
+         #:make-flags
+         (list (string-append "PREFIX="
+                              (assoc-ref %outputs "out"))
+               "library"
+               ,@(if (%current-target-system)
+                     '()
+                     '("CC=gcc")))
+         #:phases
+         (modify-phases %standard-phases
+           ,@(match (%current-system)
+               ("armhf-linux"
+                '((add-before 'check 'apply-assertion.patch
+                    (lambda* (#:key inputs #:allow-other-keys)
+                      (let ((patch (assoc-ref inputs "assertion.patch")))
+                        (invoke "patch" "-p1" "-i" patch)
+                        #t)))))
+               (_ '()))
+           ,@(if (%current-target-system)
+                 '((replace 'configure
+                     (lambda* (#:key target #:allow-other-keys)
+                       (substitute* (find-files "." "Makefile")
+                         (("CC\\?=.*$")
+                          (string-append "CC=" target "-gcc\n"))
+                         (("AR\\?=.*$")
+                          (string-append "AR=" target "-ar\n")))
+                       #t)))
+                 '((delete 'configure))))))
+      (native-inputs
+       `(,@(match (%current-system)
              ("armhf-linux"
-              '((add-before 'check 'apply-assertion.patch
-                  (lambda* (#:key inputs #:allow-other-keys)
-                    (let ((patch (assoc-ref inputs "assertion.patch")))
-                      (invoke "patch" "-p1" "-i" patch)
-                      #t)))))
-             (_ '()))
-         ,@(if (%current-target-system)
-               '((replace 'configure
-                    (lambda* (#:key target #:allow-other-keys)
-                      (substitute* (find-files "." "Makefile")
-                        (("CC\\?=.*$")
-                         (string-append "CC=" target "-gcc\n"))
-                        (("AR\\?=.*$")
-                         (string-append "AR=" target "-ar\n")))
-                      #t)))
-               '((delete 'configure))))))
-    (native-inputs
-     `(,@(match (%current-system)
-           ("armhf-linux"
-            ;; A fix for <https://issues.guix.gnu.org/40604> which in turn
-            ;; breaks i686-linux builds.
-            `(("assertion.patch"
-               ,@(search-patches "http-parser-fix-assertion-on-armhf.patch"))))
-           (_ '()))))
-    (synopsis "HTTP request/response parser for C")
-    (description "This is a parser for HTTP messages written in C.  It parses
+              ;; A fix for <https://issues.guix.gnu.org/40604> which in turn
+              ;; breaks i686-linux builds.
+              `(("assertion.patch"
+                 ,@(search-patches "http-parser-fix-assertion-on-armhf.patch"))))
+             (_ '()))))
+      (synopsis "HTTP request/response parser for C")
+      (description "This is a parser for HTTP messages written in C.  It parses
 both requests and responses.  The parser is designed to be used in
 high-performance HTTP applications.  It does not make any syscalls nor
 allocations, it does not buffer data, it can be interrupted at anytime.
 Depending on your architecture, it only requires about 40 bytes of data per
 message stream (in a web server that is per connection).")
-    (license license:expat)))
+      (license license:expat))))
 
 (define-public python-httpretty
   (package

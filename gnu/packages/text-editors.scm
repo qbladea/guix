@@ -8,7 +8,7 @@
 ;;; Copyright © 2017–2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2019 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2019 Andreas Enge <andreas@enge.fr>
-;;; Copyright © 2019, 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2019, 2020, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Marius Bakke <mbakke@fastmail.com>
 ;;; Copyright © 2020 Tom Zander <tomz@freedommail.ch>
 ;;; Copyright © 2020 Mark Meyer <mark@ofosos.org>
@@ -600,16 +600,17 @@ scripts/input/X11/C/Shell/HTML/Dired): 49KB.
 (define-public ghostwriter
   (package
     (name "ghostwriter")
-    (version "1.8.1")
+    ;; XXX We use a release candidate to fix incompatibility with Qt 5.15.
+    (version "2.0.0-rc4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
                     (url "https://github.com/wereturtle/ghostwriter")
-                    (commit (string-append "v" version))))
+                    (commit version)))
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0jc6szfh5sdnafhwsr1xv7cn1fznniq58bix41hb9wlbkvq7wzi6"))))
+                "07547503a209hc0fcg902w3x0s1m899c10nj3gqz3hak0cmrasi3"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("pkg-config" ,pkg-config)
@@ -805,14 +806,14 @@ editors.")
 (define-public texmacs
   (package
     (name "texmacs")
-    (version "1.99.16")
+    (version "1.99.18")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://www.texmacs.org/Download/ftp/tmftp/"
                            "source/TeXmacs-" version "-src.tar.gz"))
        (sha256
-        (base32 "118sk75k0k9pkyfyx000n2ypab8vm1lz5zxkkdmsi5nwyr3rp56s"))))
+        (base32 "0il3fwgw20421aj90wg8kyhkwk6lbgb3bb2g5qamh5lk90yj725i"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("pkg-config" ,pkg-config)

@@ -47,6 +47,7 @@
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Vincent Legoll <vincent.legoll@gmail.com>
 ;;; Copyright © 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
+;;; Copyright © 2021 Greg Hogan <code@greghogan.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1194,6 +1195,7 @@ developed in C/C++ to MariaDB and MySQL databases.")
 (define-public postgresql-13
   (package
     (name "postgresql")
+    (replacement postgresql-13.2)
     (version "13.1")
     (source (origin
               (method url-fetch)
@@ -1242,42 +1244,56 @@ TIMESTAMP.  It also supports storage of binary large objects, including
 pictures, sounds, or video.")
     (license (license:x11-style "file://COPYRIGHT"))))
 
+(define-public postgresql-13.2
+  (package
+    (inherit postgresql-13)
+    (name "postgresql")
+    (version "13.2")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://ftp.postgresql.org/pub/source/v"
+                                  version "/postgresql-" version ".tar.bz2"))
+              (sha256
+               (base32
+                "1z5d847jnajcfr3wa6jn52a8xjhamvwzmz18xlm5nvxqip8grmsz"))
+              (patches (search-patches "postgresql-disable-resolve_symlinks.patch"))))))
+
 (define-public postgresql-11
   (package
     (inherit postgresql-13)
     (name "postgresql")
-    (version "11.6")
+    (version "11.11")
     (source (origin
               (inherit (package-source postgresql-13))
               (uri (string-append "https://ftp.postgresql.org/pub/source/v"
                                   version "/postgresql-" version ".tar.bz2"))
               (sha256
                (base32
-                "0w1iq488kpzfgfnlw4k32lz5by695mpnkq461jrgsr99z5zlz4j9"))))))
+                "0v0qk298nxmpzpgsxcsxma328hdkyzd7fwjs0zsn6zavl5zpnq20"))))))
 
 (define-public postgresql-10
   (package
     (inherit postgresql-11)
-    (version "10.13")
+    (version "10.16")
     (source (origin
               (inherit (package-source postgresql-11))
               (uri (string-append "https://ftp.postgresql.org/pub/source/v"
                                   version "/postgresql-" version ".tar.bz2"))
               (sha256
                (base32
-                "1qal0yp7a90yzya7hl56gsmw5fvacplrdhpn7h9gnbyr1i2iyw2d"))))))
+                "1cvv8qw0gkkczqhiwx6ns7w88dwkvdz4cvb2d4ff14363f5p2p53"))))))
 
 (define-public postgresql-9.6
   (package
     (inherit postgresql-10)
-    (version "9.6.16")
+    (version "9.6.21")
     (source (origin
               (inherit (package-source postgresql-10))
               (uri (string-append "https://ftp.postgresql.org/pub/source/v"
                                   version "/postgresql-" version ".tar.bz2"))
               (sha256
                (base32
-                "1rr2dgv4ams8r2lp13w85c77rkmzpb88fjlc28mvlw6zq2fblv2w"))))))
+                "0d0ngpadf1i7c0i2psaxcbmiwx8334ibcsn283n9fp4853pyl3wk"))))))
 
 (define-public postgresql postgresql-13)
 
@@ -3771,7 +3787,7 @@ Monitor read/write activity on a mongo server
 (define-public apache-arrow
   (package
     (name "apache-arrow")
-    (version "0.17.1")
+    (version "3.0.0")
     (source
      (origin
        (method git-fetch)
@@ -3781,7 +3797,7 @@ Monitor read/write activity on a mongo server
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "02r6yx3yhywzikd3b0vfkjgddhfiriyx2vpm3jf5880wq59x798a"))))
+         "03ngddh3r1g6f9aja2jlfksgvgyzmxmfy4bxvzjrcv5fvl5x8ii0"))))
     (build-system cmake-build-system)
     (arguments
      `(#:tests? #f
@@ -3859,23 +3875,24 @@ Monitor read/write activity on a mongo server
              ;;"-DBENCHMARK_ENABLE_TESTING=OFF"
              "-DARROW_BUILD_STATIC=OFF")))
     (inputs
-     `(("boost" ,boost)
+     `(("apache-thrift" ,apache-thrift "lib")
+       ("boost" ,boost)
        ("brotli" ,google-brotli)
+       ("bzip2" ,bzip2)
        ("double-conversion" ,double-conversion)
-       ("snappy" ,snappy)
        ("gflags" ,gflags)
        ("glog" ,glog)
-       ("apache-thrift" ,apache-thrift "lib")
-       ("protobuf" ,protobuf)
-       ("rapidjson" ,rapidjson)
-       ("zlib" ,zlib)
-       ("bzip2" ,bzip2)
-       ("lz4" ,lz4)
-       ("zstd" ,zstd "lib")
-       ("re2" ,re2)
        ("grpc" ,grpc)
+       ("lz4" ,lz4)
+       ("protobuf" ,protobuf)
        ("python-3" ,python)
-       ("python-numpy" ,python-numpy)))
+       ("python-numpy" ,python-numpy)
+       ("rapidjson" ,rapidjson)
+       ("re2" ,re2)
+       ("snappy" ,snappy)
+       ("utf8proc" ,utf8proc)
+       ("zlib" ,zlib)
+       ("zstd" ,zstd "lib")))
     (native-inputs
      `(("pkg-config" ,pkg-config)))
     (outputs '("out" "lib" "include"))

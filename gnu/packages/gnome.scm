@@ -2544,6 +2544,8 @@ GNOME Desktop.")
        ("libxslt" ,libxslt) ;for documentation
        ("docbook-xml" ,docbook-xml-4.2)
        ("docbook-xsl" ,docbook-xsl)))
+    (propagated-inputs
+     `(("gcr" ,gcr)))
     (home-page "https://www.gnome.org")
     (synopsis "Daemon to store passwords and encryption keys")
     (description
@@ -10400,6 +10402,7 @@ photo-booth-like software, such as Cheese.")
      `(("gnome-desktop" ,gnome-desktop)
        ("gobject-introspection" ,gobject-introspection)
        ("gst-plugins-base" ,gst-plugins-base)
+       ("gst-plugins-good" ,gst-plugins-good)
        ("gst-plugins-bad" ,gst-plugins-bad)
        ("gtk+" ,gtk+)
        ("libx11" ,libx11)
@@ -11467,7 +11470,7 @@ and toolbars.")
 (define-public setzer
   (package
     (name "setzer")
-    (version "0.3.9")
+    (version "0.4.1")
     (source
      (origin
        (method git-fetch)
@@ -11476,7 +11479,7 @@ and toolbars.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1qmy2bxl8x6pijjaaj91v6rqdipha6iyy0b6b9y1lk3r2p3azd42"))))
+        (base32 "1rcx2c07jg1ij81pnvg3px49hfbjmkagn68d3gp79z3gcajbp2av"))))
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t
@@ -11508,6 +11511,7 @@ and toolbars.")
        ("gtksourceview" ,gtksourceview)
        ("pango" ,pango)
        ("poppler" ,poppler)
+       ("python-pdfminer" ,python-pdfminer-six)
        ("python-pycairo" ,python-pycairo)
        ("python-pygobject" ,python-pygobject)
        ("python-pyxdg" ,python-pyxdg)
@@ -11901,7 +11905,7 @@ integrated profiler via Sysprof, debugging support, and more.")
 (define-public komikku
   (package
     (name "komikku")
-    (version "0.26.0")
+    (version "0.26.1")
     (source
      (origin
        (method git-fetch)
@@ -11911,7 +11915,7 @@ integrated profiler via Sysprof, debugging support, and more.")
        (file-name (git-file-name name version))
        (sha256
         (base32
-         "1g5rhp3d97v0s8nk536vqpv6qd4gha4h27bfdkypcqa42h8wyxm2"))))
+         "1mas409c14p6g0v10w4cf5hsjbs0922h6h9k9pyj9s8y7yi2ikz2"))))
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t

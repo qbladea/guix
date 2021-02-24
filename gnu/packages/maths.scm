@@ -42,6 +42,7 @@
 ;;; Copyright © 2020 Vinicius Monego <monego@posteo.net>
 ;;; Copyright © 2020 Simon Tournier <zimon.toutoune@gmail.com>
 ;;; Copyright © 2020 Martin Becze <mjbecze@riseup.net>
+;;; Copyright © 2021 Gerd Heber <gerd.heber@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -1217,6 +1218,25 @@ extremely large and complex data collections.")
                                  "/src/hdf5-" version ".tar.bz2")))
        (sha256
         (base32 "0pm5xxry55i0h7wmvc7svzdaa90rnk7h78rrjmnlkz2ygsn8y082"))
+       (patches (search-patches "hdf5-config-date.patch"))))))
+
+(define-public hdf5-1.12
+  (package/inherit hdf5-1.8
+    (version "1.12.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (list (string-append "https://support.hdfgroup.org/ftp/HDF5/releases/"
+                                 "hdf5-" (version-major+minor version)
+                                 "/hdf5-" version "/src/hdf5-"
+                                 version ".tar.bz2")
+                  (string-append "https://support.hdfgroup.org/ftp/HDF5/"
+                                 "current"
+                                 (apply string-append
+                                        (take (string-split version #\.) 2))
+                                 "/src/hdf5-" version ".tar.bz2")))
+       (sha256
+        (base32 "0qazfslkqbmzg495jafpvqp0khws3jkxa0z7rph9qvhacil6544p"))
        (patches (search-patches "hdf5-config-date.patch"))))))
 
 (define-public hdf5
@@ -3504,7 +3524,7 @@ point numbers.")
 (define-public wxmaxima
   (package
     (name "wxmaxima")
-    (version "20.12.2")
+    (version "21.01.0")
     (source
      (origin
        (method git-fetch)
@@ -3513,13 +3533,12 @@ point numbers.")
              (commit (string-append "Version-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1rxnxk7yanb9ac5pxbii6k7gg3b09pbp9rmwvsvgpbrk17mg79r9"))))
+        (base32 "1bnv9410xmk73adqi4r6w0qgbqk7qig0vr5219839c09xagyyd12"))))
     (build-system cmake-build-system)
     (native-inputs
      `(("gettext" ,gettext-minimal)))
     (inputs
-     `(("libomp" ,libomp)
-       ("wxwidgets" ,wxwidgets)
+     `(("wxwidgets" ,wxwidgets)
        ("maxima" ,maxima)
        ;; Runtime support.
        ("adwaita-icon-theme" ,adwaita-icon-theme)

@@ -464,16 +464,16 @@ you send to a FIFO file.")
 (define-public guile-dsv
   (package
     (name "guile-dsv")
-    (version "0.3.0")
+    (version "0.4.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
                     (url "https://github.com/artyom-poptsov/guile-dsv")
-                    (commit "6c867915dc4198eacc548a4834ef0e1aef852795")))
+                    (commit (string-append "v" version))))
               (file-name (string-append name "-" version "-checkout"))
               (sha256
                (base32
-                "1mxbbcsmbjfnh4yydqz44ihbkdnzdwz38xanaam128arlb7hwr8n"))))
+                "1mvyc8i38j56frjh3p6vwziv8lrzlyqndz30663h5nwcp0044sdn"))))
     (build-system gnu-build-system)
     (native-inputs
      `(("autoconf" ,autoconf)
@@ -489,14 +489,6 @@ you send to a FIFO file.")
        #:imported-modules ((guix build guile-build-system)
                            ,@%gnu-build-system-modules)
        #:phases (modify-phases %standard-phases
-                  ;; Support Guile 3.0 in configure from upstream commit
-                  ;; 4c724577ccf19bb88580f72f2f6b166a0447ce3f
-                  (add-before 'bootstrap 'configure-support-guile3.0
-                    (lambda _
-                      (substitute* "configure.ac"
-                                  (("GUILE_PKG.*")
-                                   "GUILE_PKG([3.0 2.0 2.2])"))
-                      #t))
                   (add-before 'configure 'set-guilesitedir
                     (lambda _
                       (substitute* "Makefile.in"
@@ -1009,8 +1001,8 @@ convenient nested tree operations.")
     (license license:gpl3+)))
 
 (define-public guile-simple-zmq
-  (let ((commit "f8b7d81afb38525750f8818ed2956ca18c828ee8")
-        (revision "5"))
+  (let ((commit "c8b1fa09e08e12207cf84023fc3d569936c886d7")
+        (revision "7"))
     (package
       (name "guile-simple-zmq")
       (version (git-version "0.0.0" revision commit))
@@ -1022,7 +1014,7 @@ convenient nested tree operations.")
                (commit commit)))
          (sha256
           (base32
-           "1gpzlpcq7bxw7sxyrg8zslwb3631vizw56lgg1aavw4gafh0hxb3"))
+           "0ilyviny3c2am20d192cqhq7rsdy3jvbvmvqqg7qv9myrcwqg26y"))
          (file-name (git-file-name name version))))
       (build-system guile-build-system)
       (arguments
@@ -1308,16 +1300,27 @@ Scheme by using Guile’s foreign function interface.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1vblf3d1bbwna3l09p2ap5y8ycvl549bz6whgk78imyfmn28ygry"))))
+                "1vblf3d1bbwna3l09p2ap5y8ycvl549bz6whgk78imyfmn28ygry"))
+              (modules '((guix build utils)))
+              (snippet
+               '(begin
+                  ;; Allow builds with Guile 3.0.
+                  (substitute* "configure.ac"
+                    (("^PKG_CHECK.*") "")
+                    (("^GUILE_PKG.*")
+                     "GUILE_PKG([3.0 2.2])\n"))
+                  #t))))
     (build-system gnu-build-system)
     (native-inputs
      `(("autoconf" ,autoconf)
        ("automake" ,automake)
-       ("pkg-config" ,pkg-config)))
+       ("emacs" ,emacs-minimal)
+       ("pkg-config" ,pkg-config)
+       ("texinfo" ,texinfo)))
     (inputs
-     `(("guile" ,guile-2.2)
+     `(("guile" ,guile-3.0)
        ("gnutls" ,gnutls)
-       ("guile-json" ,guile-json-1)))
+       ("guile-json" ,guile-json-4)))
     (home-page "https://framagit.org/prouby/guile-mastodon")
     (synopsis "Guile Mastodon REST API module")
     (description "This package provides Guile modules to access the
