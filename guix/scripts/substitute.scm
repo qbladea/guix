@@ -1,5 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2014 Nikita Karetnikov <nikita@karetnikov.org>
 ;;; Copyright © 2018 Kyle Meyer <kyle@kyleam.com>
 ;;; Copyright © 2020 Christopher Baines <mail@cbaines.net>
@@ -510,7 +510,9 @@ was found."
     ;; lookup errors are typically the first one, and because other errors are
     ;; a subset of `system-error', which is harder to filter.
     ((_ exp ...)
-     (catch #t
+     ;; Use a pre-unwind handler so that re-throwing preserves useful
+     ;; backtraces.  'with-throw-handler' works for Guile 2.2 and 3.0.
+     (with-throw-handler #t
        (lambda () exp ...)
        (match-lambda*
          (('getaddrinfo-error error)
@@ -894,6 +896,24 @@ default value."
   ;; 'guix-daemon' expects.
   (make-parameter #t))
 
+;; The daemon's agent code opens file descriptor 4 for us and this is where
+;; stderr should go.
+(define-syntax-rule (with-redirected-error-port exp ...)
+  "Evaluate EXP... with the current error port redirected to file descriptor 4
+if needed, as expected by the daemon's agent."
+  (let ((thunk (lambda () exp ...)))
+    (if (%error-to-file-descriptor-4?)
+        (parameterize ((current-error-port (fdopen 4 "wl")))
+          ;; Redirect diagnostics to file descriptor 4 as well.
+          (guix-warning-port (current-error-port))
+
+          ;; 'with-continuation-barrier' captures the initial value of
+          ;; 'current-error-port' to report backtraces in case of uncaught
+          ;; exceptions.  Without it, backtraces would be printed to FD 2,
+          ;; thereby confusing the daemon.
+          (with-continuation-barrier thunk))
+        (thunk))))
+
 (define-command (guix-substitute . args)
   (category internal)
   (synopsis "implement the build daemon's substituter protocol")
@@ -908,14 +928,7 @@ default value."
   (define deduplicate?
     (find-daemon-option "deduplicate"))
 
-  ;; The daemon's agent code opens file descriptor 4 for us and this is where
-  ;; stderr should go.
-  (parameterize ((current-error-port (if (%error-to-file-descriptor-4?)
-                                         (fdopen 4 "wl")
-                                         (current-error-port))))
-    ;; Redirect diagnostics to file descriptor 4 as well.
-    (guix-warning-port (current-error-port))
-
+  (with-redirected-error-port
     (mkdir-p %narinfo-cache-directory)
     (maybe-remove-expired-cache-entries %narinfo-cache-directory
                                         cached-narinfo-files
@@ -980,6 +993,7 @@ default value."
 
 ;;; Local Variables:
 ;;; eval: (put 'with-timeout 'scheme-indent-function 1)
+;;; eval: (put 'with-redirected-error-port 'scheme-indent-function 0)
 ;;; End:
 
 ;;; substitute.scm ends here

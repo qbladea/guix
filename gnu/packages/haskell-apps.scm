@@ -16,6 +16,7 @@
 ;;; Copyright © 2020 Alexandru-Sergiu Marton <brown121407@member.fsf.org>
 ;;; Copyright © 2020 Brian Leung <bkleung89@gmail.com>
 ;;; Copyright © 2021 EuAndreh <eu@euandre.org>
+;;; Copyright © 2021 Stefan Reichör <stefan@xsteve.at>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -50,7 +51,8 @@
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages rsync)
-  #:use-module (gnu packages version-control))
+  #:use-module (gnu packages version-control)
+  #:use-module (gnu packages xorg))
 
 (define-public apply-refact
   (package
@@ -340,14 +342,14 @@ to @code{cabal repl}).")
 (define-public git-annex
   (package
     (name "git-annex")
-    (version "8.20210127")
+    (version "8.20210223")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://hackage.haskell.org/package/"
                            "git-annex/git-annex-" version ".tar.gz"))
        (sha256
-        (base32 "1hsmaw70lfza1g5j6b9zbwqkkr374m18p7qb4nl952pj42a46vv3"))))
+        (base32 "07wxf44pdh9d1pxqympgyfbkk8vk0pqbgxma0mkadlkdr6c9z832"))))
     (build-system haskell-build-system)
     (arguments
      `(#:configure-flags
@@ -719,6 +721,40 @@ Wayland, and Linux console environments alike.")
      "Nixfmt is a formatter for Nix that ensures consistent and clear
 formatting by forgetting all existing formatting during parsing.")
     (license license:mpl2.0)))
+
+(define-public greenclip
+  (package
+    (name "greenclip")
+    (version "3.4")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/erebe/greenclip")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1baw360dcnyavacf7a8v6wq4m5g6bcmyybkckv4cz7r4xl5p3qws"))))
+    (build-system haskell-build-system)
+    (native-inputs
+     `(("pkg-config" ,pkg-config)))
+    (inputs
+     `(("libx11" ,libx11)
+       ("libxext" ,libxext)
+       ("libxscrnsaver" ,libxscrnsaver)
+       ("ghc-x11" ,ghc-x11)
+       ("ghc-exceptions" ,ghc-exceptions)
+       ("ghc-hashable" ,ghc-hashable)
+       ("ghc-microlens" ,ghc-microlens)
+       ("ghc-microlens-mtl" ,ghc-microlens-mtl)
+       ("ghc-protolude" ,ghc-protolude-0.3)
+       ("ghc-vector" ,ghc-vector)
+       ("ghc-wordexp" ,ghc-wordexp)))
+    (home-page "https://github.com/erebe/greenclip")
+    (synopsis "Simple Clipboard manager")
+    (description "@code{greenclip} is a clipboard manager written in
+Haskell.")
+    (license license:bsd-3)))
 
 (define-public raincat
   (package

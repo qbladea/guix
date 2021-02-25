@@ -46,7 +46,7 @@
 ;;; Copyright © 2019, 2020 Brian Leung <bkleung89@gmail.com>
 ;;; Copyright © 2019 mikadoZero <mikadozero@yandex.com>
 ;;; Copyright © 2019 Gabriel Hondet <gabrielhondet@gmail.com>
-;;; Copyright © 2019, 2020 Joseph LaFreniere <joseph@lafreniere.xyz>
+;;; Copyright © 2019, 2020, 2021 Joseph LaFreniere <joseph@lafreniere.xyz>
 ;;; Copyright © 2019 Amar Singh <nly@disroot.org>
 ;;; Copyright © 2019 Baptiste Strazzulla <bstrazzull@hotmail.fr>
 ;;; Copyright © 2019 Giacomo Leidi <goodoldpaul@autistici.org>
@@ -142,6 +142,7 @@
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages haskell-apps)
   #:use-module (gnu packages ibus)
+  #:use-module (gnu packages java)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages python)
   #:use-module (gnu packages python-xyz)
@@ -3726,6 +3727,37 @@ and code formatting.")
      "Emacs Lisp Mock is a library for mocking and stubbing using readable
 syntax.  Most commonly Emacs Lisp Mock is used in conjunction with Emacs Lisp
 Expectations, but it can be used in other contexts.")
+    (license license:gpl3+)))
+
+(define-public emacs-ecukes
+  (package
+    (name "emacs-ecukes")
+    (version "0.6.17")
+    (home-page "https://github.com/ecukes/ecukes")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url home-page)
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1isscwz4h3nx62lwfrj899lp2yc27zk1ndgr441d848495ccmshn"))))
+    (build-system emacs-build-system)
+    (arguments
+     `(#:include (cons* "^feature/" "^reporters/" "^templates/" %default-include)))
+    (propagated-inputs
+     `(("emacs-ansi" ,emacs-ansi)
+       ("emacs-commander" ,emacs-commander)
+       ("emacs-dash" ,emacs-dash)
+       ("emacs-espuds" ,emacs-espuds)
+       ("emacs-f" ,emacs-f)
+       ("emacs-s" ,emacs-s)))
+    (synopsis "Cucumber for Emacs")
+    (description
+     "This package provides Ecukes, a Cucumber-inspired integration testing
+tool for Emacs.  Ecukes is not a complete clone of Cucumber and is not
+intended to be.")
     (license license:gpl3+)))
 
 (define-public emacs-espuds
@@ -12299,16 +12331,13 @@ containing words from the Rime project.")
 (define-public emacs-pyim
   (package
     (name "emacs-pyim")
-    (version "2.0")
+    (version "3.2")
     (source
      (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/tumashu/pyim")
-             (commit (string-append "v" version))))
-       (file-name (git-file-name name version))
+       (method url-fetch)
+       (uri (string-append "https://elpa.gnu.org/packages/pyim-" version ".tar"))
        (sha256
-        (base32 "06ahzyi2h353xj17mzsm9fxmkc6cyzd1mjzmvqfw8cyv538nijc0"))))
+        (base32 "1rr9mq334dqf7mx1ii7910zkigw7chl63iws4sw0qsn014kjlb0a"))))
     (build-system emacs-build-system)
     (propagated-inputs
      `(("emacs-async" ,emacs-async)
@@ -12318,8 +12347,9 @@ containing words from the Rime project.")
        ("emacs-xr" ,emacs-xr)))
     (home-page "https://github.com/tumashu/pyim")
     (synopsis "Chinese input method")
-    (description "Chinese input method which supports quanpin, shuangpin, wubi
-and cangjie.")
+    (description
+     "This package provides a Chinese input method which supports quanpin,
+shuangpin, wubi and cangjie.")
     (license license:gpl2+)))
 
 (define-public emacs-posframe
@@ -26909,3 +26939,40 @@ to pastebin-like services.  It supports more than one service and will
 failover if one service fails.  More services can easily be added over time
 and prefered services can easily be configured.")
     (license license:gpl3+)))
+
+(define-public emacs-keystore-mode
+  (let ((release "0.0.1")
+        (revision "0")
+        (commit "43bd5926348298d077c7221f37902c990df3f951"))
+    (package
+      (name "emacs-keystore-mode")
+      (version (git-version release revision commit))
+      (home-page "https://github.com/peterpaul/keystore-mode")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url home-page)
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "06cznkqkm04zz5lqfb514aqvsr2p13arzysixv0ss0bqpvdq7cv7"))))
+      (build-system emacs-build-system)
+      (arguments
+       `(#:tests? #t
+         #:test-command
+         '("emacs" "--no-init-file" "--batch"
+           "--eval=(require 'ecukes)" "--eval=(ecukes)")))
+      (native-inputs
+       `(("emacs-ecukes" ,emacs-ecukes)
+         ("emacs-espuds" ,emacs-espuds)
+         ("emacs-undercover" ,emacs-undercover)
+         ("openjdk" ,openjdk9)))
+      (propagated-inputs
+       `(("emacs-origami" ,emacs-origami-el)
+         ("emacs-s" ,emacs-s)))
+      (synopsis "Major mode for viewing and managing Java keystores")
+      (description
+       "This package provides an Elisp wrapper around the Java
+@command{keytool} command and major mode for viewing Java keystores.")
+      (license license:expat))))

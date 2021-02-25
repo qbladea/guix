@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2017, 2018, 2020, 2021 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2017 Gábor Boskovits <boskovits@gmail.com>
-;;; Copyright © 2017, 2018 Ricardo Wurmus <rekado@elephly.net>
+;;; Copyright © 2017, 2018, 2021 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2018 Leo Famulari <leo@famulari.name>
 ;;; Copyright © 2019, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2020 Raghav Gururajan <raghavgururajan@disroot.org>
@@ -31,6 +31,7 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
+  #:use-module (guix build-system go)
   #:use-module (guix build-system linux-module)
   #:use-module (guix build-system python)
   #:use-module (guix build-system trivial)
@@ -53,6 +54,7 @@
   #:use-module (gnu packages gawk)
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnupg)
+  #:use-module (gnu packages golang)
   #:use-module (gnu packages kerberos)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages linux)
@@ -1129,3 +1131,61 @@ Dropbox API v2.")
    "@code{dbxfs} allows you to mount your Dropbox folder as if it were a
 local file system using FUSE.")
   (license license:gpl3+)))
+
+(define-public go-github-com-hanwen-fuse
+  (package
+    (name "go-github-com-hanwen-fuse")
+    (version "2.0.3")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/hanwen/go-fuse")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "1y44d08fxyis99s6jxdr6dbbw5kv3wb8lkhq3xmr886i4w41lz03"))))
+    (build-system go-build-system)
+    (arguments
+     `(#:import-path "github.com/hanwen/go-fuse"))
+    (propagated-inputs
+     `(("go-golang-org-x-sys" ,go-golang-org-x-sys)))
+    (home-page "https://github.com/hanwen/go-fuse")
+    (synopsis "FUSE bindings for Go")
+    (description
+     "This package provides Go native bindings for the FUSE kernel module.")
+    (license license:bsd-3)))
+
+(define-public tmsu
+  (package
+    (name "tmsu")
+    (version "0.7.5")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/oniony/TMSU")
+             (commit (string-append "v" version))))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "0834hah7p6ad81w60ifnxyh9zn09ddfgrll04kwjxwp7ypbv38wq"))))
+    (build-system go-build-system)
+    (arguments
+     `(#:import-path "github.com/oniony/TMSU"
+       #:unpack-path ".."))
+    (inputs
+     `(("go-github-com-mattn-go-sqlite3" ,go-github-com-mattn-go-sqlite3)
+       ("go-github-com-hanwen-fuse" ,go-github-com-hanwen-fuse)))
+    (home-page "https://github.com/oniony/TMSU")
+    (synopsis "Tag files and access them through a virtual filesystem")
+    (description
+     "TMSU is a tool for tagging your files.  It provides a simple
+command-line utility for applying tags and a virtual filesystem to give you a
+tag-based view of your files from any other program.  TMSU does not alter your
+files in any way: they remain unchanged on disk, or on the network, wherever
+your put them.  TMSU maintains its own database and you simply gain an
+additional view, which you can mount where you like, based upon the tags you
+set up.")
+    (license license:gpl3+)))

@@ -1524,6 +1524,32 @@ bindings for Python, Java, OCaml and more.")
 (define-public python2-capstone
   (package-with-python2 python-capstone))
 
+
+(define-public python-esptool-3.0
+  (package
+    (name "python-esptool")
+    (version "3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "esptool" version))
+       (sha256
+        (base32
+         "0d69rd9h8wrzjvfrc66vmz4qd5hly2fpdcwj2bdrlb7dbwikv5c7"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f))                    ;XXX: require python-reedsolo
+    (propagated-inputs
+     `(("python-ecdsa" ,python-ecdsa)
+       ("python-pyaes" ,python-pyaes)
+       ("python-pyserial" ,python-pyserial)))
+    (home-page "https://github.com/espressif/esptool")
+    (synopsis "Bootloader utility for Espressif ESP8266 & ESP32 chips")
+    (description
+     "@code{esptool.py} is a Python-based utility to communicate with the ROM
+bootloader in Espressif ESP8266 & ESP32 series chips.")
+    (license license:gpl2+)))
+
 (define-public radare2
   (package
     (name "radare2")

@@ -10559,6 +10559,22 @@ the ideal templating system.")
 replace the standard one provided by GHC.")
     (license license:expat)))
 
+(define-public ghc-protolude-0.3
+  (package
+    (inherit ghc-protolude)
+    (name "ghc-protolude")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://hackage/package/protolude/protolude-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "1b6wprbwfdjyvds2bm6na0fbqgzdkj5ikkk33whbkyh3krd3i0s0"))))))
+
 (define-public ghc-psqueue
   (package
     (name "ghc-psqueue")
@@ -15166,6 +15182,30 @@ modernized interface.")
     (home-page "https://hackage.haskell.org/package/word8")
     (synopsis "Word8 library for Haskell")
     (description "Word8 library to be used with @code{Data.ByteString}.")
+    (license license:bsd-3)))
+
+(define-public ghc-wordexp
+  (package
+    (name "ghc-wordexp")
+    (version "0.2.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://hackage.haskell.org/package/wordexp/wordexp-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "1mbcrq89jz0dcibw66w0jdy4f4bfpx4zwjfs98rm3jjgdikwdzb4"))))
+    (build-system haskell-build-system)
+    (native-inputs `(("ghc-c2hs" ,ghc-c2hs)))
+    (inputs
+     `(("ghc-semigroups" ,ghc-semigroups)))
+    (home-page "https://hackage.haskell.org/package/wordexp")
+    (synopsis "Library wrapping @code{wordexp} for Haskell")
+    (description "@code{wordexp(3)} wrapper library for Haskell to perform
+word expansion like a posix-shell.")
     (license license:bsd-3)))
 
 (define-public ghc-x11
