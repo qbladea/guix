@@ -12,7 +12,6 @@
 ;;; Copyright © 2020 Yuval Kogman <nothingmuch@woobling.org>
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2020 Efraim Flashner <efraim@flashner.co.il>
-;;; Copyright © 2021 qblade <qblade@protonmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -38,8 +37,6 @@
   #:use-module (guix build-system cmake)
   #:use-module (gnu packages)
   #:use-module (gnu packages adns)
-  #:use-module (gnu packages bash)
-  #:use-module (gnu packages base)
   #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpp)
@@ -484,48 +481,3 @@ besides executing the make build command, updates the JSON compilation
 database file corresponding to that build, resulting in a command-line
 interface similar to Bear.")
     (license license:gpl3)))
-
-(define-public bmake
-  (package
-    (name "bmake")
-    (version "20200902")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "http://www.crufty.net/ftp/pub/sjg/bmake-" version ".tar.gz"))
-       (sha256
-        (base32
-         "1v1v81llsiy8qbpy38nml1x08dhrihwh040pqgwbwb9zy1108b08"))))
-    (build-system gnu-build-system)
-    (inputs
-     `(("bash" ,bash-minimal)))
-    (native-inputs
-     `(("coreutils" ,coreutils)))
-    (arguments
-     `(#:tests? #f ;; test in build
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'configure 'fix-test ;; fix from nixpkgs
-           (lambda _
-             (substitute* "unit-tests/unexport-env.mk"
-               (("PATH = /bin:/usr/bin:/sbin:/usr/sbin")
-                "PATH := ${PATH}"))))
-         (add-after 'configure 'remove-fail-test ;; need fix
-           (lambda _
-             (substitute* "unit-tests/Makefile"
-               (("cmd-interrupt")
-                "")))))
-       #:configure-flags
-       (list
-        (string-append
-         "--with-defshell=" (assoc-ref %build-inputs "bash") "/bin/bash")
-        (string-append
-         "--with-default-sys-path=" (assoc-ref %outputs "out") "/share/mk"))
-       #:make-flags
-       (list "INSTALL=install"))) ;; use coreutils install
-    (home-page "http://www.crufty.net/help/sjg/bmake.htm")
-    (synopsis "BSD's make")
-    (description "Program designed to simplify the maintenance of
-other programs.")
-    (license license:bsd-3)))
