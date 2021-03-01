@@ -1955,21 +1955,22 @@ mode, Rmail, Gnus, MH-E, and VM).  BBDB is fully customizable.")
 
 (define-public emacs-counsel-bbdb
   (package
-  (name "emacs-counsel-bbdb")
-  (version "20181128.1320")
-  (source
-    (origin
-      (method url-fetch)
-      (uri (string-append "https://melpa.org/packages/counsel-bbdb-"
-                          version ".el"))
-      (sha256
-        (base32
-          "03g3lk8hz9a17vf5r16x054bhyk8xsbnfq0div8ig13fmhqi159q"))))
-  (build-system emacs-build-system)
-  (propagated-inputs `(("emacs-ivy" ,emacs-ivy)))
-  (home-page "https://github.com/redguard/counsel-bbdb")
-  (synopsis "Ivy interface for BBDB")
-  (description "This Ivy extension enables the use of @code{ivy-mode} to input
+    (name "emacs-counsel-bbdb")
+    (version "0.0.4")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/redguardtoo/counsel-bbdb")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "0bki658mvlchqf3prkzxz4217a95cxm58c1qmf84yp2n8h6gd0d8"))))
+    (build-system emacs-build-system)
+    (propagated-inputs `(("emacs-ivy" ,emacs-ivy)))
+    (home-page "https://github.com/redguardtoo/counsel-bbdb")
+    (synopsis "Ivy interface for BBDB")
+    (description "This Ivy extension enables the use of @code{ivy-mode} to input
 email addresses from BBDB efficiently.  The main functions are:
 @table @code
 @item counsel-bbdb-complete-mail to input email addresses;
@@ -1979,7 +1980,7 @@ email addresses from BBDB efficiently.  The main functions are:
 Since @code{counsel-bbdb} is based on @code{ivy-mode}, all Ivy key bindings
 are supported.  For example, after @samp{C-u M-x counsel-bbdb-complete-mail},
 you can press @samp{C-M-n} to input multiple email addresses.")
-  (license license:gpl3+)))
+    (license license:gpl3+)))
 
 (define-public emacs-bluetooth
   (package
@@ -2390,7 +2391,7 @@ Lock key.")
 (define-public emacs-chronometrist
   (package
     (name "emacs-chronometrist")
-    (version "0.6.4")
+    (version "0.6.5")
     (source
      (origin
        (method git-fetch)
@@ -2399,7 +2400,7 @@ Lock key.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1wlvc73qrz3i8d2r37pyp5f2m1vb779li7z19wp6nrfs9hn6jd8i"))))
+        (base32 "1k7r5rc6vzrnhp9j5bkv45yzqz7zbqrkiry4fzc8w6f36pcw862f"))))
     (build-system emacs-build-system)
     (arguments
      `(#:phases
@@ -3252,7 +3253,7 @@ in the center.")
        (sha256
         (base32 "00admi87gqm0akhfqm4dcp9fw8ihpygy030955jswkha4zs7lw2p"))))
     (build-system emacs-build-system)
-    (home-page "http://www.dr-qubit.org/emacs.php")
+    (home-page "https://www.dr-qubit.org/undo-tree.html")
     (synopsis "Treat undo history as a tree")
     (description
      "Tree-like interface to Emacs undo system, providing
@@ -3566,7 +3567,7 @@ display and behaviour is easily customisable.")
        (origin
          (method git-fetch)
          (uri (git-reference
-               (url "https://github.com/syohex/git-gutter-fringe")
+               (url "https://github.com/emacsorphanage/git-gutter-fringe")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
@@ -3575,7 +3576,7 @@ display and behaviour is easily customisable.")
       (propagated-inputs
        `(("emacs-git-gutter" ,emacs-git-gutter)
          ("emacs-fringe-helper" ,emacs-fringe-helper)))
-      (home-page "https://github.com/syohex/git-gutter-fringe")
+      (home-page "https://github.com/emacsorphanage/git-gutter-fringe")
       (synopsis "See and manage hunks of text in a version control system")
       (description
        "This package extends @code{git-gutter} to use the fringe area of a
@@ -6598,7 +6599,7 @@ cards created in Org mode.")
        (sha256
         (base32 "0vchyd80ybvr6317dwm50nxcgxfrpc0bz6259vnrh24p5sb8shbj"))))
     (build-system emacs-build-system)
-    (home-page "http://github.com/org-mime/org-mime")
+    (home-page "https://github.com/org-mime/org-mime")
     (synopsis "Send HTML email using Org mode HTML export")
     (description
      "This program sends HTML email using Org-mode HTML export.
@@ -6610,7 +6611,7 @@ email.")
 (define-public emacs-org-superstar
   (package
     (name "emacs-org-superstar")
-    (version "1.4.0")
+    (version "1.5.0")
     (source
      (origin
        (method git-fetch)
@@ -6619,7 +6620,7 @@ email.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1aklp6nk05ghpq7ybsbvn28wrygfwqvq58k1hjll97nbhd7h0gyb"))))
+        (base32 "12inin2p6pm6vbv3yc06fx343dsp0vp07fjb35w088akhikmqh2a"))))
     (build-system emacs-build-system)
     (propagated-inputs
      `(("emacs-org" ,emacs-org)))
@@ -7184,7 +7185,7 @@ include installing, removing or visiting the homepage.")
 (define-public emacs-prescient
   (package
     (name "emacs-prescient")
-    (version "5.0")
+    (version "5.1")
     (source
      (origin
        (method git-fetch)
@@ -7193,7 +7194,7 @@ include installing, removing or visiting the homepage.")
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "001q4l730bhw4d508jxlpzh1z459qzpg6rbncp12jrfm5yidksix"))))
+        (base32 "0d6kbczkamhhcmc8bf01q6k1x0g7dwjihwllzsldgga3dclyh4ks"))))
     (build-system emacs-build-system)
     (propagated-inputs
      `(("emacs-company" ,emacs-company)
@@ -8427,7 +8428,7 @@ builtin JavaScript mode.")
                (base32
                 "0cx2848sqnnkkr4zisvqadzxngjyhmb36mh0q3if7q19yjjhmrkb"))))
     (build-system emacs-build-system)
-    (home-page "http://www.dr-qubit.org/tags/computing-code-emacs.html")
+    (home-page "https://www.dr-qubit.org/emacs_data-structures.html")
     (synopsis "Queue data structure for Emacs")
     (description
      "This Emacs library provides queue data structure.  These queues can be
@@ -9544,7 +9545,7 @@ client/server side engines).  Web mode is compatible with many template
 engines: PHP, JSP, ASP, Django, Twig, Jinja, Mustache, ERB, FreeMarker,
 Velocity, Cheetah, Smarty, CTemplate, Mustache, Blade, ErlyDTL, Go Template,
 Dust.js, React/JSX, Angularjs, ejs, etc.")
-    (home-page "http://web-mode.org/")
+    (home-page "https://web-mode.org/")
     (license license:gpl3+)))
 
 (define-public emacs-templatel
@@ -22087,48 +22088,46 @@ as Emacs Lisp.")
     (license license:gpl3+)))
 
 (define-public emacs-transient
-  (let ((revision "1")
-        (commit "a6e4cced303b3febd59412b24a97eaf1e855e6d7"))
-    (package
-      (name "emacs-transient")
-      (version (git-version "0.2.0" revision commit))
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/magit/transient")
-                      (commit commit)))
-                (file-name (git-file-name name version))
-                (sha256
-                 (base32
-                  "01xsw9sxr50valc2q590ngy3ra2ll01p39l9cbzvqqz6mxyymxmd"))))
-      (build-system emacs-build-system)
-      (arguments
-       `(#:tests? #f                      ;no test suite
-         #:phases
-         (modify-phases %standard-phases
-           (add-after 'unpack 'build-info-manual
-             (lambda _
-               (invoke "make" "info")
-               ;; Move the info file to lisp so that it gets installed by the
-               ;; emacs-build-system.
-               (rename-file "docs/transient.info" "lisp/transient.info")
-               #t))
-           (add-after 'build-info-manual 'enter-lisp-directory
-             (lambda _
-               (chdir "lisp")
-               #t)))))
-      (native-inputs
-       `(("texinfo" ,texinfo)))
-      (propagated-inputs
-       `(("dash" ,emacs-dash)))
-      (home-page "https://magit.vc/manual/transient")
-      (synopsis "Transient commands in Emacs")
-      (description "Taking inspiration from prefix keys and prefix arguments
+  (package
+    (name "emacs-transient")
+    (version "0.3.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/magit/transient")
+                    (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0g694ydmb9zjn99hxgfjd3m73kpmnkbrgqhr73b4crbxza5sl29c"))))
+    (build-system emacs-build-system)
+    (arguments
+     `(#:tests? #f                      ;no test suite
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'build-info-manual
+           (lambda _
+             (invoke "make" "info")
+             ;; Move the info file to lisp so that it gets installed by the
+             ;; emacs-build-system.
+             (rename-file "docs/transient.info" "lisp/transient.info")
+             #t))
+         (add-after 'build-info-manual 'enter-lisp-directory
+           (lambda _
+             (chdir "lisp")
+             #t)))))
+    (native-inputs
+     `(("texinfo" ,texinfo)))
+    (propagated-inputs
+     `(("dash" ,emacs-dash)))
+    (home-page "https://magit.vc/manual/transient")
+    (synopsis "Transient commands in Emacs")
+    (description "Taking inspiration from prefix keys and prefix arguments
 in Emacs, Transient implements a similar abstraction involving a prefix
 command, infix arguments and suffix commands.  We could call this abstraction
 a \"transient command\", but because it always involves at least two
 commands (a prefix and a suffix) we prefer to call it just a \"transient\".")
-      (license license:gpl3+))))
+    (license license:gpl3+)))
 
 (define-public emacs-forge
   (let ((commit "05ef02913004826165c383bd6d2ff6574542b76c"))
@@ -23181,14 +23180,14 @@ well as an option for visually flashing evaluated s-expressions.")
 (define-public emacs-tramp
   (package
     (name "emacs-tramp")
-    (version "2.5.0.1")
+    (version "2.5.0.2")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://elpa.gnu.org/packages/"
                            "tramp-" version ".tar"))
        (sha256
-        (base32 "0kqlc03bbsdywp0m3mf0m62hqyam8vg81phh7nqmpdjzskrdc1yy"))))
+        (base32 "16f782rjkmxxs5sz3wv4d46i7hbl483ashmrkvljf7lpnrl91s93"))))
     (build-system emacs-build-system)
     (arguments
      `(#:emacs ,emacs                   ;need D-Bus

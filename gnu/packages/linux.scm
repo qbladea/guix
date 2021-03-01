@@ -184,6 +184,7 @@
 defconfig.  Return the appropriate make target if applicable, otherwise return
 \"defconfig\"."
   (cond ((string-prefix? "powerpc-" system) "pmac32_defconfig")
+        ((string-prefix? "powerpc64-" system) "ppc64_defconfig")
         ((string-prefix? "powerpc64le-" system) "ppc64_defconfig")
         (else "defconfig")))
 
@@ -353,7 +354,7 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
 
 ;; The current "stable" kernels. That is, the most recently released major
 ;; versions that are still supported upstream.
-(define-public linux-libre-5.11-version "5.11.1")
+(define-public linux-libre-5.11-version "5.11.2")
 (define deblob-scripts-5.11
   (linux-libre-deblob-scripts
    linux-libre-5.11-version
@@ -361,12 +362,15 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "0y76962qnnjxc5jgaw9vwrydzwjvj3q4xf7skp3ks2dab7vkhj33")))
 (define-public linux-libre-5.11-pristine-source
   (let ((version linux-libre-5.11-version)
-        (hash (base32 "1gmrckvl3039z80rr740c0d5knwgj6p1dmhw4x9gwc7rxli6az85")))
+        (hash (base32 "186ha9fsk2qvrjkq7yvpmml938byz92m8ykcvbw4w9pmp8y5njlh")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-5.11)))
 
-(define-public linux-libre-5.10-version "5.10.18")
+;; The "longterm" kernels — the older releases with long-term upstream support.
+;; Here are the support timelines:
+;; <https://www.kernel.org/category/releases.html>
+(define-public linux-libre-5.10-version "5.10.19")
 (define deblob-scripts-5.10
   (linux-libre-deblob-scripts
    linux-libre-5.10-version
@@ -374,15 +378,12 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "0hh27ccqimagr3aij7ygwikxw66y63sqwd0xlf49bhpjd090r9a7")))
 (define-public linux-libre-5.10-pristine-source
   (let ((version linux-libre-5.10-version)
-        (hash (base32 "04dnkg5j73f6cd8ws1prrrjx37srz7rm66bj6slmnfzp3cmyxh9v")))
+        (hash (base32 "1mml5a30ky0khzj3r6ahybycbbszk86agq62qclwq2kzvsqbprr7")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-5.10)))
 
-;; The "longterm" kernels — the older releases with long-term upstream support.
-;; Here are the support timelines:
-;; <https://www.kernel.org/category/releases.html>
-(define-public linux-libre-5.4-version "5.4.100")
+(define-public linux-libre-5.4-version "5.4.101")
 (define deblob-scripts-5.4
   (linux-libre-deblob-scripts
    linux-libre-5.4-version
@@ -390,7 +391,7 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "1xghbbnaisjd0k1klbyn1p7r6r4x5a1bpmkm56a3gh2zvw4s7mj8")))
 (define-public linux-libre-5.4-pristine-source
   (let ((version linux-libre-5.4-version)
-        (hash (base32 "02i47fmx2jbnjr3sd1bvldf9vc712528phpnybsbq8h8lqd6hpbr")))
+        (hash (base32 "179lv5vfxwbr40s505b69vahks7pb32yqcpzxbfhjcmy5l3qq4af")))
    (make-linux-libre-source version
                             (%upstream-linux-source version hash)
                             deblob-scripts-5.4)))
@@ -889,16 +890,16 @@ It has been modified to remove all non-free binary blobs.")
                      '("x86_64-linux" "i686-linux" "armhf-linux" "aarch64-linux" "riscv64-linux")
                      #:configuration-file kernel-config))
 
+(define-public linux-libre-version         linux-libre-5.11-version)
+(define-public linux-libre-pristine-source linux-libre-5.11-pristine-source)
+(define-public linux-libre-source          linux-libre-5.11-source)
+(define-public linux-libre                 linux-libre-5.11)
+
 (define-public linux-libre-5.10
   (make-linux-libre* linux-libre-5.10-version
                      linux-libre-5.10-source
                      '("x86_64-linux" "i686-linux" "armhf-linux" "aarch64-linux" "riscv64-linux")
                      #:configuration-file kernel-config))
-
-(define-public linux-libre-version         linux-libre-5.10-version)
-(define-public linux-libre-pristine-source linux-libre-5.10-pristine-source)
-(define-public linux-libre-source          linux-libre-5.10-source)
-(define-public linux-libre                 linux-libre-5.10)
 
 (define-public linux-libre-5.4
   (make-linux-libre* linux-libre-5.4-version
@@ -1065,8 +1066,8 @@ It has been modified to remove all non-free binary blobs.")
 (define-public linux-libre-with-bpf
   (let ((base-linux-libre
          (make-linux-libre*
-          linux-libre-5.10-version
-          linux-libre-5.10-source
+          linux-libre-5.11-version
+          linux-libre-5.11-source
           '("x86_64-linux" "i686-linux" "armhf-linux"
             "aarch64-linux" "riscv64-linux")
           #:extra-version "bpf"
@@ -4938,7 +4939,7 @@ and copy/paste text in the console and in xterm.")
 (define-public btrfs-progs
   (package
     (name "btrfs-progs")
-    (version "5.9")
+    (version "5.10.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "mirror://kernel.org/linux/kernel/"
@@ -4946,7 +4947,7 @@ and copy/paste text in the console and in xterm.")
                                   "btrfs-progs-v" version ".tar.xz"))
               (sha256
                (base32
-                "14d7hz07kfczfgmy1ixkgccjn393gpkjn7givz5kwxddcnk5i4xq"))))
+                "0i03vajakg1glbql1cv7xy0k71zvpd2whdwymmrz9rza3xrwqy8k"))))
     (build-system gnu-build-system)
     (outputs '("out"
                "static"))      ; static versions of the binaries in "out"

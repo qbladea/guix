@@ -3883,7 +3883,7 @@ data behind them) can be viewed and modified in a web browser.")
        "13i2lgfnjhlbbm2yxfc2l5hswqw6x03pwba5csjmirv8kpjw4xr3"))))
    (properties `((upstream-name . "BiasedUrn")))
    (build-system r-build-system)
-   (home-page "http://www.agner.org/random/")
+   (home-page "https://www.agner.org/random/")
    (synopsis "Biased urn model distributions")
    (description
     "This package provides statistical models of biased sampling in the form
@@ -5219,7 +5219,7 @@ C++ library for numerical linear algebra and RcppEigen glue.")
        ("r-numderiv" ,r-numderiv)))
     (native-inputs
      `(("r-knitr" ,r-knitr)))
-    (home-page "http://people.math.aau.dk/~sorenh/software/pbkrtest/")
+    (home-page "https://people.math.aau.dk/~sorenh/software/pbkrtest/")
     (synopsis "Methods for linear mixed model comparison")
     (description
      "This package implements a parametric bootstrap test and a Kenward Roger

@@ -2931,6 +2931,37 @@ package.")
 (define-public ecl-cffi
   (sbcl-package->ecl-package sbcl-cffi))
 
+(define-public sbcl-cffi-c-ref
+  (let ((commit "8123cbb6034c5f7921a0766107cfb8c4e8efd5ce")
+        (revision "0"))
+    (package
+      (name "sbcl-cffi-c-ref")
+      (version (git-version "1.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/borodust/cffi-c-ref")
+               (commit commit)))
+         (sha256
+          (base32 "1a3pp6xcisabqir3rp1gvvjfdxcvpm8yr35p38nri9azsinmmc7z"))
+         (file-name (git-file-name "cffi-c-ref" version))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("alexandria" ,sbcl-alexandria)
+         ("cffi" ,sbcl-cffi)))
+      (synopsis "Streamlined access to foreign memory")
+      (description
+       "This Common Lisp library provides macros to access foreign memory.")
+      (home-page "https://github.com/borodust/cffi-c-ref")
+      (license license:expat))))
+
+(define-public cl-cffi-c-ref
+  (sbcl-package->cl-source-package sbcl-cffi-c-ref))
+
+(define-public ecl-cffi-c-ref
+  (sbcl-package->ecl-package sbcl-cffi-c-ref))
+
 (define-public sbcl-cl-sqlite
   (package
     (name "sbcl-cl-sqlite")
@@ -14583,3 +14614,34 @@ adaptations.")
 
 (define-public cl-radiance
   (sbcl-package->cl-source-package sbcl-radiance))
+
+(define-public sbcl-daemon
+  (let ((commit "d5652f4332c3cee21e9bf83b9237129605004597")
+        (revision "1"))
+    (package
+      (name "sbcl-daemon")
+      (version (git-version "0.0.4" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/snmsts/daemon")
+               (commit commit)))
+         (file-name (git-file-name "daemon" version))
+         (sha256
+          (base32 "1kdxfnhh9fz34j8qs7pn7mwjz3v33q4v9nh0hqkyzraq5xs2j3f4"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("trivial-features" ,sbcl-trivial-features)))
+      (home-page "https://github.com/snmsts/daemon")
+      (synopsis "Daemonize Common Lisp processes")
+      (description
+       "DAEMON provides the functionality of daemonizing Common Lisp processes
+on UNIX like platforms.")
+      (license license:expat))))
+
+(define-public ecl-daemon
+  (sbcl-package->ecl-package sbcl-daemon))
+
+(define-public cl-daemon
+  (sbcl-package->cl-source-package sbcl-daemon))

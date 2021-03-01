@@ -1630,7 +1630,7 @@ v1.0.7/_site/plugins/js/bootstrap-accessibility.js")
            (sha256
             (base32
              "1489wyzwrpf86y7vhc13n4v3mszmsfybhd3f75jkpnbvyp5sncm8"))))))
-    (home-page "http://shiny.rstudio.com")
+    (home-page "https://shiny.rstudio.com")
     (synopsis "Easy interactive web applications with R")
     (description
      "Makes it incredibly easy to build interactive web applications
@@ -2466,7 +2466,7 @@ Docstrings (PEP-0257) and Julia's Triple-Quoted String Literals.")
    (build-system r-build-system)
    (propagated-inputs
     `(("r-boot" ,r-boot)))
-   (home-page "http://www.sciviews.org/pastecs")
+   (home-page "https://github.com/phgrosjean/pastecs")
    (synopsis "Analysis of space-time ecological series")
    (description
     "This package provides functions for regulation, decomposition and analysis
@@ -7021,7 +7021,7 @@ JavaScript library) and interact with the igraph package.")
        ("r-stringi" ,r-stringi)))
     (native-inputs
      `(("r-knitr" ,r-knitr)))
-    (home-page "http://github.com/gluc/data.tree")
+    (home-page "https://github.com/gluc/data.tree")
     (synopsis "General purpose hierarchical data structure")
     (description
      "Create tree structures from hierarchical data, and traverse the tree in
@@ -8450,7 +8450,7 @@ the work.")
        ("r-tibble" ,r-tibble)))
     (native-inputs
      `(("r-knitr" ,r-knitr)))
-    (home-page "http://people.math.aau.dk/~sorenh/software/doBy/")
+    (home-page "https://people.math.aau.dk/~sorenh/software/doBy/")
     (synopsis "Groupwise statistics, LSmeans, linear contrasts, and utilities")
     (description
      "This package contains:
@@ -11269,7 +11269,7 @@ isosurfaces.")
        ("r-multicool" ,r-multicool)
        ("r-mvtnorm" ,r-mvtnorm)
        ("r-plot3d" ,r-plot3d)))
-    (home-page "http://www.mvstat.net/tduong/")
+    (home-page "https://www.mvstat.net/tduong/")
     (synopsis "Kernel smoothing")
     (description
      "This package provides kernel smoothers for univariate and multivariate
@@ -11296,7 +11296,7 @@ hypothesis testing.")
        ("r-plot3d" ,r-plot3d)))
     (native-inputs
      `(("r-knitr" ,r-knitr)))
-    (home-page "http://www.mvstat.net/tduong/")
+    (home-page "https://www.mvstat.net/tduong/")
     (synopsis "Inferential feature significance for kernel density estimation")
     (description
      "The feature package contains functions to display and compute kernel
@@ -14311,7 +14311,7 @@ probabilities from a standard bivariate normal CDF.")
        ("r-mnormt" ,r-mnormt)
        ("r-numderiv" ,r-numderiv)
        ("r-pbivnorm" ,r-pbivnorm)))
-    (home-page "http://lavaan.ugent.be")
+    (home-page "https://lavaan.ugent.be")
     (synopsis "Latent variable analysis")
     (description
      "This package provides tools to fit a variety of latent variable models,
@@ -23238,7 +23238,7 @@ as possible (with tests to prove it).")
         "04lhqk5qfvaz1jk90glr2yi5vq7cdy0w8m6g2lnzk359l9y41zhp"))))
     (properties `((upstream-name . "boa")))
     (build-system r-build-system)
-    (home-page "http://www.jstatsoft.org/v21/i11")
+    (home-page "https://www.jstatsoft.org/v21/i11")
     (synopsis "Library for @dfn{Bayesian Output Analysis Program} (BOA) for MCMC")
     (description
      "This package provides a menu-driven program and library of functions for

@@ -305,7 +305,7 @@ for day to day programming.")
        #:phases
        (modify-phases %standard-phases
          (delete 'configure))))
-    (home-page "http://www.mancoosi.org/cudf/")
+    (home-page "https://www.mancoosi.org/cudf/")
     (synopsis "CUDF library (part of the Mancoosi tools)")
     (description "CUDF (for Common Upgradeability Description Format) is a
 format for describing upgrade scenarios in package-based Free and Open Source
@@ -379,7 +379,7 @@ underlying solvers like Cplex, Gurobi, Lpsolver, Glpk, CbC, SCIP or WBO.")
         ("ocaml-extlib" ,ocaml-extlib)
         ("ocamlbuild" ,ocamlbuild)
         ("ocaml-cppo" ,ocaml-cppo)))
-    (home-page "http://www.mancoosi.org/software/")
+    (home-page "https://www.mancoosi.org/software/")
     (synopsis "Package distribution management framework")
     (description "Dose3 is a framework made of several OCaml libraries for
 managing distribution packages and their dependencies.  Though not tied to
@@ -1641,7 +1641,7 @@ defined in this library.")
        #:phases
        (modify-phases %standard-phases
          (delete 'configure))))
-    (home-page "http://erratique.ch/software/topkg")
+    (home-page "https://erratique.ch/software/topkg")
     (synopsis "Transitory OCaml software packager")
     (description "Topkg is a packager for distributing OCaml software. It
 provides an API to describe the files a package installs in a given build
@@ -1672,7 +1672,7 @@ creation and publication procedures.")
        #:phases
        (modify-phases %standard-phases
          (delete 'configure))))
-    (home-page "http://erratique.ch/software/rresult")
+    (home-page "https://erratique.ch/software/rresult")
     (synopsis "Result value combinators for OCaml")
     (description "Handle computation results and errors in an explicit and
 declarative manner, without resorting to exceptions.  It defines combinators
@@ -1768,7 +1768,7 @@ manipulate such data.")
        #:phases
        (modify-phases %standard-phases
          (delete 'configure))))
-    (home-page "http://erratique.ch/software/mtime")
+    (home-page "https://erratique.ch/software/mtime")
     (synopsis "Monotonic wall-clock time for OCaml")
     (description "Access monotonic wall-clock time.  It measures time
 spans without being subject to operating system calendar time adjustments.")
@@ -1803,7 +1803,7 @@ spans without being subject to operating system calendar time adjustments.")
                (("Sys.readdir dir")
                 "let a = Sys.readdir dir in Array.sort String.compare a; a"))
              #t)))))
-    (home-page "http://erratique.ch/software/cmdliner")
+    (home-page "https://erratique.ch/software/cmdliner")
     (synopsis "Declarative definition of command line interfaces for OCaml")
     (description "Cmdliner is a module for the declarative definition of command
 line interfaces.  It provides a simple and compositional mechanism to convert
@@ -1839,7 +1839,7 @@ most of the POSIX and GNU conventions.")
                  #:phases
                  (modify-phases %standard-phases
                    (delete 'configure))))
-    (home-page "http://erratique.ch/software/fmt")
+    (home-page "https://erratique.ch/software/fmt")
     (synopsis "OCaml Format pretty-printer combinators")
     (description "Fmt exposes combinators to devise Format pretty-printing
 functions.")
@@ -1867,7 +1867,7 @@ functions.")
        #:phases
        (modify-phases %standard-phases
          (delete 'configure))))
-    (home-page "http://erratique.ch/software/astring")
+    (home-page "https://erratique.ch/software/astring")
     (synopsis "Alternative String module for OCaml")
     (description "Astring exposes an alternative String module for OCaml.  This
 module balances minimality and expressiveness for basic, index-free, string
@@ -1960,7 +1960,7 @@ simple (yet expressive) query language to select the tests to run.")
        #:phases
        (modify-phases %standard-phases
          (delete 'configure))))
-    (home-page "http://erratique.ch/software/react")
+    (home-page "https://erratique.ch/software/react")
     (synopsis "Declarative events and signals for OCaml")
     (description "React is an OCaml module for functional reactive programming
 (FRP).  It provides support to program with time varying values: declarative
@@ -2128,7 +2128,7 @@ ocaml lwt.")
        ("result" ,ocaml-result)
        ("cmdliner" ,ocaml-cmdliner)
        ("topkg" ,ocaml-topkg)))
-    (home-page "http://erratique.ch/software/logs")
+    (home-page "https://erratique.ch/software/logs")
     (synopsis "Logging infrastructure for OCaml")
     (description "Logs provides a logging infrastructure for OCaml.  Logging is
 performed on sources whose reporting level can be set independently.  Log
@@ -2159,7 +2159,7 @@ message report is decoupled from logging and is handled by a reporter.")
     (propagated-inputs
      `(("topkg" ,ocaml-topkg)
        ("astring" ,ocaml-astring)))
-    (home-page "http://erratique.ch/software/fpath")
+    (home-page "https://erratique.ch/software/fpath")
     (synopsis "File system paths for OCaml")
     (description "Fpath is an OCaml module for handling file system paths with
 POSIX or Windows conventions.  Fpath processes paths without accessing the
@@ -2194,7 +2194,7 @@ file system and is independent from any system library.")
        ("fpath" ,ocaml-fpath)
        ("logs" ,ocaml-logs)
        ("rresult" ,ocaml-rresult)))
-    (home-page "http://erratique.ch/software/bos")
+    (home-page "https://erratique.ch/software/bos")
     (synopsis "Basic OS interaction for OCaml")
     (description "Bos provides support for basic and robust interaction with
 the operating system in OCaml.  It has functions to access the process
@@ -2224,7 +2224,7 @@ run command line programs.")
      `(("ocamlbuild" ,ocamlbuild)
        ("ocaml-topkg" ,ocaml-topkg)
        ("opam" ,opam)))
-    (home-page "http://erratique.ch/software/xmlm")
+    (home-page "https://erratique.ch/software/xmlm")
     (synopsis "Streaming XML codec for OCaml")
     (description "Xmlm is a streaming codec to decode and encode the XML data
 format.  It can process XML documents without a complete in-memory
@@ -2385,7 +2385,7 @@ and consumable.")
     (propagated-inputs
      `(("uchar" ,ocaml-uchar)
        ("cmdliner" ,ocaml-cmdliner)))
-    (home-page "http://erratique.ch/software/uutf")
+    (home-page "https://erratique.ch/software/uutf")
     (synopsis "Non-blocking streaming Unicode codec for OCaml")
     (description "Uutf is a non-blocking streaming codec to decode and encode
 the UTF-8, UTF-16, UTF-16LE and UTF-16BE encoding schemes.  It can efficiently
@@ -2421,7 +2421,7 @@ string values and to directly encode characters in OCaml Buffer.t values.")
     (propagated-inputs
      `(("uutf" ,ocaml-uutf)
        ("cmdliner" ,ocaml-cmdliner)))
-    (home-page "http://erratique.ch/software/jsonm")
+    (home-page "https://erratique.ch/software/jsonm")
     (synopsis "Non-blocking streaming JSON codec for OCaml")
     (description "Jsonm is a non-blocking streaming codec to decode and encode
 the JSON data format.  It can process JSON text without blocking on IO and
@@ -3213,7 +3213,7 @@ tool and piqi-ocaml.")
     (propagated-inputs
      `(("cmdliner" ,ocaml-cmdliner)
        ("topkg" ,ocaml-topkg)))
-    (home-page "http://erratique.ch/software/uuidm")
+    (home-page "https://erratique.ch/software/uuidm")
     (synopsis "Universally unique identifiers for OCaml")
     (description "Uuidm is an OCaml module implementing 128 bits universally
 unique identifiers (UUIDs) version 3, 5 (named based with MD5, SHA-1 hashing)

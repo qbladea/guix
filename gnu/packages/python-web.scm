@@ -24,7 +24,7 @@
 ;;; Copyright © 2015, 2016 David Thompson <davet@gnu.org>
 ;;; Copyright © 2017 Mark Meyer <mark@ofosos.org>
 ;;; Copyright © 2018 Tomáš Čech <sleep_walker@gnu.org>
-;;; Copyright © 2018, 2019 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2018, 2019, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2018 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2018, 2020, 2021 Maxim Cournoyer <maxim.cournoyer@gmail.com>
 ;;; Copyright © 2019 Vagrant Cascadian <vagrant@debian.org>
@@ -94,13 +94,13 @@
 (define-public python-aiohttp
   (package
     (name "python-aiohttp")
-    (version "3.7.3")
+    (version "3.7.4")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "aiohttp" version))
        (sha256
-        (base32 "1i3p4yrfgrf1zpbgnywqmb33ps4k51wylcxykhf2cwky0spq26lw"))))
+        (base32 "1pn79h8fng4xi5gl1f6saw31nxgmgyxl41yf3vba1l21673yr12x"))))
     (build-system python-build-system)
     (arguments
      '(#:phases
@@ -655,7 +655,7 @@ Swartz.")
   (package
     (name "python-jose")
     (version "3.2.0")
-    (home-page "http://github.com/mpdavis/python-jose")
+    (home-page "https://github.com/mpdavis/python-jose")
     (source (origin
               (method git-fetch)
               (uri (git-reference (url home-page) (commit version)))

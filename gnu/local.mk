@@ -1429,7 +1429,6 @@ dist_patch_DATA =						\
   %D%/packages/patches/openssh-fix-ssh-copy-id.patch		\
   %D%/packages/patches/openssh-hurd.patch			\
   %D%/packages/patches/openresolv-restartcmd-guix.patch	\
-  %D%/packages/patches/openscad-parser-boost-1.72.patch	\
   %D%/packages/patches/opensles-add-license-file.patch			\
   %D%/packages/patches/openssl-runpath.patch			\
   %D%/packages/patches/openssl-1.1-c-rehash-in.patch		\
@@ -1526,7 +1525,6 @@ dist_patch_DATA =						\
   %D%/packages/patches/python-3.8-fix-tests.patch		\
   %D%/packages/patches/python-3.8-CVE-2021-3177.patch		\
   %D%/packages/patches/python-3.9-fix-tests.patch		\
-  %D%/packages/patches/python-3.9-CVE-2021-3177.patch		\
   %D%/packages/patches/python-CVE-2018-14647.patch		\
   %D%/packages/patches/python-CVE-2020-26116.patch		\
   %D%/packages/patches/python-aionotify-0.2.0-py3.8.patch	\
@@ -1562,6 +1560,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/python-waitress-fix-tests.patch		\
   %D%/packages/patches/pypy3-7.3.1-fix-tests.patch		\
   %D%/packages/patches/qemu-build-info-manual.patch		\
+  %D%/packages/patches/qemu-CVE-2021-20203.patch		\
   %D%/packages/patches/qemu-glibc-2.27.patch 			\
   %D%/packages/patches/qpdfview-qt515-compat.patch		\
   %D%/packages/patches/qrcodegen-cpp-make-install.patch		\
@@ -1593,7 +1592,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/rtags-separate-rct.patch			\
   %D%/packages/patches/racket-store-checksum-override.patch	\
   %D%/packages/patches/remake-impure-dirs.patch			\
-  %D%/packages/patches/retroarch-disable-online-updater.patch	\
+  %D%/packages/patches/retroarch-LIBRETRO_DIRECTORY.patch	\
   %D%/packages/patches/rnp-add-version.cmake.patch		\
   %D%/packages/patches/rnp-disable-ruby-rnp-tests.patch		\
   %D%/packages/patches/rnp-unbundle-googletest.patch		\
@@ -1731,6 +1730,7 @@ dist_patch_DATA =						\
   %D%/packages/patches/wordnet-CVE-2008-2149.patch			\
   %D%/packages/patches/wordnet-CVE-2008-3908-pt1.patch			\
   %D%/packages/patches/wordnet-CVE-2008-3908-pt2.patch			\
+  %D%/packages/patches/wpa-supplicant-CVE-2021-27803.patch	\
   %D%/packages/patches/x265-arm-flags.patch			\
   %D%/packages/patches/xf86-video-ark-remove-mibstore.patch	\
   %D%/packages/patches/xf86-video-mach64-glibc-2.20.patch	\

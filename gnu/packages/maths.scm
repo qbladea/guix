@@ -30,7 +30,7 @@
 ;;; Copyright © 2018 Eric Brown <brown@fastmail.com>
 ;;; Copyright © 2018 Julien Lepiller <julien@lepiller.eu>
 ;;; Copyright © 2018 Amin Bandali <bandali@gnu.org>
-;;; Copyright © 2019 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2019, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2019 Steve Sprang <scs@stevesprang.com>
 ;;; Copyright © 2019 Robert Smith <robertsmith@posteo.net>
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
@@ -2636,7 +2636,7 @@ savings are consistently > 5x.")
                           "test.log" "error.log" "RDict.db"
                           "uninstall.py"))
               #t))))))
-    (home-page "http://slepc.upv.es")
+    (home-page "https://slepc.upv.es")
     (synopsis "Scalable library for eigenproblems")
     (description "SLEPc is a software library for the solution of large sparse
 eigenproblems on parallel computers.  It can be used for the solution of
@@ -4870,7 +4870,7 @@ theories} (SMT) solver.  It provides a C/C++ API, as well as Python bindings.")
                ;; Test scripts are generated, patch the shebang
                (("#!/bin/bash") (string-append "#!" (which "sh"))))
              #t)))))
-    (home-page "http://elpa.mpcdf.mpg.de")
+    (home-page "https://elpa.mpcdf.mpg.de")
     (synopsis "Eigenvalue solvers for symmetric matrices")
     (description
      "The ELPA library provides efficient and scalable direct eigensolvers for

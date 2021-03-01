@@ -21,11 +21,12 @@
 ;;; Copyright © 2019 Diego N. Barbato <dnbarbato@posteo.de>
 ;;; Copyright © 2019 Brett Gilio <brettg@posteo.de>
 ;;; Copyright © 2020 Maxim Cournoyer <maxim.cournoyer@gmail.com>
-;;; Copyright © 2020 Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;;; Copyright © 2020, 2021 Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;;; Copyright © 2020 Michael Rohleder <mike@rohleder.de>
 ;;; Copyright © 2020 Holgr Peters <holger.peters@posteo.de>
 ;;; Copyright © 2020 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;; Copyright © 2021 EuAndreh <eu@euandre.org>
+;;; Copyright © 2020 Tomás Ortín Fernández <tomasortin@mailbox.org>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -3118,7 +3119,7 @@ HTML or XML that is designed to express the structure of documents using
 indentation rather than closing tags.  It was originally envisioned as a
 plugin for Ruby on Rails, but it can function as a stand-alone templating
 engine.")
-    (home-page "http://haml.info/")
+    (home-page "https://haml.info/")
     (license license:expat)))
 
 (define-public ruby-hamster
@@ -6880,7 +6881,7 @@ differences (added or removed nodes) between two XML/HTML documents.")
     (description
      "Racc is a LALR(1) parser generator.  It is written in Ruby itself, and
 generates Ruby program.")
-    (home-page "http://i.loveruby.net/en/projects/racc/")
+    (home-page "https://i.loveruby.net/en/projects/racc/")
     (license (list
               ;; Generally licensed under the LGPL2.1, and some files also
               ;; available under the same license as Ruby.
@@ -7708,7 +7709,7 @@ navigation capabilities to @code{pry}, using @code{byebug}.")
     (description
      "@code{stackprof} is a fast sampling profiler for Ruby code, with cpu,
 wallclock and object allocation samplers.")
-    (home-page "http://github.com/tmm1/stackprof")
+    (home-page "https://github.com/tmm1/stackprof")
     (license license:expat)))
 
 (define-public ruby-binding-of-caller
@@ -12028,20 +12029,23 @@ application.")
 (define-public ruby-solargraph
   (package
     (name "ruby-solargraph")
-    (version "0.36.0")
+    (version "0.40.3")
     (source
      (origin
        (method url-fetch)
        (uri (rubygems-uri "solargraph" version))
        (sha256
         (base32
-         "0b93xzkgd1h06da9gdnwivj1mzbil8lc072y2838dy6i7bxgpy9i"))))
+         "1gf049rm0yvw4r8r5yyi890idbfg8qh0dikqx5prvkh11srl73bz"))))
     (build-system ruby-build-system)
     (propagated-inputs
      `(("ruby-backport" ,ruby-backport)
        ("bundler" ,bundler)
-       ("ruby-htmlentities" ,ruby-htmlentities)
+       ("ruby-benchmark" ,ruby-benchmark)
+       ("ruby-e2mmap" ,ruby-e2mmap)
        ("ruby-jaro-winkler" ,ruby-jaro-winkler)
+       ("ruby-kramdown" ,ruby-kramdown)
+       ("ruby-kramdown-parser-gfm" ,ruby-kramdown-parser-gfm)
        ("ruby-maruku" ,ruby-maruku)
        ("ruby-nokogiri" ,ruby-nokogiri)
        ("ruby-parser" ,ruby-parser)
@@ -12239,3 +12243,118 @@ multiple adapters, various log level combinations and message formatting
 options.")
     (home-page "https://github.com/rudionrails/yell")
     (license license:expat)))
+
+(define-public ruby-e2mmap
+  (package
+    (name "ruby-e2mmap")
+    (version "0.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "e2mmap" version))
+       (sha256
+        (base32
+         "0n8gxjb63dck3vrmsdcqqll7xs7f3wk78mw8w0gdk9wp5nx6pvj5"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ;; There is a rakefile but no tests
+    (synopsis
+     "Module for defining custom exceptions with specific messages")
+    (description
+     "Exception2MessageMapper (e2mmap) is a helper module for easily defining
+exceptions with predefined messages.")
+    (home-page "https://github.com/ruby/e2mmap")
+    (license license:bsd-2)))
+
+(define-public ruby-benchmark
+  (package
+    (name "ruby-benchmark")
+    (version "0.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "benchmark" version))
+       (sha256
+        (base32
+         "1jvrl7400fv7v2jjri1r7ilj3sri36hzipwwgpn5psib4c9c59c6"))))
+    (build-system ruby-build-system)
+    (synopsis "Performance benchmarking library")
+    (description "This package provides methods for benchmarking Ruby code,
+giving detailed reports on the time taken for each task.")
+    (home-page "https://github.com/ruby/benchmark")
+    (license license:bsd-2)))
+
+(define-public ruby-jekyll-feed
+  (package
+    (name "ruby-jekyll-feed")
+    (version "0.15.1")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (rubygems-uri "jekyll-feed" version))
+        (sha256
+          (base32
+            "1zxqkrnix0xiw98531h5ga6h69jhzlx2jh9qhvcl67p8nq3sgza9"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #false))     ;there are none
+    (propagated-inputs
+      `(("jekyll" ,jekyll)))
+    (synopsis
+      "Jekyll plugin to generate an Atom feed of your Jekyll posts")
+    (description
+      "This package provides a Jekyll plugin to generate an Atom feed
+of your Jekyll posts.")
+    (home-page
+      "https://github.com/jekyll/jekyll-feed")
+    (license license:expat)))
+
+(define-public ruby-jekyll-sitemap
+  (package
+    (name "ruby-jekyll-sitemap")
+    (version "1.4.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (rubygems-uri "jekyll-sitemap" version))
+        (sha256
+          (base32
+            "0622rwsn5i0m5xcyzdn86l68wgydqwji03lqixdfm1f1xdfqrq0d"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #false))     ;there are none
+    (propagated-inputs
+      `(("jekyll" ,jekyll)))
+    (synopsis
+      "Automatically generate a sitemap.xml for your Jekyll site")
+    (description
+      "This package provides a Jekyll plugin to silently generate
+a sitemaps.org compliant sitemap for your Jekyll site.")
+    (home-page
+      "https://github.com/jekyll/jekyll-sitemap")
+    (license license:expat)))
+
+(define-public ruby-jekyll-seo-tag
+  (package
+   (name "ruby-jekyll-seo-tag")
+   (version "2.7.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "jekyll-seo-tag" version))
+     (sha256
+      (base32
+       "0fsi75hymk2wswy216fs224p5ycrzjw1kshw1bsl5czhv42wr2w3"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #false))
+   (propagated-inputs
+    `(("jekyll" ,jekyll)))
+   (synopsis
+    "Jekyll plugin to add metadata tags for search engines and social networks")
+   (description
+    "This package provides a Jekyll plugin to add metadata tags for search engines
+and social networks to better index and display your site's content.")
+   (home-page
+    "https://github.com/jekyll/jekyll-seo-tag")
+   (license license:expat)))

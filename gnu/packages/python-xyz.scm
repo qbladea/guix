@@ -3985,8 +3985,7 @@ for SSH and SFTP.  It has the following main usages:
       (base32
        "197dw8mbq0pjjz1l6h1ksi62vgn7x55d373ch74y06744qiq5sjx"))))
    (build-system python-build-system)
-   (home-page
-    "http://bitbucket.org/leapfrogdevelopment/rstr/overview")
+   (home-page "https://github.com/leapfrogonline/rstr")
    (synopsis "Generate random strings in Python")
    (description "This package provides a python module for generating
 random strings of various types.  It could be useful for fuzz testing,
@@ -5077,7 +5076,7 @@ transcendental functions).")
      '(#:tests? #f))
     (propagated-inputs
      `(("python-six" ,python-six)))
-    (home-page "http://matplotlib.org/cycler/")
+    (home-page "https://matplotlib.org/cycler/")
     (synopsis "Composable keyword argument iterator")
     (description
      "When using @code{matplotlib} and plotting more than one line, it is
@@ -5807,13 +5806,13 @@ the OleFileIO module from PIL, the Python Image Library.")
 (define-public python-pikepdf
   (package
     (name "python-pikepdf")
-    (version "2.5.2")
+    (version "2.7.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pikepdf" version))
        (sha256
-        (base32 "1wwfspm912388a61lailbpjpqihq9ha8yz05mjqx9yys4ixykhwg"))))
+        (base32 "0xjr9qnv6z94ka1xj57am4a64vppdrplgmm359y1za1mqnfyabyk"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #false))                ;require python-xmp-toolkit
@@ -7180,7 +7179,7 @@ without using the configuration machinery.")
     (arguments `(#:tests? #f))
     (propagated-inputs
      `(("python-traitlets" ,python-traitlets)))
-    (home-page "http://jupyter.org/")
+    (home-page "https://jupyter.org/")
     (synopsis "Jupyter base package")
     (description
      "Jupyter core is the base package on which Jupyter projects rely.")
@@ -7221,7 +7220,7 @@ without using the configuration machinery.")
      `(("python-pyzmq" ,python-pyzmq)
        ("python-traitlets" ,python-traitlets)
        ("python-jupyter-core" ,python-jupyter-core)))
-    (home-page "http://jupyter.org/")
+    (home-page "https://jupyter.org/")
     (synopsis "Jupyter protocol implementation and client libraries")
     (description
      "The @code{jupyter_client} package contains the reference implementation
@@ -8074,7 +8073,7 @@ and statistical routines from scipy and statsmodels.")
        (replace 'check
          (lambda _
            (invoke "python" "mpmath/tests/runtests.py" "-local"))))))
-  (home-page "http://mpmath.org")
+  (home-page "https://mpmath.org")
   (synopsis "Arbitrary-precision floating-point arithmetic in python")
   (description
     "@code{mpmath} can be used as an arbitrary-precision substitute for
@@ -10003,7 +10002,7 @@ Debian-related files, such as:
        ("python-jsonschema" ,python-jsonschema)
        ("python-jupyter-core" ,python-jupyter-core)
        ("python-traitlets" ,python-traitlets)))
-    (home-page "http://jupyter.org")
+    (home-page "https://jupyter.org")
     (synopsis "Jupyter Notebook format")
     (description "This package provides the reference implementation of the
 Jupyter Notebook format and Python APIs for working with notebooks.")
@@ -10192,7 +10191,7 @@ time.")
        ("python-nbformat" ,python-nbformat)
        ("python-pygments" ,python-pygments)
        ("python-traitlets" ,python-traitlets)))
-    (home-page "http://jupyter.org")
+    (home-page "https://jupyter.org")
     (synopsis "Converting Jupyter Notebooks")
     (description "The @code{nbconvert} tool, @{jupyter nbconvert}, converts
 notebooks to various other formats via Jinja templates.  It allows you to
@@ -10249,7 +10248,7 @@ convert an @code{.ipynb} notebook file into various static formats including:
      `(("python-nose" ,python-nose)
        ("python-sphinx" ,python-sphinx)
        ("python-requests" ,python-requests)))
-    (home-page "http://jupyter.org/")
+    (home-page "https://jupyter.org/")
     (synopsis "Web-based notebook environment for interactive computing")
     (description
      "The Jupyter HTML notebook is a web-based notebook environment for
@@ -10446,7 +10445,7 @@ Jupyter kernels such as IJulia and IRKernel.")
        ("python-ipython" ,python-ipython)))
     (native-inputs
      `(("python-pytest" ,python-pytest)))
-    (home-page "http://jupyter.org")
+    (home-page "https://jupyter.org")
     (synopsis "Jupyter Qt console")
     (description "This package provides a Qt-based console for Jupyter with
 support for rich media output.")
@@ -13415,7 +13414,7 @@ interfaces.")
         (base32
          "16wh8qgybmfh4pjp8vfv78mdlkxfmcasg78lzlnm6nslsfkci31p"))))
     (build-system python-build-system)
-    (home-page "http://msgpack.org/")
+    (home-page "https://msgpack.org/")
     (synopsis "Package to deserialize messages in MessagePack binary format")
     (description
      "MessagePack is an efficient binary serialization format.  It lets you
@@ -14762,7 +14761,7 @@ Record Format (DWARF).")
                   (string-append "libev_dll_name = \"" libev "\"")))))))))
     (inputs
      `(("libev" ,libev)))
-    (home-page "http://pythonhosted.org/pyev/")
+    (home-page "https://github.com/gabrielfalcao/pyev")
     (synopsis "Python libev interface")
     (description "Pyev provides a Python interface to libev.")
     (license license:gpl3)))
@@ -20666,7 +20665,7 @@ format.")
           (base32
             "074anvhyjgsv2iby2ql1ixfvjgmhnvcwjbdz8gk70xzkzcm1fx5q"))))
     (build-system python-build-system)
-    (home-page "http://www.joachim-bauch.de/projects/pylzma/")
+    (home-page "https://www.joachim-bauch.de/projects/pylzma/")
     (synopsis "Python bindings for the LZMA library by Igor Pavlov.")
     (description "This package provides Python bindings for the LZMA library
 by Igor Pavlov.")
