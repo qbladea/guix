@@ -1256,23 +1256,26 @@ consistent across multiple Common Lisp implementations.")
   (sbcl-package->ecl-package sbcl-trivial-features))
 
 (define-public sbcl-hu.dwim.asdf
-  (package
-    (name "sbcl-hu.dwim.asdf")
-    (version "20190521")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append "http://beta.quicklisp.org/archive/hu.dwim.asdf/"
-                           "2019-05-21/hu.dwim.asdf-" version "-darcs.tgz"))
-       (sha256
-        (base32
-         "0rsbv71vyszy8w35yjwb5h6zcmknjq223hkzir79y72qdsc6sabn"))))
-    (build-system asdf-build-system/sbcl)
-    (home-page "https://hub.darcs.net/hu.dwim/hu.dwim.asdf")
-    (synopsis "Extensions to ASDF")
-    (description "Various ASDF extensions such as attached test and
+  (let ((commit "67cdf84390e530af4303cc4bc815fdf2a5e48f59"))
+    (package
+      (name "sbcl-hu.dwim.asdf")
+      (version "20200724")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/hu-dwim/hu.dwim.asdf")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32
+           "0p81jalilkaqw832a12s35q0z6rrarxjasm1jy6h4fvyj9pf0zkx"))))
+      (build-system asdf-build-system/sbcl)
+      (home-page "https://hub.darcs.net/hu.dwim/hu.dwim.asdf")
+      (synopsis "Extensions to ASDF")
+      (description "Various ASDF extensions such as attached test and
 documentation system, explicit development support, etc.")
-    (license license:public-domain)))
+      (license license:public-domain))))
 
 (define-public cl-hu.dwim.asdf
   (sbcl-package->cl-source-package sbcl-hu.dwim.asdf))
@@ -1281,26 +1284,26 @@ documentation system, explicit development support, etc.")
   (sbcl-package->ecl-package sbcl-hu.dwim.asdf))
 
 (define-public sbcl-hu.dwim.stefil
-  (let ((commit "ab6d1aa8995878a1b66d745dfd0ba021090bbcf9"))
+  (let ((commit "414902c6f575818c39a8a156b8b61b1adfa73dad"))
     (package
       (name "sbcl-hu.dwim.stefil")
-      (version (git-version "0.0.0" "1" commit))
+      (version (git-version "0.0.0" "2" commit))
       (source
        (origin
          (method git-fetch)
          (uri
           (git-reference
-           (url "https://gitlab.common-lisp.net/xcvb/hu.dwim.stefil.git")
+           (url "https://github.com/hu-dwim/hu.dwim.stefil")
            (commit commit)))
          (sha256
-          (base32 "1d8yccw65zj3zh46cbi3x6nmn1dwdb76s9d0av035077mvyirqqp"))
+          (base32 "14izmjjim590rh74swrssavdmdznj2z8vhqixy780sjhpcr5pmkc"))
          (file-name (git-file-name "hu.dwim.stefil" version))))
       (build-system asdf-build-system/sbcl)
       (native-inputs
        `(("asdf:cl-hu.dwim.asdf" ,sbcl-hu.dwim.asdf)))
       (inputs
        `(("sbcl-alexandria" ,sbcl-alexandria)))
-      (home-page "https://hub.darcs.net/hu.dwim/hu.dwim.stefil")
+      (home-page "http://dwim.hu/project/hu.dwim.stefil")
       (synopsis "Simple test framework")
       (description "Stefil is a simple test framework for Common Lisp,
 with a focus on interactive development.")
@@ -11974,27 +11977,27 @@ overview article about COP which also contains some ContextL examples:
   (sbcl-package->ecl-package sbcl-contextl))
 
 (define-public sbcl-hu.dwim.common-lisp
-  (package
-    (name "sbcl-hu.dwim.common-lisp")
-    (version "2015-07-09")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "http://beta.quicklisp.org/archive/hu.dwim.common-lisp/"
-             version "/hu.dwim.common-lisp-"
-             (string-replace-substring version "-" "")
-             "-darcs.tgz"))
-       (sha256
-        (base32 "13cxrvh55rw080mvfir7s7k735l9rcfh3khxp97qfwd5rz0gadb9"))))
-    (build-system asdf-build-system/sbcl)
-    (native-inputs
-     `(("hu.dwim.asdf" ,sbcl-hu.dwim.asdf)))
-    (home-page "http://dwim.hu/")
-    (synopsis "Redefine some standard Common Lisp names")
-    (description "This library is a redefinition of the standard Common Lisp
+  (let ((commit "90558195773383142a57a16687d5e7f4adea6418"))
+    (package
+      (name "sbcl-hu.dwim.common-lisp")
+      (version "2021-01-27")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/hu-dwim/hu.dwim.common-lisp/")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "06zkdw3scnaw0d4nmsgkv7pi7sw00dikdgfgsqmbqfbz2yrsdabk"))))
+      (build-system asdf-build-system/sbcl)
+      (native-inputs
+       `(("hu.dwim.asdf" ,sbcl-hu.dwim.asdf)))
+      (home-page "http://dwim.hu/project/hu.dwim.common-lisp")
+      (synopsis "Redefine some standard Common Lisp names")
+      (description "This library is a redefinition of the standard Common Lisp
 package that includes a number of renames and shadows. ")
-    (license license:public-domain)))
+      (license license:public-domain))))
 
 (define-public cl-hu.dwim.common-lisp
   (sbcl-package->cl-source-package sbcl-hu.dwim.common-lisp))
@@ -14645,3 +14648,35 @@ on UNIX like platforms.")
 
 (define-public cl-daemon
   (sbcl-package->cl-source-package sbcl-daemon))
+
+(define-public sbcl-file-attributes
+  (let ((commit "2c6fdb08f136d5f9a8d12626ed5b64edc2ae1bb8"))
+    (package
+      (name "sbcl-file-attributes")
+      (version (git-version "1.0.0" "1" commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/Shinmera/file-attributes/")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "1vi1h6pd04g41ay3hr76ac89isyz4x864g87r8v9xcl4gizkzwlq"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("cffi" ,sbcl-cffi)
+         ("documentation-utils" ,sbcl-documentation-utils)
+         ("trivial-features" ,sbcl-trivial-features)))
+      (home-page "https://shinmera.github.io/file-attributes/")
+      (synopsis "Access to common file attributes in Common Lisp")
+      (description
+       "This is a small OS portability library to retrieve and set file
+attributes not supported by the Common Lisp standard functions.")
+      (license license:zlib))))
+
+(define-public ecl-file-attributes
+  (sbcl-package->ecl-package sbcl-file-attributes))
+
+(define-public cl-file-attributes
+  (sbcl-package->cl-source-package sbcl-file-attributes))

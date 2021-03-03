@@ -4116,18 +4116,19 @@ tools for styling them, including a built-in real-time video preview.")
 (define-public pitivi
   ;; Pitivi switched to a non-semantic versioning scheme close before 1.0
   (let ((latest-semver "0.999.0")
-        (%version "2020.09.2"))
+        (%version "2021.01.0"))
    (package
      (name "pitivi")
      (version (string-append latest-semver "-" %version))
-     (source (origin
-               (method url-fetch)
-               (uri (string-append "mirror://gnome/sources/" name "/"
-                                   (version-major+minor %version) "/"
-                                   name "-" %version ".tar.xz"))
-               (sha256
-                (base32
-                 "0hzvv4wia4rk0kvq16y27imq2qd4q5lg3vx99hdcjdb1x3zqqfg0"))))
+     (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+              (url "https://gitlab.gnome.org/GNOME/pitivi.git")
+              (commit %version)))
+        (file-name (git-file-name name version))
+        (sha256
+         (base32 "1jics10l16ismi5br6wxi4jxz3dd4p0c0xv8l0l3nvksvda4aafi"))))
      (build-system meson-build-system)
      (inputs
       `(("glib" ,glib)

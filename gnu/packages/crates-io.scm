@@ -2290,7 +2290,7 @@ standard library.")
 (define-public rust-assert-cmd-1
   (package
     (name "rust-assert-cmd")
-    (version "1.0.1")
+    (version "1.0.3")
     (source
       (origin
         (method url-fetch)
@@ -2299,11 +2299,12 @@ standard library.")
          (string-append name "-" version ".tar.gz"))
         (sha256
          (base32
-          "1nhqr0zimizcnqfggccfznyrmvklgqwhklsh0f1yq5lwdyi9r2y8"))))
+          "15h3wfxn1q7sfcrin4z35x9hgf539f2dhkwz2mq4zswlrmc5nizj"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
-       (("rust-doc-comment" ,rust-doc-comment-0.3)
+       (("rust-bstr" ,rust-bstr-0.2)
+        ("rust-doc-comment" ,rust-doc-comment-0.3)
         ("rust-predicates" ,rust-predicates-1)
         ("rust-predicates-core" ,rust-predicates-core-1)
         ("rust-predicates-tree" ,rust-predicates-tree-1)
@@ -5326,7 +5327,7 @@ alphabet.")
 (define-public rust-bstr-0.2
   (package
     (name "rust-bstr")
-    (version "0.2.12")
+    (version "0.2.15")
     (source
      (origin
        (method url-fetch)
@@ -5335,7 +5336,7 @@ alphabet.")
         (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "0hazfback6i2k3vhhwyj8h46id3y58zxqh22pz46hj9r1zayd298"))))
+         "0gca4v6448clsssll3y787jgw542c9mw9phqdi7419g1jfnlf2x4"))))
     (build-system cargo-build-system)
     (arguments
      `(#:skip-build? #t
@@ -5424,6 +5425,31 @@ performance optimizations.  First, the use of an internal buffer amortizes
 system calls.  Second, exposing the internal buffer allows the user to work
 with data in place, which avoids another copy.")
     (license license:gpl3)))
+
+(define-public rust-bugreport-0.3
+  (package
+    (name "rust-bugreport")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "bugreport" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1n5f1nkqbc5yf9bckjap49pwnqnvdczm6x9y23caaghpgw0n4rqi"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-snailquote" ,rust-snailquote-0.3)
+        ("rust-sys-info" ,rust-sys-info-0.7))))
+    (home-page "https://github.com/sharkdp/bugreport")
+    (synopsis "Collect system and environment information for bug reports")
+    (description
+     "bugreport is a Rust library that helps application developers to
+automatically collect information about the system and the environment that
+users can send along with a bug report.")
+    (license (list license:expat license:asl2.0))))
 
 (define-public rust-build-const-0.2
   (package
@@ -6998,6 +7024,34 @@ colorization.")
     (description
      "This package provides a bunch of helpful lints to avoid common
 pitfalls in Rust.")
+    (license (list license:expat license:asl2.0))))
+
+(define-public rust-clircle-0.3
+  (package
+    (name "rust-clircle")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "clircle" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "15p36klnsgjimfswi0mjc7wsh4b662v7gbfinh56ipk3bacbv2z6"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-cfg-if" ,rust-cfg-if-1)
+        ("rust-libc" ,rust-libc-0.2)
+        ("rust-serde" ,rust-serde-1)
+        ("rust-winapi" ,rust-winapi-0.3))))
+    (home-page "https://github.com/niklasmohrin/clircle")
+    (synopsis "Detect IO circles in your CLI apps arguments.")
+    (description
+     "Clircle provides a cross-platform API to detect read or write cycles
+from your user-supplied arguments.  You can get the important identifiers of
+a file (from a path) and for all three stdio streams, if they are piped from
+or to a file as well.")
     (license (list license:expat license:asl2.0))))
 
 (define-public rust-cloudabi-0.1
@@ -16799,6 +16853,51 @@ of gzip files based on the gzip header implementation in the @code{flate2} crate
     (description
      "Half-precision floating point f16 type for Rust implementing the
 IEEE 754-2008 binary16 type.")
+    (license (list license:expat license:asl2.0))))
+
+(define-public rust-bat-0.17
+  (package
+    (name "rust-bat")
+    (version "0.17.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "bat" version))
+       (file-name
+        (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "1ia12774prjnm3msiaja6qdpxkpyknxswqpgkmwzj0wn9nhkc7nz"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-ansi-colours" ,rust-ansi-colours-1)
+        ("rust-ansi-term" ,rust-ansi-term-0.12)
+        ("rust-atty" ,rust-atty-0.2)
+        ("rust-clap" ,rust-clap-2)
+        ("rust-clap" ,rust-clap-2)
+        ("rust-console" ,rust-console-0.13)
+        ("rust-content-inspector" ,rust-content-inspector-0.2)
+        ("rust-dirs" ,rust-dirs-3)
+        ("rust-encoding" ,rust-encoding-0.2)
+        ("rust-error-chain" ,rust-error-chain-0.12)
+        ("rust-git2" ,rust-git2-0.13)
+        ("rust-globset" ,rust-globset-0.4)
+        ("rust-lazy-static" ,rust-lazy-static-1)
+        ("rust-path-abs" ,rust-path-abs-0.5)
+        ("rust-semver" ,rust-semver-0.11)
+        ("rust-serde" ,rust-serde-1)
+        ("rust-serde-yaml" ,rust-serde-yaml-0.8)
+        ("rust-shell-words" ,rust-shell-words-1)
+        ("rust-syntect" ,rust-syntect-4)
+        ("rust-unicode-width" ,rust-unicode-width-0.1)
+        ("rust-wild" ,rust-wild-2))))
+    (home-page "https://github.com/sharkdp/bat")
+    (synopsis "@command{cat} clone with syntax highlighting and git integration")
+    (description
+     "@command{bat} is a drop-in @command{cat} replacement featuring syntax
+highlighting for a large number of languages, git integration, and automatic
+paging.")
     (license (list license:expat license:asl2.0))))
 
 (define-public rust-handlebars-2
@@ -28681,14 +28780,14 @@ dependency to expose a precomputed hash.")
 (define-public rust-predicates-1
   (package
     (name "rust-predicates")
-    (version "1.0.5")
+    (version "1.0.7")
     (source
      (origin
        (method url-fetch)
        (uri (crate-uri "predicates" version))
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "0nkkn3h3b9vigyy4adlnhi2zrxm5j0nbnqid6snwxp4h5v8ymgwn"))))
+        (base32 "1ai5qdqym11x1x55via1gq2w86ac1gj3rsjdan9wqmqsdi2k7d7f"))))
     (build-system cargo-build-system)
     (arguments
      `(#:cargo-inputs
@@ -38197,6 +38296,39 @@ control on the fields.")
     (description "This package provides a small and fast async runtime.")
     (license (list license:asl2.0 license:expat))))
 
+(define-public rust-snailquote-0.3
+  (package
+    (name "rust-snailquote")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "snailquote" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "04687yzvgk3ja0ch7k96w3v36fzvqd9ci2l5k12ijligh2fp4jzk"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-thiserror" ,rust-thiserror-1)
+        ("rust-unicode-categories" ,rust-unicode-categories-0.1))))
+    (home-page "https://github.com/euank/snailquote")
+    (synopsis "Escape and unescape strings with shell-inspired quoting")
+    (description
+     "This library provides functions to escape and unescape strings.
+
+It escapes them in a roughly ``sh'' compatible way (e.g. double quotes
+supporting backslash escapes, single quotes supporting no escapes).
+
+In addition, it provides support for common C-like ASCII escapes (like
+@samp{\\n} for newline, @samp{\\v} for vertical tab, etc.) and Rust
+string-like Unicode (via @samp{\\u@{12ff@}} style escapes).
+
+More importantly, this library also provides the ability to un-escape a given
+escaped text to recover the original string.")
+    (license license:gpl3)))
+
 (define-public rust-socket2-0.3
   (package
     (name "rust-socket2")
@@ -40017,7 +40149,7 @@ a syntax tree of Rust source code.")
 (define-public rust-syntect-4
   (package
     (name "rust-syntect")
-    (version "4.4.0")
+    (version "4.5.0")
     (source
      (origin
        (method url-fetch)
@@ -40025,7 +40157,7 @@ a syntax tree of Rust source code.")
        (file-name
         (string-append name "-" version ".tar.gz"))
        (sha256
-        (base32 "121y6rswylvbhaz8krjb9aa7h16f6ly2sdbbka1hr1dm0pgphfaf"))))
+        (base32 "1r9ij3qmq4cs83jwpk1043sai1dwdghb8lwkm34rs12d7frc5yib"))))
     (build-system cargo-build-system)
     (arguments
      `(#:tests? #f                      ;missing files
@@ -40188,6 +40320,29 @@ syntax extension expansion.")
     (synopsis "Backport of libsyntax")
     (description "This package provides a backport of libsyntax.")
     (license (list license:expat license:asl2.0))))
+
+(define-public rust-sys-info-0.7
+  (package
+    (name "rust-sys-info")
+    (version "0.7.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "sys-info" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0facyh6hswp1i7airri8ly5kl6sv5bvkkd21vs51k2b3z22bvkz5"))))
+    (build-system cargo-build-system)
+    (arguments
+     `(#:skip-build? #t
+       #:cargo-inputs
+       (("rust-cc" ,rust-cc-1)
+        ("rust-libc" ,rust-libc-0.2))))
+    (home-page "https://github.com/FillZpp/sys-info-rs")
+    (synopsis "Get system information in Rust")
+    (description
+     "This Rust crate gathers system information.")
+    (license license:expat)))
 
 (define-public rust-sysctl-0.4
   (package
@@ -45315,6 +45470,27 @@ Unicode and Internationalization Crates (UNIC) project.")
     (description
      "Implementation of the Unicode Bidirectional Algorithm.")
     (license (list license:asl2.0 license:expat))))
+
+(define-public rust-unicode-categories-0.1
+  (package
+    (name "rust-unicode-categories")
+    (version "0.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (crate-uri "unicode_categories" version))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32 "0kp1d7fryxxm7hqywbk88yb9d1avsam9sg76xh36k5qx2arj9v1r"))))
+    (build-system cargo-build-system)
+    (arguments `(#:skip-build? #t))
+    (home-page "https://github.com/swgillespie/unicode-categories")
+    (synopsis "Query Unicode category membership for chars")
+    (description
+     "unicode-categories is a simple crate that adds many extensions to the
+char type that allow for the querying if whether or not a character is
+a member of a certain category of Unicode characters.")
+    (license (list license:expat license:asl2.0))))
 
 (define-public rust-unicode-normalization-0.1
   (package

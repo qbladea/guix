@@ -97,6 +97,7 @@
 ;;; Copyright © 2021 Morgan Smith <Morgan.J.Smith@outlook.com>
 ;;; Copyright © 2020 EuAndreh <eu@euandre.org>
 ;;; Copyright © 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
+;;; Copyright © 2021 Ellis Kenyő <me@elken.dev>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -5131,8 +5132,9 @@ convert between colorspaces like sRGB, XYZ, CIEL*a*b*, CIECAM02, CAM02-UCS, etc.
        (method url-fetch)
        (uri (pypi-uri "matplotlib" version))
        (sha256
-        (base32
-         "1nmshfqh7wyg15i16hx1yiylcvzkws29ivn66n3i0wyqwcpjr3lf"))))
+        (base32 "1nmshfqh7wyg15i16hx1yiylcvzkws29ivn66n3i0wyqwcpjr3lf"))
+       (patches
+        (search-patches "python-matplotlib-run-under-wayland-gtk3.patch"))))
     (build-system python-build-system)
     (propagated-inputs ; the following packages are all needed at run time
      `(("python-cycler" ,python-cycler)
@@ -5806,13 +5808,13 @@ the OleFileIO module from PIL, the Python Image Library.")
 (define-public python-pikepdf
   (package
     (name "python-pikepdf")
-    (version "2.7.0")
+    (version "2.8.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pikepdf" version))
        (sha256
-        (base32 "0xjr9qnv6z94ka1xj57am4a64vppdrplgmm359y1za1mqnfyabyk"))))
+        (base32 "1dfc8a7gp6ib6a2gdx6fz2zvvk4yx8vr2m7b6044rk91vpyrdzvl"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #false))                ;require python-xmp-toolkit
@@ -22556,23 +22558,26 @@ networking engine for Python.")
 (define-public python-pysaml2
   (package
     (name "python-pysaml2")
-    (version "5.0.0")
+    (version "6.5.1")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "pysaml2" version))
        (sha256
         (base32
-         "1h8cmxh9cvxhrdfmkh92wg6zpxmhi2fixq1cy4hxismmaar7bsny"))))
+         "1xk2x0slz1f8cqv7vn77qx99xfd1mshhswiwrljk9m72w2m9iivd"))))
     (build-system python-build-system)
     (propagated-inputs
      `(("python-cryptography" ,python-cryptography)
        ("python-dateutil" ,python-dateutil)
        ("python-defusedxml" ,python-defusedxml)
+       ("python-importlib-resources"
+        ,python-importlib-resources)
        ("python-pyopenssl" ,python-pyopenssl)
        ("python-pytz" ,python-pytz)
        ("python-requests" ,python-requests)
-       ("python-six" ,python-six)))
+       ("python-six" ,python-six)
+       ("python-xmlschema" ,python-xmlschema)))
     (home-page "https://idpy.org")
     (synopsis "Python implementation of SAML Version 2 Standard")
     (description
@@ -23984,3 +23989,28 @@ and frame grabber interface.")
     (description
       "A screencast tool to display your keys inspired by Screenflick.")
     (license license:gpl3+)))
+
+(define-public python-jinja2-cli
+  (package
+    (name "python-jinja2-cli")
+    (version "0.7.0")
+    (source
+      (origin
+        (method url-fetch)
+        (uri (pypi-uri "jinja2-cli" version))
+        (sha256
+          (base32
+            "0vikx7v6fbvww6kfrv0k5a24jyv3ak7nindg60906pdd1m9qvkcw"))))
+    (build-system python-build-system)
+    (propagated-inputs
+      `(("python-jinja2" ,python-jinja2)))
+    (native-inputs
+      `(("python-flake8" ,python-flake8)
+        ("python-jinja2" ,python-jinja2)
+        ("python-pytest" ,python-pytest)))
+    (home-page "https://github.com/mattrobenolt/jinja2-cli")
+    (synopsis "Command-line interface to Jinja2")
+    (description
+     "This package provides a command-line interface (CLI) to the Jinja2
+template engine.")
+    (license license:bsd-3)))

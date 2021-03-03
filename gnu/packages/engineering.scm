@@ -1,7 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2015, 2016, 2017, 2018, 2019, 2020 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2015 Federico Beffa <beffa@fbengineering.ch>
-;;; Copyright © 2016, 2018, 2020 Efraim Flashner <efraim@flashner.co.il>
+;;; Copyright © 2016, 2018, 2020, 2021 Efraim Flashner <efraim@flashner.co.il>
 ;;; Copyright © 2016 David Thompson <davet@gnu.org>
 ;;; Copyright © 2016, 2017, 2018, 2019, 2021 Ludovic Courtès <ludo@gnu.org>
 ;;; Copyright © 2016, 2017, 2018 Theodoros Foradis <theodoros@foradis.org>
@@ -1217,14 +1217,14 @@ use on a given system.")
 (define-public libredwg
   (package
     (name "libredwg")
-    (version "0.12.1")
+    (version "0.12.3")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "mirror://gnu/libredwg/libredwg-"
              version ".tar.xz"))
        (sha256
-        (base32 "0a1ih91nn5rh7v8li2ljppm8iacrnv8nkdpzshbdggl5f0mm1pyy"))))
+        (base32 "1vhm3r3zr8hh0jbvv6qdykh1x14r4c1arl1qj48i4cx2dd3366mk"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags '("--disable-bindings")))
@@ -1553,7 +1553,7 @@ bootloader in Espressif ESP8266 & ESP32 series chips.")
 (define-public radare2
   (package
     (name "radare2")
-    (version "5.0.0")
+    (version "5.1.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -1561,7 +1561,7 @@ bootloader in Espressif ESP8266 & ESP32 series chips.")
                     (commit version)))
               (sha256
                (base32
-                "0aa7c27kd0l55fy5qfvxqmakp4pz6240v3hn84095qmqkzcbs420"))
+                "0hv9x31iabasj12g8f04incr1rbcdkxi3xnqn3ggp8gl4h6pf2f3"))
               (file-name (git-file-name name version))))
     (build-system gnu-build-system)
     (arguments
@@ -2393,6 +2393,21 @@ analysis and AC analysis.  The engine is designed to do true mixed-mode
 simulation.")
     (license license:gpl3+)))
 
+(define-public radare2-for-cutter
+  (package
+    (inherit radare2)
+    (name "radare2")
+    (version "5.0.0")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/radareorg/radare2")
+                    (commit version)))
+              (sha256
+               (base32
+                "0aa7c27kd0l55fy5qfvxqmakp4pz6240v3hn84095qmqkzcbs420"))
+              (file-name (git-file-name name version))))))
+
 (define-public cutter
   (package
     (name "cutter")
@@ -2428,7 +2443,9 @@ simulation.")
      `(("qtbase" ,qtbase)
        ("qtsvg" ,qtsvg)
        ("openssl" ,openssl)
-       ("radare2" ,radare2)))
+       ;; Depends on radare2 4.5.1 officially, builds and works fine with
+       ;; radare2 5.0.0 but fails to build with radare2 5.1.1.
+       ("radare2" ,radare2-for-cutter)))
     (home-page "https://github.com/radareorg/cutter")
     (synopsis "GUI for radare2 reverse engineering framework")
     (description "Cutter is a GUI for radare2 reverse engineering framework.

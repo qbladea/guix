@@ -2909,7 +2909,7 @@ and stored in memory.")
 (define-public emacs-dash
   (package
     (name "emacs-dash")
-    (version "2.18.0")
+    (version "2.18.1")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -2918,7 +2918,7 @@ and stored in memory.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "190v264wj5cdm109ippzx2vc64hvfzmh5nbx4f2w09hn0hwfqipm"))))
+                "1cvfd36vv0wqb16bnqqxh99hy2yks0j2i4l8qjkg3bxjgk7ldmva"))))
     (build-system emacs-build-system)
     (arguments `(#:tests? #t))
     (home-page "https://github.com/magnars/dash.el")
@@ -7259,7 +7259,7 @@ style, or as multiple word prefixes.")
 (define-public emacs-consult
   (package
     (name "emacs-consult")
-    (version "0.5")
+    (version "0.6")
     (source
      (origin
        (method git-fetch)
@@ -7267,7 +7267,7 @@ style, or as multiple word prefixes.")
              (url "https://github.com/minad/consult")
              (commit version)))
        (sha256
-        (base32 "0840hm6nk6yzz8yp8xqzdrycf7wwklxaxp10q0d30wpxwcrsw5c2"))
+        (base32 "09n3q3dyi83s4fk4z7csnjicbxd69ws4zp4371c1lbxcvvq2fdnd"))
        (file-name (git-file-name name version))))
     (build-system emacs-build-system)
     (propagated-inputs
@@ -12356,14 +12356,14 @@ shuangpin, wubi and cangjie.")
 (define-public emacs-posframe
   (package
     (name "emacs-posframe")
-    (version "0.8.5")
+    (version "0.8.6")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://elpa.gnu.org/packages/"
                            "posframe-" version ".tar"))
        (sha256
-        (base32 "0rls0rsj9clx4wd0gbdi5jzwyslparlf7phib649637gq6gs90ds"))))
+        (base32 "1f2f2kh888l0sr9jawib731gpsmg0kj3kkasic5zad75lj3wagpi"))))
     (build-system emacs-build-system)
     ;; emacs-minimal does not include the function font-info.
     (arguments
