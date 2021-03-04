@@ -52,6 +52,7 @@
   #:use-module (gnu packages glib)
   #:use-module (gnu packages gnome)
   #:use-module (gnu packages gtk)
+  #:use-module (gnu packages guile)
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages llvm)
@@ -103,6 +104,71 @@
                               name "-v" (version-major+minor+point version)
                               ".tar.gz"))
           (sha256 (base32 hash))))
+
+(define-public camlboot
+  (let ((commit "506280c6e0813e0e794988151a8e46be55373ebc")
+        (revision "0"))
+    (package
+      (name "camlboot")
+      (version (git-version "0.0.0" revision commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/Ekdohibs/camlboot")
+                      (commit commit)
+                      (recursive? #t)))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32
+                  "0vimxl4karw9ih3npyc5rhxg85cjh6fqjbq3dzj7j2iymlhwfbkv"))
+                (modules '((guix build utils)))
+                (snippet
+                 `(begin
+                    ;; Remove bootstrap binaries and pre-generated source files,
+                    ;; to ensure we actually bootstrap properly.
+                    (for-each delete-file (find-files "ocaml-src" "^.depend$"))
+                    (delete-file "ocaml-src/boot/ocamlc")
+                    (delete-file "ocaml-src/boot/ocamllex")
+                    ;; Ensure writable
+                    (for-each
+                     (lambda (file)
+                       (chmod file (logior (stat:mode (stat file)) #o200)))
+                     (find-files "." "."))))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:make-flags (list "_boot/ocamlc") ; build target
+         #:tests? #f                        ; no tests
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (add-before 'build 'no-autocompile
+             (lambda _
+               ;; prevent a guile warning
+               (setenv "GUILE_AUTO_COMPILE" "0")))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin")))
+                 (mkdir-p bin)
+                 (install-file "_boot/ocamlc" bin)
+                 (rename-file "miniml/interp/lex.byte" "ocamllex")
+                 (install-file "ocamllex" bin)))))))
+      (native-inputs
+       `(("guile" ,guile-3.0)))
+      (home-page "https://github.com/Ekdohibs/camlboot")
+      (synopsis "OCaml souce bootstrap")
+      (description "OCaml is written in OCaml.  Its sources contain a pre-compiled
+bytecode version of @command{ocamlc} and @command{ocamllex} that are used to
+build the next version of the compiler.  Camlboot implements a bootstrap for
+the OCaml compiler and provides a bootstrapped equivalent to these files.
+
+It contains a compiler for a small subset of OCaml written in Guile Scheme,
+an interpreter for OCaml written in that subset and a manually-written lexer
+for OCaml.  These elements eliminate the need for the binary bootstrap in
+OCaml and can effectively bootstrap OCaml 4.07.
+
+This package produces a native @command{ocamlc} and a bytecode @command{ocamllex}.")
+      (license license:expat))))
 
 (define-public ocaml-4.11
   (package
@@ -188,7 +254,11 @@ functional, imperative and object-oriented styles of programming.")
                (base32
                 "1v3z5ar326f3hzvpfljg4xj8b9lmbrl53fn57yih1bkbx3gr3yzj"))))))
 
-(define-public ocaml-4.07
+;; This package is a bootstrap package for ocaml-4.07. It builds from camlboot,
+;; using the upstream sources for ocaml 4.07. It installs a bytecode ocamllex
+;; and ocamlc, the bytecode interpreter ocamlrun, and generated .depend files
+;; that we otherwise remove for bootstrap purposes.
+(define ocaml-4.07-boot
   (package
     (inherit ocaml-4.09)
     (version "4.07.1")
@@ -200,11 +270,150 @@ functional, imperative and object-oriented styles of programming.")
                     "/ocaml-" version ".tar.xz"))
               (sha256
                (base32
-                "1f07hgj5k45cylj1q3k5mk8yi02cwzx849b1fwnwia8xlcfqpr6z"))))
+                "1f07hgj5k45cylj1q3k5mk8yi02cwzx849b1fwnwia8xlcfqpr6z"))
+              (modules '((guix build utils)))
+              (snippet
+               `(begin
+                  ;; Remove bootstrap binaries and pre-generated source files,
+                  ;; to ensure we actually bootstrap properly.
+                  (for-each delete-file (find-files "." "^.depend$"))
+                  (delete-file "boot/ocamlc")
+                  (delete-file "boot/ocamllex")))))
+    (arguments
+     `(#:tests? #f
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'copy-bootstrap
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let ((camlboot (assoc-ref inputs "camlboot")))
+               (copy-file (string-append camlboot "/bin/ocamllex") "boot/ocamllex")
+               (copy-file (string-append camlboot "/bin/ocamlc") "boot/ocamlc")
+               (chmod "boot/ocamllex" #o755)
+               (chmod "boot/ocamlc" #o755))))
+         (replace 'configure
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (mandir (string-append out "/share/man")))
+               (invoke "./configure"
+                       "--prefix" out
+                       "--mandir" mandir))))
+         (replace 'build
+           (lambda* (#:key parallel-build? #:allow-other-keys)
+             (define* (make . args)
+               (apply invoke "make"
+                      (append (if parallel-build?
+                                  `("-j" ,(number->string (parallel-job-count)))
+                                  '())
+                              args)))
+             ;; create empty .depend files because they are included by various
+             ;; Makefiles, and they have no rule to generate them.
+             (invoke "touch" ".depend" "stdlib/.depend" "byterun/.depend"
+                     "tools/.depend"  "lex/.depend" "asmrun/.depend"
+                     "debugger/.depend" "ocamltest/.depend" "ocamldoc/.depend"
+                     "ocamldoc/stdlib_non_prefixed/.depend"
+                     "otherlibs/bigarray/.depend" "otherlibs/graph/.depend"
+                     "otherlibs/raw_spacetime_lib/.depend" "otherlibs/str/.depend"
+                     "otherlibs/systhreads/.depend" "otherlibs/threads/.depend"
+                     "otherlibs/unix/.depend" "otherlibs/win32unix/.depend")
+             ;; We cannot build ocamldep until we have created all the .depend
+             ;; files, so replace it with ocamlc -depend.
+             (substitute* "tools/Makefile"
+               (("\\$\\(CAMLRUN\\) ./ocamldep") "../boot/ocamlc -depend"))
+             (substitute* '("otherlibs/graph/Makefile"
+                            "otherlibs/systhreads/Makefile"
+                            "otherlibs/threads/Makefile"
+                            "otherlibs/unix/Makefile")
+               (("\\$\\(CAMLRUN\\) ../../tools/ocamldep")
+                "../../boot/ocamlc -depend"))
+             (substitute* '("otherlibs/bigarray/Makefile"
+                            "otherlibs/raw_spacetime_lib/Makefile"
+                            "otherlibs/str/Makefile"
+                            "otherlibs/win32unix/Makefile")
+               (("\\$\\(CAMLRUN\\) \\$\\(ROOTDIR\\)/tools/ocamldep")
+                "../../boot/ocamlc -depend"))
+             ;; Ensure we copy needed file, so we can generate a proper .depend
+             (substitute* "ocamldoc/Makefile"
+               (("include Makefile.unprefix")
+                "include Makefile.unprefix
+depend: $(STDLIB_MLIS) $(STDLIB_DEPS)"))
+             ;; Generate required tools for `alldepend'
+             (make "-C" "byterun" "depend")
+             (make "-C" "byterun" "all")
+             (copy-file "byterun/ocamlrun" "boot/ocamlrun")
+             (make "ocamlyacc")
+             (copy-file "yacc/ocamlyacc" "boot/ocamlyacc")
+             (make "-C" "stdlib" "sys.ml")
+             (make "-C" "stdlib" "CAMLDEP=../boot/ocamlc -depend" "depend")
+             ;; Build and copy files later used by `tools'
+             (make "-C" "stdlib" "COMPILER="
+                   "CAMLC=../boot/ocamlc -use-prims ../byterun/primitives"
+                   "all")
+             (for-each
+              (lambda (file)
+                (copy-file file (string-append "boot/" (basename file))))
+              (cons* "stdlib/stdlib.cma" "stdlib/std_exit.cmo" "stdlib/camlheader"
+                     (find-files "stdlib" ".*.cmi$")))
+             (symlink "../byterun/libcamlrun.a" "boot/libcamlrun.a")
+             ;; required for ocamldoc/stdlib_non_prefixed
+             (make "parsing/parser.mli")
+             ;; required for dependencies
+             (make "-C" "tools"
+                   "CAMLC=../boot/ocamlc -nostdlib -I ../boot -use-prims ../byterun/primitives -I .."
+                   "make_opcodes" "cvt_emit")
+             ;; generate all remaining .depend files
+             (make "alldepend"
+                   (string-append "ocamllex=" (getcwd) "/boot/ocamlrun "
+                                  (getcwd) "/boot/ocamllex")
+                   (string-append "CAMLDEP=" (getcwd) "/boot/ocamlc -depend")
+                   (string-append "OCAMLDEP=" (getcwd) "/boot/ocamlc -depend")
+                   (string-append "ocamldep=" (getcwd) "/boot/ocamlc -depend"))
+             ;; Build ocamllex
+             (make "CAMLC=boot/ocamlc -nostdlib -I boot -use-prims byterun/primitives"
+                   "ocamlc")
+             ;; Build ocamlc
+             (make "-C" "lex"
+                   "CAMLC=../boot/ocamlc -strict-sequence -nostdlib -I ../boot -use-prims ../byterun/primitives"
+                   "all")))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin"))
+                    (depends (string-append out "/share/depends")))
+               (mkdir-p bin)
+               (mkdir-p depends)
+               (install-file "ocamlc" bin)
+               (install-file "lex/ocamllex" bin)
+               (for-each
+                (lambda (file)
+                  (let ((dir (string-append depends "/" (dirname file))))
+                    (mkdir-p dir)
+                    (install-file file dir)))
+                (find-files "." "^\\.depend$"))))))))
+    (native-inputs
+     `(("camlboot" ,camlboot)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)))))
+
+(define-public ocaml-4.07
+  (package
+    (inherit ocaml-4.07-boot)
     (arguments
       (substitute-keyword-arguments (package-arguments ocaml-4.09)
         ((#:phases phases)
          `(modify-phases ,phases
+            (add-before 'configure 'copy-bootstrap
+              (lambda* (#:key inputs #:allow-other-keys)
+                (let ((ocaml (assoc-ref inputs "ocaml")))
+                  (copy-file (string-append ocaml "/bin/ocamllex") "boot/ocamllex")
+                  (copy-file (string-append ocaml "/bin/ocamlc") "boot/ocamlc")
+                  (chmod "boot/ocamllex" #o755)
+                  (chmod "boot/ocamlc" #o755)
+                  (let ((rootdir (getcwd)))
+                    (with-directory-excursion (string-append ocaml "/share/depends")
+                      (for-each
+                        (lambda (file)
+                          (copy-file file (string-append rootdir "/" file)))
+                        (find-files "." ".")))))))
             (replace 'configure
               (lambda* (#:key outputs #:allow-other-keys)
                 (let* ((out (assoc-ref outputs "out"))
@@ -213,7 +422,11 @@ functional, imperative and object-oriented styles of programming.")
                   ;; --prefix=<PREFIX> syntax (with equals sign).
                   (invoke "./configure"
                           "--prefix" out
-                          "--mandir" mandir))))))))))
+                          "--mandir" mandir))))))))
+    (native-inputs
+     `(("ocaml" ,ocaml-4.07-boot)
+       ("perl" ,perl)
+       ("pkg-config" ,pkg-config)))))
 
 (define-public ocaml ocaml-4.11)
 

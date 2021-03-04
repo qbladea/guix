@@ -1927,7 +1927,7 @@ users to select LV2 plugins and run them with jalv.")
 (define-public synthv1
   (package
     (name "synthv1")
-    (version "0.9.19")
+    (version "0.9.20")
     (source (origin
               (method url-fetch)
               (uri
@@ -1935,7 +1935,7 @@ users to select LV2 plugins and run them with jalv.")
                               "/synthv1-" version ".tar.gz"))
               (sha256
                (base32
-                "17sizhav01mn07gi812n8wqdcr85290zqg609s18cww2b95dy6mn"))))
+                "1g2i79gkl1j7i49djz6igkbvdmfwxhcg6kx97n63bcqcvvy03rqz"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -1959,7 +1959,7 @@ oscillators and stereo effects.")
 (define-public drumkv1
   (package
     (name "drumkv1")
-    (version "0.9.19")
+    (version "0.9.20")
     (source (origin
               (method url-fetch)
               (uri
@@ -1967,7 +1967,7 @@ oscillators and stereo effects.")
                               "/drumkv1-" version ".tar.gz"))
               (sha256
                (base32
-                "0w9frc634yg2m0yc84szdf6x7l4f19pcviqpg065a1kdixf98qrf"))))
+                "0y6njh1n0yai4g9dhg24hwc9khba44l4n5xizqcs6i4q7lyr9z48"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -1992,7 +1992,7 @@ effects.")
 (define-public samplv1
   (package
     (name "samplv1")
-    (version "0.9.19")
+    (version "0.9.20")
     (source (origin
               (method url-fetch)
               (uri
@@ -2000,7 +2000,7 @@ effects.")
                               "/samplv1-" version ".tar.gz"))
               (sha256
                (base32
-                "1fwvk83sfvp1k6qyqv1a7a1l8sbm6azcldaiiqa3ls1vhl4m5wv4"))))
+                "06nni00dgn8fvbyam1v44aq4yfns1vf7hw1mwmwzv2vxapdbpngn"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -2025,7 +2025,7 @@ effects.")
 (define-public padthv1
   (package
     (name "padthv1")
-    (version "0.9.19")
+    (version "0.9.20")
     (source (origin
               (method url-fetch)
               (uri
@@ -2033,7 +2033,7 @@ effects.")
                               "/padthv1-" version ".tar.gz"))
               (sha256
                (base32
-                "06fkrc4xxzr3sa3c76lnkcm4q9k0xl5993bn60la0ja4sz2kp6r7"))))
+                "1x3qjkby29xd7y0dg22ms19c8h8drqf55m9nxz6jlc58sfha2ss0"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f))                    ; there are no tests
@@ -4574,14 +4574,14 @@ audio samples and various soft sythesizers.  It can receive input from a MIDI ke
 (define-public liquidsfz
   (package
     (name "liquidsfz")
-    (version "0.2.2")
+    (version "0.2.3")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://space.twc.de/~stefan/liquidsfz/"
                                   "liquidsfz-" version ".tar.bz2"))
               (sha256
                (base32
-                "011m839vjb8gmiv1vzc0d7xz2q2jiwk4v0j9paqyx3lm61czvy93"))))
+                "1hb4hc3gkvjfbx0ls6wxzavhv2hf9ix11cz8yvndyb6q9lwkimwl"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags '("--enable-shared")))

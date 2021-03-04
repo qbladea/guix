@@ -1978,7 +1978,7 @@ a user-configurable period of time.")
 (define-public screen-message
   (package
     (name "screen-message")
-    (version "0.25")
+    (version "0.26")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -1986,7 +1986,7 @@ a user-configurable period of time.")
                     "/screen-message-" version ".tar.gz"))
               (sha256
                (base32
-                "1lw955qq5pq010lzmaf32ylj2iprgsri9ih4hx672c3f794ilab0"))))
+                "0dwgm4z3dfk6xz41w8xiv0hmnwr74gf3ykb91b090hc4ffwsf4mw"))))
     (build-system gnu-build-system)
     (inputs `(("gtk3" ,gtk+)
               ("gdk" ,gdk-pixbuf)
@@ -2662,7 +2662,7 @@ using @command{dmenu}.")
 (define-public wofi
   (package
     (name "wofi")
-    (version "1.2.3")
+    (version "1.2.4")
     (source (origin
               (method hg-fetch)
               (uri (hg-reference
@@ -2671,7 +2671,7 @@ using @command{dmenu}.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0glpb2gf5n78s01z3rn614ak8ibxhfr824gy6xlljbxclgds264i"))))
+                "1bnf078fg1kwslzwm1mjxwcqqq3bhk1dzymwfw9gk3brqbxrl75c"))))
     (build-system meson-build-system)
     (arguments
      `(#:glib-or-gtk? #t))

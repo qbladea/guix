@@ -23,6 +23,8 @@
 ;;; Copyright © 2020, 2021 Sharlatan Hellseher <sharlatanus@gmail.com>
 ;;; Copyright © 2021 Aurora <rind38@disroot.org>
 ;;; Copyright © 2021 Matthew Kraai <kraai@ftbfs.org>
+;;; Copyright © 2021 André A. Gomes <andremegafone@gmail.com>
+;;; Copyright © 2021 Cage <cage-dev@twistfold.it>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -941,10 +943,10 @@ antialiased TrueType font rendering using CLX and XRender extension.")
   (sbcl-package->ecl-package sbcl-clx-truetype))
 
 (define-public sbcl-slynk
-  (let ((commit "0f46f91a9542599d62c0c332b39636b2941ea372"))
+  (let ((commit "fb84318c08f59bc786e047006fc81e2ace568309"))
     (package
       (name "sbcl-slynk")
-      (version (git-version "1.0.43" "3" commit))
+      (version (git-version "1.0.43" "4" commit))
       (source
        (origin
          (method git-fetch)
@@ -953,7 +955,7 @@ antialiased TrueType font rendering using CLX and XRender extension.")
            (url "https://github.com/joaotavora/sly")
            (commit commit)))
          (sha256
-          (base32 "0p3j0zylacy6vms8ngis2hx2351xnwfzsw3zy043q6vmqd14wrf1"))
+          (base32 "0z123k9ak7yjb9bxb5qx48f33ma8066rhkqh8xc14z7shk75jybj"))
          (file-name (git-file-name "slynk" version))))
       (build-system asdf-build-system/sbcl)
       (outputs '("out" "image"))
@@ -14650,10 +14652,10 @@ on UNIX like platforms.")
   (sbcl-package->cl-source-package sbcl-daemon))
 
 (define-public sbcl-file-attributes
-  (let ((commit "2c6fdb08f136d5f9a8d12626ed5b64edc2ae1bb8"))
+  (let ((commit "bbde396438f37d676de9775239115410bec4da2d"))
     (package
       (name "sbcl-file-attributes")
-      (version (git-version "1.0.0" "1" commit))
+      (version (git-version "1.0.0" "2" commit))
       (source
        (origin
          (method git-fetch)
@@ -14662,7 +14664,7 @@ on UNIX like platforms.")
                (commit commit)))
          (file-name (git-file-name name version))
          (sha256
-          (base32 "1vi1h6pd04g41ay3hr76ac89isyz4x864g87r8v9xcl4gizkzwlq"))))
+          (base32 "0n8q818ry2shggjfhp8gjby8v5mla9pg97c5g19pcglpnwim7a74"))))
       (build-system asdf-build-system/sbcl)
       (inputs
        `(("cffi" ,sbcl-cffi)
@@ -14680,3 +14682,104 @@ attributes not supported by the Common Lisp standard functions.")
 
 (define-public cl-file-attributes
   (sbcl-package->cl-source-package sbcl-file-attributes))
+
+(define-public sbcl-cl-difflib
+  (let ((commit "98eb335c693f1881584b83ca7be4a0fe05355c4e")
+        (revision "0"))
+    (package
+      (name "sbcl-cl-difflib")
+      (version (git-version "0.2" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/wiseman/cl-difflib")
+               (commit commit)))
+         (file-name
+          (git-file-name name version))
+         (sha256
+          (base32 "08if0abhqg191xcz9s7xv8faqq51nswzp8hw423fkqjzr24pmq48"))))
+      (build-system asdf-build-system/sbcl)
+      ;; Due to the age of this library tests use some deprecated
+      ;; functionality and keep failing.
+      (arguments
+       '(#:tests? #f
+         #:asd-files '("cl-difflib.asd")))
+      (home-page "https://github.com/wiseman/cl-difflib")
+      (synopsis "Compute differences between pairs of sequences")
+      (description
+       "A Common Lisp library for computing differences between
+sequences based on the Python difflib module.")
+      (license license:expat))))
+
+(define-public ecl-cl-difflib
+  (sbcl-package->ecl-package sbcl-cl-difflib))
+
+(define-public cl-difflib
+  (sbcl-package->cl-source-package sbcl-cl-difflib))
+
+(define-public sbcl-cl-html-diff
+  (let ((commit "5a0b39d1c524278d6f60851d7786bb2585614310")
+        (revision "0"))
+    (package
+      (name "sbcl-cl-html-diff")
+      (version (git-version "0.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/wiseman/cl-html-diff")
+               (commit commit)))
+         (file-name
+          (git-file-name name version))
+         (sha256
+          (base32 "1varnijivzd4jpimn1cz8p5ks713zzha5cgl4vmb0xr8ahravwzb"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("cl-difflib" ,sbcl-cl-difflib)))
+      (home-page "https://github.com/wiseman/cl-html-diff")
+      (synopsis "Generate a human-readable diff of two HTML documents")
+      (description
+       "A Common Lisp library for generating a human-readable diff of two
+HTML documents.")
+      (license license:expat))))
+
+(define-public ecl-cl-html-diff
+  (sbcl-package->ecl-package sbcl-cl-html-diff))
+
+(define-public cl-html-diff
+  (sbcl-package->cl-source-package sbcl-cl-html-diff))
+
+(define-public sbcl-tooter
+  (let ((commit "b8d4b245b1d946bc9da6f51a3d8c2dc43e4d3868")
+        (revision "1"))
+    (package
+      (name "sbcl-tooter")
+      (version (git-version "1.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/Shinmera/tooter")
+               (commit commit)))
+         (file-name (git-file-name "tooter" version))
+         (sha256
+          (base32 "0g40dlis4dbw4p3zxz3scx27b9zm8zlzihywapf5zqrdqfx5hpq9"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("sbcl-cl-ppcre" ,sbcl-cl-ppcre)
+         ("sbcl-documentation-utils" ,sbcl-documentation-utils)
+         ("sbcl-drakma" ,sbcl-drakma)
+         ("sbcl-yason" ,sbcl-yason)))
+      (synopsis "Common Lisp client library for Mastodon instances")
+      (description
+       "This is a Common Lisp library implementing the full v1 REST API
+protocol for Mastodon.")
+      (home-page "https://shinmera.github.io/tooter/")
+      (license license:zlib))))
+
+(define-public ecl-tooter
+  (sbcl-package->ecl-package sbcl-tooter))
+
+(define-public cl-tooter
+  (sbcl-package->cl-source-package sbcl-tooter))

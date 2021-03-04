@@ -813,7 +813,7 @@ useful for making transparent firewalls.")
 (define-public socat
   (package
     (name "socat")
-    (version "1.7.3.4")
+    (version "1.7.4.1")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -821,7 +821,7 @@ useful for making transparent firewalls.")
                     version ".tar.bz2"))
               (sha256
                (base32
-                "1z7xgnwiqpcv1j6aghhj9nqbx7cg3gpc4n9j7vi9hm7nhv5788wp"))))
+                "1sbmqqvni3ss9wyay6ik5v81kxffkra80mh4ypgj74g82iba5b1z"))))
     (build-system gnu-build-system)
     (arguments '(#:tests? #f))          ; no test suite
     (inputs `(("openssl" ,openssl)))
@@ -945,7 +945,7 @@ more.")
 (define-public czmq
   (package
     (name "czmq")
-    (version "4.2.0")
+    (version "4.2.1")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -954,7 +954,7 @@ more.")
                     "/" name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1szciz62sk3fm4ga9qjpxz0n0lazvphm32km95bq92ncng12kayg"))))
+                "0fdclvd7fcwixp0k57ccv7d159v3slasyhvndxfn8n1a9hh0lwjx"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags '("--enable-drafts")
@@ -1312,7 +1312,7 @@ and up to 1 Mbit/s downstream.")
 (define-public whois
   (package
     (name "whois")
-    (version "5.5.7")
+    (version "5.5.8")
     (source
      (origin
        (method git-fetch)
@@ -1321,7 +1321,7 @@ and up to 1 Mbit/s downstream.")
               (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1w3d0ffl0ng1m4i10k968kk4xicviq24w5vwl6d8dhja61d7yd2r"))))
+        (base32 "12lhl2q1pa1qkbv0l1cpy8hn4wh5i99bqc68rlm4f7jyqlj2l82r"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no test suite
@@ -1630,14 +1630,14 @@ TCP connection, TLS handshake and so on) in the terminal.")
 (define-public squid
   (package
     (name "squid")
-    (version "4.13")
+    (version "4.14")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "http://www.squid-cache.org/Versions/v4/squid-"
                            version ".tar.xz"))
        (sha256
-        (base32 "1q1ywpic6s7dfjj3cwzcfgscc4zq0aih462gyas7j1z683ss14b8"))))
+        (base32 "1z4zf98q24ps19fq840n0hwh6z1la65rf061kcapr29lcjm7s2gi"))))
     (build-system gnu-build-system)
     (arguments
      '(#:configure-flags
@@ -2903,7 +2903,7 @@ remotely.")
 (define-public zyre
   (package
     (name "zyre")
-    (version "2.0.0")
+    (version "2.0.1")
     (source (origin
               (method url-fetch)
               (uri
@@ -2911,7 +2911,7 @@ remotely.")
                               version "/" name "-" version ".tar.gz"))
               (sha256
                (base32
-                "0qz2730bng1gs9xbqxhkw88qbsmszgmmrl2g9k6xrg6r3bqvsdc7"))))
+                "13596507ma1474cjqzxym5jlvcshvw7sjhw80rdz788gyz6kz90b"))))
     (build-system gnu-build-system)
     (inputs `(("zeromq" ,zeromq)
               ("czmq" ,czmq)

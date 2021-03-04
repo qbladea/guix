@@ -410,7 +410,7 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
                              (%upstream-linux-source version hash)
                              deblob-scripts-4.19)))
 
-(define-public linux-libre-4.14-version "4.14.222")
+(define-public linux-libre-4.14-version "4.14.223")
 (define deblob-scripts-4.14
   (linux-libre-deblob-scripts
    linux-libre-4.14-version
@@ -418,12 +418,12 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "1qij18inijj6c3ma8hv98yjagnzxdxyn134da9fd23ky8q6hbvky")))
 (define-public linux-libre-4.14-pristine-source
   (let ((version linux-libre-4.14-version)
-        (hash (base32 "0i67va37ca3avalgh2ab797c6w2v0h41y1mh4fql73lz7nq84h3k")))
+        (hash (base32 "04zn74k1b7hfnfdi9fgifrn4jz0j00d4ymp8vhgbrdj75jrmynhs")))
     (make-linux-libre-source version
                              (%upstream-linux-source version hash)
                              deblob-scripts-4.14)))
 
-(define-public linux-libre-4.9-version "4.9.258")
+(define-public linux-libre-4.9-version "4.9.259")
 (define deblob-scripts-4.9
   (linux-libre-deblob-scripts
    linux-libre-4.9-version
@@ -431,12 +431,12 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "0fxajshb75siq39lj5h8xvhdj8lcmddkslwlyj65rhlwk6g2r4b2")))
 (define-public linux-libre-4.9-pristine-source
   (let ((version linux-libre-4.9-version)
-        (hash (base32 "1kf8wlcf8gkpnglx1ggn1c3xfz4yx9995yb919mvin7nd7hghy6l")))
+        (hash (base32 "1r71vgbw17srsjdmsdr1jra7v412mhiysi4kpa77y29r2h3zk5r3")))
     (make-linux-libre-source version
                              (%upstream-linux-source version hash)
                              deblob-scripts-4.9)))
 
-(define-public linux-libre-4.4-version "4.4.258")
+(define-public linux-libre-4.4-version "4.4.259")
 (define deblob-scripts-4.4
   (linux-libre-deblob-scripts
    linux-libre-4.4-version
@@ -444,7 +444,7 @@ corresponding UPSTREAM-SOURCE (an origin), using the given DEBLOB-SCRIPTS."
    (base32 "0hhin1jpfkd6nwrb6xqxjzl3hdxy4pn8a15hy2d3d83yw6pflbsf")))
 (define-public linux-libre-4.4-pristine-source
   (let ((version linux-libre-4.4-version)
-        (hash (base32 "0rb6sww4yd2m4a4v12klx29nyxb66f55ziv8xcihgf2iw4d62h8c")))
+        (hash (base32 "18mw4xgza2szgz9x7lq3nzbf48cfkg2g4rli5p5ix4w3ni34h0sr")))
     (make-linux-libre-source version
                              (%upstream-linux-source version hash)
                              deblob-scripts-4.4)))
@@ -1458,14 +1458,14 @@ at login.  Local and dynamic reconfiguration are its key features.")
 (define-public powerstat
   (package
     (name "powerstat")
-    (version "0.02.22")
+    (version "0.02.25")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://kernel.ubuntu.com/~cking/tarballs/"
                            "powerstat/powerstat-" version ".tar.gz"))
        (sha256
-        (base32 "0r355b9syqa2nhfy8ksvxyy5d58v0isf983842js091s6liy0x7g"))))
+        (base32 "0dmixbxm4qd08ds26i0wvxwyy8nrjzfjj2q9ylx35564g4wh58qb"))))
     (build-system gnu-build-system)
     (arguments
      `(#:make-flags
@@ -5079,7 +5079,7 @@ blocks and random block placement.")
 (define-public compsize
   (package
     (name "compsize")
-    (version "1.3")
+    (version "1.5")
     (home-page "https://github.com/kilobyte/compsize")
     (source (origin
               (method git-fetch)
@@ -5087,14 +5087,15 @@ blocks and random block placement.")
                     (url home-page)
                     (commit (string-append "v" version))))
               (sha256
-               (base32 "1c69whla844nwis30jxbj00zkpiw3ccndhkmzjii8av5358mjn43"))
+               (base32 "0vqnrwgpv6pc1yjl0g4gl71xyl6v0xl3pyqjanjpwps73c53azir"))
               (file-name (git-file-name name version))))
     (build-system gnu-build-system)
     (inputs
      `(("btrfs-progs" ,btrfs-progs)))
     (arguments
      `(#:tests? #f                      ; No tests.
-       #:make-flags (list "CC=gcc")
+       #:make-flags
+       (list (string-append "CC=" ,(cc-for-target)))
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)
@@ -6168,14 +6169,14 @@ running boot option, and more.")
 (define-public sysstat
   (package
     (name "sysstat")
-    (version "12.4.2")
+    (version "12.4.3")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "http://pagesperso-orange.fr/sebastien.godard/"
                            "sysstat-" version ".tar.xz"))
        (sha256
-        (base32 "13q1zb7ip389b35rcgy2ngf1z9zhdmdwx5bv9lwfnl1xi30v409p"))))
+        (base32 "1z8bdyj92q0capbrdscwzb51bqh54ng15gpvmjmvrb2syhqj8hxf"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f                      ; no test suite.
@@ -7463,7 +7464,7 @@ of Linux application development.")
   (package
     (inherit pipewire)
     (name "pipewire")
-    (version "0.3.18")
+    (version "0.3.22")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -7472,7 +7473,7 @@ of Linux application development.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1yghhgs18yqrnd0b2r75l5n8yng962r1wszbsi01v6i9zib3jc9g"))))
+                "1ywna5f5v8s79ivrqfwwc8vy6sn3a2zvfwqyalf1fypj5d90w8g9"))))
     (arguments
      '(#:configure-flags
        (list (string-append "-Dudevrulesdir=" (assoc-ref %outputs "out")
@@ -7811,13 +7812,14 @@ receiving.  It is dedicated to the PL011 UART of the Raspberry Pi.")
 (define-public ipset
   (package
     (name "ipset")
-    (version "7.10")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://ipset.netfilter.org/ipset-" version ".tar.bz2"))
-              (sha256
-               (base32
-                "1xlwgsy06jx0bckc5r2wvyys8jfpc5klfqqqshmk5zp28fx0cjdj"))))
+    (version "7.11")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://ipset.netfilter.org/"
+                           "ipset-" version ".tar.bz2"))
+       (sha256
+        (base32 "0zdzp9fhpp6hmirzxy7w27fb9xx9lxd2ykxbn8by7ngi62nvll9i"))))
     (build-system gnu-build-system)
     (inputs
      `(("libmnl" ,libmnl)))
