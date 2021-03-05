@@ -73,6 +73,7 @@
   #:use-module (gnu packages lisp)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages mp3)
+  #:use-module (gnu packages ncurses)
   #:use-module (gnu packages networking)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages python)
@@ -1674,28 +1675,28 @@ that of Eos has not.  Thus, Eos is now deprecated in favor of FiveAM.")
   (sbcl-package->ecl-package sbcl-eos))
 
 (define-public sbcl-esrap
-  (let ((commit "133be8b05c2aae48696fe5b739eea2fa573fa48d"))
+  (let ((commit "da6b24fb18bdb8e7e177bcf2820cdaf0b560deb6")
+        (revision "1"))
     (package
       (name "sbcl-esrap")
-      (version (git-version "0.0.0" "1" commit))
+      (version (git-version "0.18" revision commit))
       (source
        (origin
          (method git-fetch)
          (uri (git-reference
-               (url "https://github.com/nikodemus/esrap")
+               (url "https://github.com/scymtym/esrap")
                (commit commit)))
          (sha256
-          (base32
-           "02d5clihsdryhf7pix8c5di2571fdsffh75d40fkzhws90r5mksl"))
+          (base32 "12vf3bxwzf8icnf6rw1xalvm7493cfbb46r2vlhc09s59djkf39q"))
          (file-name (git-file-name "esrap" version))))
       (build-system asdf-build-system/sbcl)
       (native-inputs
-       `(("eos" ,sbcl-eos)))            ;For testing only.
+       `(("fiveam" ,sbcl-fiveam)))
       (inputs
        `(("alexandria" ,sbcl-alexandria)))
       (synopsis "Common Lisp packrat parser")
       (description
-       "A packrat parser for Common Lisp.
+       "This is a packrat parser for Common Lisp.
 In addition to regular Packrat / Parsing Grammar / TDPL features ESRAP supports:
 
 @itemize
@@ -1703,8 +1704,11 @@ In addition to regular Packrat / Parsing Grammar / TDPL features ESRAP supports:
 @item inline grammars
 @item semantic predicates
 @item introspective facilities (describing grammars, tracing, setting breaks)
+@item left-recursive grammars
+@item functions as terminals
+@item accurate, customizable parse error reports
 @end itemize\n")
-      (home-page "https://nikodemus.github.io/esrap/")
+      (home-page "https://scymtym.github.io/esrap/")
       (license license:expat))))
 
 (define-public cl-esrap
@@ -14783,3 +14787,278 @@ protocol for Mastodon.")
 
 (define-public cl-tooter
   (sbcl-package->cl-source-package sbcl-tooter))
+
+(define-public sbcl-croatoan
+  (let ((commit "89ecd147cf1548f569f23353b3ab656cfb74de1f")
+        (revision "1"))
+    (package
+      (name "sbcl-croatoan")
+      (version (git-version "0.0.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/McParen/croatoan")
+               (commit commit)))
+         (file-name (git-file-name "croatoan" version))
+         (sha256
+          (base32 "0pk4mym88531jx0f1zmm6gmvrmdjzj2zcl2cdywdsxvjygr53zyx"))))
+      (build-system asdf-build-system/sbcl)
+      (arguments
+       '(#:phases
+         (modify-phases %standard-phases
+           (add-after 'unpack 'fix-paths
+             (lambda* (#:key inputs #:allow-other-keys)
+               (substitute* "ncurses/ncurses.lisp"
+                 (("libncursesw" all)
+                  (string-append (assoc-ref inputs "ncurses")
+                                 "/lib/"
+                                 all))))))))
+      (inputs
+       `(("bordeaux-threads" ,sbcl-bordeaux-threads)
+         ("cffi" ,sbcl-cffi)
+         ("ncurses" ,ncurses)
+         ("trivial-gray-streams" ,sbcl-trivial-gray-streams)))
+      (synopsis "Common Lisp bindings for the ncurses terminal library")
+      (description "Croatoan provides high-level Common Lisp CLOS bindings for
+the ncurses terminal library.")
+      (home-page "https://github.com/McParen/croatoan")
+      (license license:expat))))
+
+(define-public ecl-croatoan
+  (sbcl-package->ecl-package sbcl-croatoan))
+
+(define-public cl-croatoan
+  (sbcl-package->cl-source-package sbcl-croatoan))
+
+(define-public sbcl-cl-spark
+  (let ((commit "4e34bcebdcf8e45265986eb43ad4ad03bb41a581")
+        (revision "1"))
+    (package
+      (name "sbcl-cl-spark")
+      (version (git-version "0.1.13" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/tkych/cl-spark")
+               (commit commit)))
+         (file-name (git-file-name "cl-spark" version))
+         (sha256
+          (base32 "0my1fsgi2rjaqkpk934f2bjy63pmnj7faza3fzvnk6k3l66y19nk"))))
+      (build-system asdf-build-system/sbcl)
+      (native-inputs
+       `(("fiveam" ,sbcl-fiveam)))
+      (synopsis "Common Lisp library to make histograms")
+      (description "This is a Common Lisp library to make histograms using
+UTF-8 block characters.")
+      (home-page "https://github.com/tkych/cl-spark")
+      (license license:expat))))
+
+(define-public ecl-cl-spark
+  (sbcl-package->ecl-package sbcl-cl-spark))
+
+(define-public cl-spark
+  (sbcl-package->cl-source-package sbcl-cl-spark))
+
+(define-public sbcl-access
+  (let ((commit "1b26db3760018cdc4624f880f0a1e0155d8f6c50")
+        (revision "1"))
+    (package
+      (name "sbcl-access")
+      (version (git-version "1.5.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/sharplispers/access")
+               (commit commit)))
+         (file-name (git-file-name "access" version))
+         (sha256
+          (base32 "1knd3n4mpzkc97i1znbas32pscd30416isvmx2pjmgvar6k93pl5"))))
+      (build-system asdf-build-system/sbcl)
+      (native-inputs
+       `(("lisp-unit2" ,sbcl-lisp-unit2)))
+      (inputs
+       `(("alexandria" ,sbcl-alexandria)
+         ("anaphora" ,sbcl-anaphora)
+         ("closer-mop" ,sbcl-closer-mop)
+         ("interpol" ,sbcl-cl-interpol)
+         ("iterate" ,sbcl-iterate)))
+      (synopsis
+       "Common lisp library to unify access to dictionary-like structures")
+      (description
+       "This is a Common lisp library to unify access to the most common
+dictionary-like data structures.")
+      (home-page "https://github.com/sharplispers/access")
+      (license license:bsd-3))))
+
+(define-public ecl-access
+  (sbcl-package->ecl-package sbcl-access))
+
+(define-public cl-access
+  (sbcl-package->cl-source-package sbcl-access))
+
+(define-public sbcl-sxql-composer
+  (let ((commit "2b2230cb01ae1b68e28921d99e4814046867fb75")
+        (revision "1"))
+    (package
+      (name "sbcl-sxql-composer")
+      (version (git-version "0.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/mmontone/sxql-composer")
+               (commit commit)))
+         (file-name (git-file-name "sxql-composer" version))
+         (sha256
+          (base32 "1agkrj3ymskzc3c7pxbrj123d1kygjqcls145m0ap3i07q96hh1r"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("sxql" ,sbcl-sxql)))
+      (synopsis "Build and compose SXQL queries dynamically")
+      (description
+       "This is a Common Lisp library to build and compose SXQL queries
+dynamically.")
+      (home-page "https://github.com/mmontone/sxql-composer")
+      (license license:expat))))
+
+(define-public ecl-sxql-composer
+  (sbcl-package->ecl-package sbcl-sxql-composer))
+
+(define-public cl-sxql-composer
+  (sbcl-package->cl-source-package sbcl-sxql-composer))
+
+(define-public sbcl-cl-i18n
+  (let ((commit "fa0aa5bef8dfbdf2d72f7cc9f49e848ccbb567aa")
+        (revision "1"))
+    (package
+      (name "sbcl-cl-i18n")
+      (version (git-version "0.5.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://notabug.org/cage/cl-i18n")
+               (commit commit)))
+         (file-name (git-file-name "cl-i18n" version))
+         (sha256
+          (base32 "1hpsdbb3hd79bzbrnbqgk2j3f0ispxvk91snp08fm2z3f1sds5as"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("alexandria" ,sbcl-alexandria)
+         ("babel" ,sbcl-babel)
+         ("cl-ppcre-unicode" ,sbcl-cl-ppcre-unicode)))
+      (synopsis "Internationalisation framework for Common Lisp")
+      (description
+       "This is a Gettext-style internationalisation framework for Common
+Lisp.")
+      (home-page "https://notabug.org/cage/cl-i18n")
+      (license license:llgpl))))
+
+(define-public ecl-cl-i18n
+  (sbcl-package->ecl-package sbcl-cl-i18n))
+
+(define-public cl-i18n
+  (sbcl-package->cl-source-package sbcl-cl-i18n))
+
+(define-public sbcl-crypto-shortcuts
+  (let ((commit "7efd22d80e867cd8c9f8f363d4fe7b51ee2dadc0")
+        (revision "1"))
+    (package
+      (name "sbcl-crypto-shortcuts")
+      (version (git-version "2.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/Shinmera/crypto-shortcuts")
+               (commit commit)))
+         (file-name (git-file-name "crypto-shortcuts" version))
+         (sha256
+          (base32 "0c0m0ar04jn7qf2v8c4sivamlzki03r13rnxy8b3n27rh9r6hgin"))))
+      (build-system asdf-build-system/sbcl)
+      (inputs
+       `(("cl-base64" ,sbcl-cl-base64)
+         ("flexi-stream" ,sbcl-flexi-streams)
+         ("ironclad" ,sbcl-ironclad)))
+      (synopsis "Collection of common cryptography functions")
+      (description
+       "This is a collection of common cryptography functions for Common
+Lisp.")
+      (home-page "https://shinmera.github.io/crypto-shortcuts/")
+      (license license:zlib))))
+
+(define-public ecl-crypto-shortcuts
+  (sbcl-package->ecl-package sbcl-crypto-shortcuts))
+
+(define-public cl-crypto-shortcuts
+  (sbcl-package->cl-source-package sbcl-crypto-shortcuts))
+
+(define-public sbcl-cl-html5-parser
+  (let ((commit "74a92eb3a183a0afd089ea33350e816e6b9aeefa")
+        (revision "1"))
+    (package
+      (name "sbcl-cl-html5-parser")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/rotatef/cl-html5-parser")
+               (commit commit)))
+         (file-name (git-file-name "cl-html5-parser" version))
+         (sha256
+          (base32 "04if61wigylsmn996rbfl8ylsd0d9hzdmg7p2wiglncibjzcl5k9"))))
+      (build-system asdf-build-system/sbcl)
+      (arguments
+       '(#:tests? #f
+         #:asd-systems '("cl-html5-parser")))
+      (inputs
+       `(("cl-ppcre" ,sbcl-cl-ppcre)
+         ("flexi-stream" ,sbcl-flexi-streams)
+         ("string-case" ,sbcl-string-case)))
+      (synopsis "HTML5 parser for Common Lisp")
+      (description "This a Common Lisp library to parse HTML5 documents.")
+      (home-page "https://github.com/rotatef/cl-html5-parser")
+      (license license:lgpl3+))))
+
+(define-public ecl-cl-html5-parser
+  (sbcl-package->ecl-package sbcl-cl-html5-parser))
+
+(define-public cl-html5-parser
+  (sbcl-package->cl-source-package sbcl-cl-html5-parser))
+
+(define-public sbcl-percent-encoding
+  (let ((commit "c1224e22bc8048fbd3ebbc9329715a0c1b673170")
+        (revision "1"))
+    (package
+      (name "sbcl-percent-encoding")
+      (version (git-version "0.1" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/llibra/percent-encoding")
+               (commit commit)))
+         (file-name (git-file-name "percent-encoding" version))
+         (sha256
+          (base32 "0q1lh3sa6mkjr5gcdkgimkpc29rgf9cjhv90f61h8ridj28grq0h"))))
+      (build-system asdf-build-system/sbcl)
+      (native-inputs
+       `(("fiveam"   ,sbcl-fiveam)))
+      (inputs
+       `(("anaphora" ,sbcl-anaphora)
+         ("babel" ,sbcl-babel)))
+      (synopsis "RFC 3986 percent-encoding library")
+      (description
+       "This is a Common Lisp library providing RFC 3986 percent-encoding.")
+      (home-page "https://github.com/llibra/percent-encoding")
+      (license license:expat))))
+
+(define-public ecl-percent-encoding
+  (sbcl-package->ecl-package sbcl-percent-encoding))
+
+(define-public cl-percent-encoding
+  (sbcl-package->cl-source-package sbcl-percent-encoding))

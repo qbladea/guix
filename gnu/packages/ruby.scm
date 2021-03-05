@@ -958,13 +958,13 @@ specified in a \"Gemfile\", as well as their dependencies.")
 (define-public ruby-builder
   (package
     (name "ruby-builder")
-    (version "3.2.3")
+    (version "3.2.4")
     (source (origin
               (method url-fetch)
               (uri (rubygems-uri "builder" version))
               (sha256
                (base32
-                "0qibi5s67lpdv1wgcj66wcymcr04q6j4mzws6a479n0mlrmh5wr1"))))
+                "045wzckxpwcqzrjr353cxnyaxgf0qg22jh00dcx7z38cys5g1jlr"))))
     (build-system ruby-build-system)
     (arguments
      `(#:phases
@@ -4418,13 +4418,13 @@ client protocol.")
 (define-public ruby-minitest
   (package
     (name "ruby-minitest")
-    (version "5.11.3")
+    (version "5.12.2")
     (source (origin
               (method url-fetch)
               (uri (rubygems-uri "minitest" version))
               (sha256
                (base32
-                "0icglrhghgwdlnzzp4jf76b0mbc71s80njn5afyfjn4wqji8mqbq"))))
+                "0zjm24aiz42i9n37mcw8lydd7n0y7wfk27by06jx77ypcld3qvkw"))))
     (build-system ruby-build-system)
     (native-inputs
      `(("ruby-hoe" ,ruby-hoe)))
