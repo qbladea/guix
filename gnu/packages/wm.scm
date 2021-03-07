@@ -2350,3 +2350,31 @@ shows a notification for the user on the screen.")
 for wayland conceptually based on the X11 window manager
 @command{ratpoison}.")
     (license license:expat)))
+
+(define-public libucl
+  (package
+    (name "libucl")
+    (version "0.8.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/vstakhov/libucl/")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32
+         "1h52ldxankyhbbm1qbqz1f2q0j03c1b4mig7343bs3mc6fpm18gf"))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("pkg-config" ,pkg-config)
+       ("libtool" ,libtool)))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f)) ;; no tests
+    (home-page "https://github.com/vstakhov/libucl")
+    (synopsis "Universal configuration language parser")
+     (description "libucl is a configuration language
+that is easy to read, write and compatible with JSON.")
+    (license license:bsd-2)))
